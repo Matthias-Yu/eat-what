@@ -16,8 +16,7 @@ const menuItems = [
     emoji: '🍲',
     tone: 'sunset',
     tags: ['招牌', '微辣'],
-    recommended: true,
-    sales: 96
+    recommended: true
   },
   {
     id: 'teriyaki-rice',
@@ -28,8 +27,7 @@ const menuItems = [
     emoji: '🍛',
     tone: 'honey',
     tags: ['人气', '饱腹'],
-    recommended: true,
-    sales: 88
+    recommended: true
   },
   {
     id: 'shrimp-egg',
@@ -40,8 +38,7 @@ const menuItems = [
     emoji: '🍤',
     tone: 'lemon',
     tags: ['清淡', '高蛋白'],
-    recommended: true,
-    sales: 76
+    recommended: true
   },
   {
     id: 'salmon-salad',
@@ -52,8 +49,7 @@ const menuItems = [
     emoji: '🥗',
     tone: 'mint',
     tags: ['低卡', '轻食'],
-    recommended: true,
-    sales: 70
+    recommended: true
   },
   {
     id: 'mushroom-pasta',
@@ -64,8 +60,7 @@ const menuItems = [
     emoji: '🍝',
     tone: 'cream',
     tags: ['奶香', '不辣'],
-    recommended: false,
-    sales: 64
+    recommended: false
   },
   {
     id: 'broccoli-chicken',
@@ -76,8 +71,7 @@ const menuItems = [
     emoji: '🥦',
     tone: 'mint',
     tags: ['低脂', '高蛋白'],
-    recommended: false,
-    sales: 61
+    recommended: false
   },
   {
     id: 'mapo-tofu',
@@ -88,8 +82,7 @@ const menuItems = [
     emoji: '🌶️',
     tone: 'sunset',
     tags: ['下饭', '中辣'],
-    recommended: false,
-    sales: 82
+    recommended: false
   },
   {
     id: 'sweet-milk',
@@ -100,8 +93,7 @@ const menuItems = [
     emoji: '🥛',
     tone: 'blush',
     tags: ['热饮', '少糖'],
-    recommended: true,
-    sales: 73
+    recommended: true
   },
   {
     id: 'lemon-tea',
@@ -112,8 +104,7 @@ const menuItems = [
     emoji: '🍋',
     tone: 'lemon',
     tags: ['冰饮', '清爽'],
-    recommended: false,
-    sales: 69
+    recommended: false
   }
 ]
 

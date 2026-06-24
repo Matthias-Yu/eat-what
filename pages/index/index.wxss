@@ -26,7 +26,6 @@ page {
 .page-header,
 .section-heading,
 .mini-food-bottom,
-.food-bottom,
 .progress-top,
 .todo-toolbar,
 .sheet-header,
@@ -284,19 +283,18 @@ page {
 .category-pill { flex: 0 0 auto; height: 66rpx; display: flex; align-items: center; gap: 8rpx; padding: 0 22rpx; border: 1rpx solid #eee2db; border-radius: 33rpx; background: #fff; color: #8e7d75; font-size: 22rpx; font-weight: 600; box-sizing: border-box; }
 .category-pill.is-active { border-color: #ef684f; background: #ef684f; color: #fff; box-shadow: 0 8rpx 20rpx rgba(222, 92, 67, .2); }
 .food-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20rpx; }
-.food-card { overflow: hidden; border: 1rpx solid #f2e7e0; border-radius: 30rpx; background: #fff; box-shadow: 0 9rpx 26rpx rgba(77,46,34,.055); }
-.food-art { position: relative; height: 226rpx; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.food-card { overflow: hidden; border: 1rpx solid #f2e7e0; border-radius: 27rpx; background: #fff; box-shadow: 0 7rpx 22rpx rgba(77,46,34,.05); }
+.food-art { position: relative; height: 196rpx; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .food-art-glow { position: absolute; width: 160rpx; height: 160rpx; border-radius: 50%; background: rgba(255,255,255,.38); }
-.food-emoji { position: relative; z-index: 1; font-size: 116rpx; filter: drop-shadow(0 12rpx 12rpx rgba(106,64,37,.13)); }
+.food-emoji { position: relative; z-index: 1; font-size: 102rpx; filter: drop-shadow(0 10rpx 10rpx rgba(106,64,37,.12)); }
 .recommend-mark { position: absolute; z-index: 2; top: 14rpx; left: 14rpx; padding: 7rpx 13rpx; border-radius: 16rpx; background: rgba(255,255,255,.9); color: #e6654e; font-size: 17rpx; font-weight: 700; }
-.food-info { padding: 18rpx 18rpx 20rpx; }
-.food-name { display: block; overflow: hidden; font-size: 26rpx; font-weight: 750; white-space: nowrap; text-overflow: ellipsis; }
+.food-info { position: relative; min-height: 142rpx; padding: 16rpx 66rpx 17rpx 17rpx; box-sizing: border-box; }
+.food-name { display: block; overflow: hidden; font-size: 25rpx; font-weight: 750; white-space: nowrap; text-overflow: ellipsis; }
 .food-desc { display: block; overflow: hidden; margin-top: 7rpx; color: #a1918a; font-size: 19rpx; white-space: nowrap; text-overflow: ellipsis; }
-.food-tags { display: flex; gap: 8rpx; margin-top: 12rpx; }
+.food-tags { display: flex; gap: 7rpx; margin-top: 10rpx; }
 .food-tags text { padding: 4rpx 9rpx; border-radius: 9rpx; background: #fff3ed; color: #da795e; font-size: 16rpx; }
-.food-bottom { margin-top: 17rpx; }
-.food-popularity { color: #b08f84; font-size: 18rpx; font-weight: 600; }
 .add-button { width: 52rpx; height: 52rpx; font-size: 34rpx; }
+.food-info > .add-button { position: absolute; right: 15rpx; bottom: 16rpx; }
 .menu-empty, .todo-empty { min-height: 560rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .empty-art { width: 150rpx; height: 150rpx; margin-bottom: 22rpx; border-radius: 50%; background: #fff0e7; font-size: 74rpx; line-height: 150rpx; text-align: center; }
 .empty-title { color: #4b3d37; font-size: 28rpx; font-weight: 750; }
@@ -372,11 +370,10 @@ page {
 .empty-order view text:last-child { margin-top: 5rpx; color: #aa9a93; font-size: 17rpx; }
 .empty-order > text:last-child { color: #e66b52; font-size: 19rpx; }
 .settings-card { overflow: hidden; border: 1rpx solid #f1e6df; border-radius: 26rpx; background: #fff; }
-.setting-row { height: 95rpx; display: flex; align-items: center; padding: 0 21rpx; border-bottom: 1rpx solid #f5ece7; box-sizing: border-box; font-size: 22rpx; }
+.setting-row { position: relative; height: 95rpx; display: flex; align-items: center; padding: 0 21rpx; border-bottom: 1rpx solid #f5ece7; box-sizing: border-box; font-size: 22rpx; }
 .setting-row:last-child { border-bottom: 0; }
-.setting-share { width: 100%; margin: 0; border-radius: 0; background: transparent; color: #382d29; line-height: normal; text-align: left; }
-.setting-share::after { border: 0; }
-.setting-row--pressed { background: #fff7f2; }
+.share-hit-area { position: absolute; z-index: 2; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border-radius: 0; background: transparent; opacity: 0; }
+.share-hit-area::after { border: 0; }
 .setting-icon { width: 49rpx; height: 49rpx; margin-right: 16rpx; border-radius: 16rpx; font-size: 26rpx; line-height: 49rpx; text-align: center; font-weight: 700; }
 .setting-orange { background: #fff0e7; color: #e56a4f; }
 .setting-pink { background: #fff0f1; color: #dc7381; }
@@ -509,5 +506,5 @@ page {
   .hero-card { height: 330rpx; }
   .hero-art { right: -30rpx; transform: scale(.86); }
   .hero-title { font-size: 43rpx; }
-  .food-art { height: 200rpx; }
+  .food-art { height: 184rpx; }
 }

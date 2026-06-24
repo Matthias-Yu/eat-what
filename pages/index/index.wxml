@@ -134,10 +134,7 @@
           <text class="food-name">{{item.name}}</text>
           <text class="food-desc">{{item.description}}</text>
           <view class="food-tags"><text wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text></view>
-          <view class="food-bottom">
-            <text class="food-popularity">♡ {{item.sales}}% 喜欢</text>
-            <view class="add-button" data-id="{{item.id}}" bindtap="addToCart" hover-class="add-pressed">＋</view>
-          </view>
+          <view class="add-button" data-id="{{item.id}}" bindtap="addToCart" hover-class="add-pressed">＋</view>
         </view>
       </view>
     </view>
@@ -230,7 +227,10 @@
 
     <view class="profile-section-title">更多</view>
     <view class="settings-card">
-      <button class="setting-row setting-share" open-type="share" hover-class="setting-row--pressed"><view class="setting-icon setting-orange">↗</view><text>分享小家菜单</text><text class="setting-arrow">›</text></button>
+      <view class="setting-row setting-share">
+        <view class="setting-icon setting-orange">↗</view><text>分享小家菜单</text><text class="setting-arrow">›</text>
+        <button class="share-hit-area" open-type="share" aria-label="分享小家菜单"></button>
+      </view>
       <view class="setting-row" bindtap="showAbout"><view class="setting-icon setting-pink">♡</view><text>关于小家菜单</text><text class="setting-arrow">›</text></view>
       <view class="setting-row" bindtap="clearAllData"><view class="setting-icon setting-gray">↻</view><text>清空本地数据</text><text class="setting-arrow">›</text></view>
     </view>
