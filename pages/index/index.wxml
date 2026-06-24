@@ -227,6 +227,10 @@
 
     <view class="profile-section-title">更多</view>
     <view class="settings-card">
+      <view class="setting-row" bindtap="openFamilyPanel">
+        <view class="setting-icon setting-cloud">☁</view><text>家庭云空间</text>
+        <text class="setting-value">{{familyStatus === 'active' ? '已同步' : '去连接'}}</text><text class="setting-arrow">›</text>
+      </view>
       <view class="setting-row setting-share">
         <view class="setting-icon setting-orange">↗</view><text>分享小家菜单</text><text class="setting-arrow">›</text>
         <button class="share-hit-area" open-type="share" aria-label="分享小家菜单"></button>
@@ -257,6 +261,58 @@
 </view>
 
 <bottom-nav active="{{activeTab}}" badge="{{cartCount}}" bindchange="setTab"></bottom-nav>
+
+<!-- 家庭云空间 -->
+<view wx:if="{{showFamilyPanel}}" class="family-overlay" bindtap="closeFamilyPanel">
+  <view class="family-card" catchtap="noop">
+    <view class="family-card-close" bindtap="closeFamilyPanel">×</view>
+
+    <block wx:if="{{familyStatus === 'loading'}}">
+      <view class="family-cloud-icon is-loading">☁</view>
+      <text class="family-title">正在连接小家</text>
+      <text class="family-copy">稍等一下，正在看看云端有没有我们的家</text>
+    </block>
+
+    <block wx:elif="{{familyStatus === 'active'}}">
+      <view class="family-cloud-icon">♥</view>
+      <text class="family-title">{{family.name}}</text>
+      <text class="family-copy">已有 {{family.memberCount}} / {{family.maxMembers}} 位成员，数据每 12 秒自动同步</text>
+      <view class="invite-code-box">
+        <view><text>家庭邀请码</text><text>{{family.inviteCode}}</text></view>
+        <button bindtap="copyInviteCode">复制</button>
+      </view>
+      <text class="family-tip">把邀请码发给另一半，她加入后就能看到同一份订单和待办。</text>
+      <button class="family-primary-button" bindtap="copyInviteCode">复制邀请码</button>
+    </block>
+
+    <block wx:elif="{{familyJoinMode}}">
+      <view class="family-cloud-icon">⌂</view>
+      <text class="family-title">加入另一半的小家</text>
+      <text class="family-copy">输入对方发来的 6 位家庭邀请码</text>
+      <input class="invite-input" value="{{inviteCodeInput}}" bindinput="onInviteCodeInput" maxlength="6" placeholder="例如 AB3K8M" placeholder-class="input-placeholder" />
+      <text wx:if="{{familyError}}" class="family-error">{{familyError}}</text>
+      <button class="family-primary-button" bindtap="joinFamily" loading="{{familyBusy}}">{{familyBusy ? '正在加入…' : '加入这个家'}}</button>
+      <button class="family-text-button" bindtap="cancelJoinFamily">返回</button>
+    </block>
+
+    <block wx:elif="{{familyStatus === 'offline'}}">
+      <view class="family-cloud-icon is-offline">☁</view>
+      <text class="family-title">云端暂时没连上</text>
+      <text class="family-copy">{{familyError || '本地功能仍然可以正常使用'}}</text>
+      <button class="family-primary-button" bindtap="retryCloud">重新连接</button>
+    </block>
+
+    <block wx:else>
+      <view class="family-cloud-icon">♡</view>
+      <text class="family-title">建立两个人的小家</text>
+      <text class="family-copy">创建后会把当前订单和待办上传云端，另一半凭邀请码加入。</text>
+      <text wx:if="{{familyError}}" class="family-error">{{familyError}}</text>
+      <button class="family-primary-button" bindtap="createFamily" loading="{{familyBusy}}">{{familyBusy ? '正在创建…' : '创建我们的小家'}}</button>
+      <button class="family-secondary-button" bindtap="showJoinFamily">我有邀请码</button>
+      <text class="family-tip">也可以先关闭，继续使用本地模式。</text>
+    </block>
+  </view>
+</view>
 
 <!-- 购物车 -->
 <view wx:if="{{showCart}}" class="overlay" bindtap="closeCart">

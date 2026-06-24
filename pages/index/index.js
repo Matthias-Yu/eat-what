@@ -1,6 +1,7 @@
 const { categories, menuItems } = require('../../data/menu')
 const storage = require('../../utils/storage')
 const dateUtil = require('../../utils/date')
+const cloudService = require('../../utils/cloud')
 
 const DEFAULT_TODOS = [
   { id: 1, title: '记得给绿植浇水', note: '客厅和阳台', category: '家务', due: '今天', completed: false },
@@ -37,6 +38,13 @@ Page({
     showOrderDetail: false,
     showOrderSuccess: false,
     latestOrderId: '',
+    familyStatus: 'loading',
+    family: null,
+    showFamilyPanel: false,
+    familyJoinMode: false,
+    inviteCodeInput: '',
+    familyBusy: false,
+    familyError: '',
     todos: [],
     visibleTodos: [],
     homeTodos: [],
@@ -64,14 +72,21 @@ Page({
     this.refreshCart()
     this.refreshTodos()
     this.refreshProfile()
+    this.initializeCloud()
   },
 
   onShow() {
     this.setData({ greeting: dateUtil.greeting(), dateLabel: dateUtil.todayLabel() })
+    this.startCloudPolling()
+  },
+
+  onHide() {
+    this.stopCloudPolling()
   },
 
   onUnload() {
     if (this.flyTimer) clearTimeout(this.flyTimer)
+    this.stopCloudPolling()
   },
 
   onShareAppMessage() {
@@ -86,6 +101,143 @@ Page({
       title: '认真吃饭，好好生活｜小家菜单',
       query: 'from=timeline'
     }
+  },
+
+  async initializeCloud() {
+    try {
+      cloudService.init()
+      const session = await cloudService.call('getSession')
+      if (!session.active) {
+        this.setData({ familyStatus: 'none', family: null, showFamilyPanel: true, familyError: '' })
+        return
+      }
+      this.setData({ familyStatus: 'active', family: session.household, familyError: '' })
+      await this.pullCloudData()
+      this.startCloudPolling()
+    } catch (error) {
+      console.warn('云端初始化失败', error)
+      this.setData({ familyStatus: 'offline', familyError: error.message || '暂时无法连接云端' })
+    }
+  },
+
+  async pullCloudData() {
+    if (this.data.familyStatus !== 'active' || this.cloudWritePending > 0) return
+    try {
+      const data = await cloudService.call('getData')
+      this.applyCloudData(data)
+    } catch (error) {
+      console.warn('拉取家庭数据失败', error)
+    }
+  },
+
+  applyCloudData(data) {
+    const cart = data.cart || {}
+    const todos = Array.isArray(data.todos) ? data.todos : []
+    const orders = Array.isArray(data.orders) ? data.orders : []
+    storage.write('cart', cart)
+    storage.write('todos', todos)
+    storage.write('orders', orders)
+    this.setData({ cart, todos, orders })
+    this.refreshCart()
+    this.refreshTodos()
+    this.refreshProfile()
+  },
+
+  syncCloudResource(resource, value) {
+    if (this.data.familyStatus !== 'active') return Promise.resolve()
+    this.cloudWritePending = (this.cloudWritePending || 0) + 1
+    return cloudService.call('updateResource', { resource, value })
+      .catch((error) => console.warn(`同步 ${resource} 失败`, error))
+      .finally(() => {
+        this.cloudWritePending = Math.max(0, (this.cloudWritePending || 1) - 1)
+      })
+  },
+
+  startCloudPolling() {
+    if (this.data.familyStatus !== 'active' || this.cloudPollTimer) return
+    this.cloudPollTimer = setInterval(() => this.pullCloudData(), 12000)
+  },
+
+  stopCloudPolling() {
+    if (!this.cloudPollTimer) return
+    clearInterval(this.cloudPollTimer)
+    this.cloudPollTimer = null
+  },
+
+  openFamilyPanel() {
+    this.setData({ showFamilyPanel: true, familyJoinMode: false, familyError: '' })
+    if (this.data.familyStatus === 'active') {
+      cloudService.call('getSession')
+        .then((session) => {
+          if (session.active) this.setData({ family: session.household })
+        })
+        .catch((error) => console.warn('刷新家庭信息失败', error))
+    }
+  },
+
+  closeFamilyPanel() {
+    this.setData({ showFamilyPanel: false, familyJoinMode: false, familyError: '' })
+  },
+
+  showJoinFamily() {
+    this.setData({ familyJoinMode: true, familyError: '', inviteCodeInput: '' })
+  },
+
+  cancelJoinFamily() {
+    this.setData({ familyJoinMode: false, familyError: '' })
+  },
+
+  onInviteCodeInput(event) {
+    const value = event.detail.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
+    this.setData({ inviteCodeInput: value })
+  },
+
+  async createFamily() {
+    if (this.data.familyBusy) return
+    this.setData({ familyBusy: true, familyError: '' })
+    try {
+      const result = await cloudService.call('createHousehold', { name: '我们的小家' })
+      this.setData({ familyStatus: 'active', family: result.household })
+      const data = await cloudService.call('migrateLocal', {
+        data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, places: [] }
+      })
+      this.applyCloudData(data)
+      this.startCloudPolling()
+      wx.showToast({ title: '家庭空间已创建', icon: 'success' })
+    } catch (error) {
+      this.setData({ familyError: error.message || '创建失败，请重试' })
+    } finally {
+      this.setData({ familyBusy: false })
+    }
+  },
+
+  async joinFamily() {
+    if (this.data.familyBusy) return
+    if (this.data.inviteCodeInput.length !== 6) {
+      this.setData({ familyError: '请输入完整的 6 位邀请码' })
+      return
+    }
+    this.setData({ familyBusy: true, familyError: '' })
+    try {
+      const result = await cloudService.call('joinHousehold', { inviteCode: this.data.inviteCodeInput })
+      this.setData({ familyStatus: 'active', family: result.household, showFamilyPanel: false })
+      await this.pullCloudData()
+      this.startCloudPolling()
+      wx.showToast({ title: '已经加入小家', icon: 'success' })
+    } catch (error) {
+      this.setData({ familyError: error.message || '加入失败，请检查邀请码' })
+    } finally {
+      this.setData({ familyBusy: false })
+    }
+  },
+
+  copyInviteCode() {
+    if (this.data.family) wx.setClipboardData({ data: this.data.family.inviteCode })
+  },
+
+  retryCloud() {
+    this.setData({ familyStatus: 'loading', familyError: '' })
+    this.initializeCloud()
   },
 
   noop() {},
@@ -146,6 +298,7 @@ Page({
     cart[id] = (cart[id] || 0) + 1
     this.setData({ cart })
     storage.write('cart', cart)
+    this.syncCloudResource('cart', cart)
     this.refreshCart()
     if (wx.vibrateShort) wx.vibrateShort({ type: 'light' })
   },
@@ -222,6 +375,7 @@ Page({
     if (cart[id] <= 0) delete cart[id]
     this.setData({ cart })
     storage.write('cart', cart)
+    this.syncCloudResource('cart', cart)
     this.refreshCart()
     if (!this.data.cartCount) this.setData({ showCart: false })
   },
@@ -264,6 +418,8 @@ Page({
     const orders = [order].concat(this.data.orders).slice(0, 20)
     storage.write('orders', orders)
     storage.write('cart', {})
+    this.syncCloudResource('orders', orders)
+    this.syncCloudResource('cart', {})
     this.setData({
       orders,
       cart: {},
@@ -291,7 +447,7 @@ Page({
     this.setData({ showOrderDetail: false, selectedOrder: null })
   },
 
-  refreshTodos() {
+  refreshTodos(shouldSync = false) {
     const todos = this.data.todos
       .map((item) => Object.assign({}, item, { categoryClass: TODO_CATEGORY_CLASS[item.category] || 'life' }))
       .sort((a, b) => Number(a.completed) - Number(b.completed))
@@ -308,6 +464,7 @@ Page({
       todoStats: { total, completed, pending, percent: total ? Math.round(completed / total * 100) : 0 }
     })
     storage.write('todos', todos)
+    if (shouldSync) this.syncCloudResource('todos', todos)
   },
 
   setTodoFilter(event) {
@@ -325,7 +482,7 @@ Page({
       })
     })
     this.setData({ todos })
-    this.refreshTodos()
+    this.refreshTodos(true)
   },
 
   openTodoComposer() {
@@ -388,7 +545,7 @@ Page({
       todos = [newTodo].concat(this.data.todos)
     }
     this.setData({ todos, showTodoComposer: false })
-    this.refreshTodos()
+    this.refreshTodos(true)
     this.refreshProfile()
   },
 
@@ -402,7 +559,7 @@ Page({
       success: (result) => {
         if (!result.confirm) return
         this.setData({ todos: this.data.todos.filter((item) => Number(item.id) !== id) })
-        this.refreshTodos()
+        this.refreshTodos(true)
         this.refreshProfile()
       }
     })
@@ -427,9 +584,10 @@ Page({
   },
 
   clearAllData() {
+    const cloudActive = this.data.familyStatus === 'active'
     wx.showModal({
-      title: '清空本地数据？',
-      content: '购物车、订单和待办都会恢复到初始状态。',
+      title: cloudActive ? '清空家庭数据？' : '清空本地数据？',
+      content: cloudActive ? '两个人的购物车、订单和待办都会被清空。' : '购物车、订单和待办都会恢复到初始状态。',
       confirmText: '清空',
       confirmColor: '#e75c48',
       success: (result) => {
@@ -437,8 +595,10 @@ Page({
         storage.clear()
         this.setData({ cart: {}, orders: [], todos: DEFAULT_TODOS, activeTab: 'home' })
         this.refreshCart()
-        this.refreshTodos()
+        this.refreshTodos(true)
         this.refreshProfile()
+        this.syncCloudResource('cart', {})
+        this.syncCloudResource('orders', [])
         wx.showToast({ title: '已清空', icon: 'success' })
       }
     })
