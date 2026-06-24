@@ -1,0 +1,10 @@
+page {
+  color: #382d29;
+  background: #fffaf5;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+}
+
+button::after { border: 0; }
+
+.tap-scale { transition: transform .18s ease, opacity .18s ease; }
+.tap-scale--active { transform: scale(.96); opacity: .88; }

@@ -1,0 +1,20 @@
+<view class="nav-shell">
+  <view class="nav-bar">
+    <view
+      wx:for="{{items}}"
+      wx:key="id"
+      class="nav-item {{active === item.id ? 'is-active' : ''}}"
+      data-id="{{item.id}}"
+      bindtap="select"
+      hover-class="nav-item--pressed"
+      aria-role="button"
+      aria-label="{{item.label}}"
+    >
+      <view class="nav-icon-wrap">
+        <text class="nav-icon">{{item.icon}}</text>
+        <text wx:if="{{item.id === 'menu' && badge > 0}}" class="nav-badge">{{badge > 99 ? '99+' : badge}}</text>
+      </view>
+      <text class="nav-label">{{item.label}}</text>
+    </view>
+  </view>
+</view>

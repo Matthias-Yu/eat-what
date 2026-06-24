@@ -1,0 +1,295 @@
+<navigation-bar title="" back="{{false}}" color="#382d29" background="transparent"></navigation-bar>
+
+<scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
+  <!-- 首页 -->
+  <view wx:if="{{activeTab === 'home'}}" class="page home-page">
+    <view class="home-top">
+      <view>
+        <view class="eyebrow"><text>{{greeting.icon}}</text><text>{{greeting.text}}，宝贝</text></view>
+        <text class="date-label">{{dateLabel}}</text>
+      </view>
+      <view class="avatar" bindtap="navigateFromCard" data-target="profile" hover-class="tap-scale--active">
+        <view class="avatar-face">☺</view>
+        <view class="avatar-heart">♥</view>
+      </view>
+    </view>
+
+    <view class="hero-card">
+      <view class="hero-glow hero-glow-one"></view>
+      <view class="hero-glow hero-glow-two"></view>
+      <view class="hero-copy">
+        <view class="hero-kicker"><text class="hero-dot"></text> 今晚推荐</view>
+        <text class="hero-title">番茄浓汤\n肥牛锅</text>
+        <text class="hero-subtitle">酸甜浓郁，暖呼呼的幸福感</text>
+        <button class="hero-button" data-category="recommend" bindtap="exploreMenu" hover-class="button-pressed">去看看 <text>→</text></button>
+      </view>
+      <view class="hero-art">
+        <view class="steam steam-one">〰</view>
+        <view class="steam steam-two">〰</view>
+        <view class="hero-plate">🍲</view>
+        <view class="leaf leaf-one">✦</view>
+        <view class="leaf leaf-two">●</view>
+      </view>
+    </view>
+
+    <view class="quick-grid">
+      <view class="quick-item" data-target="menu" bindtap="navigateFromCard" hover-class="quick-item--pressed">
+        <view class="quick-icon quick-orange">♨</view>
+        <text>开始点餐</text>
+      </view>
+      <view class="quick-item" data-target="todo" bindtap="navigateFromCard" hover-class="quick-item--pressed">
+        <view class="quick-icon quick-purple">✓</view>
+        <text>今日待办</text>
+        <text wx:if="{{todoStats.pending}}" class="quick-badge">{{todoStats.pending}}</text>
+      </view>
+      <view class="quick-item" data-target="cart" bindtap="navigateFromCard" hover-class="quick-item--pressed">
+        <view class="quick-icon quick-green">⌑</view>
+        <text>购物篮</text>
+        <text wx:if="{{cartCount}}" class="quick-badge">{{cartCount}}</text>
+      </view>
+      <view class="quick-item" data-target="profile" bindtap="navigateFromCard" hover-class="quick-item--pressed">
+        <view class="quick-icon quick-pink">♡</view>
+        <text>我们的小家</text>
+      </view>
+    </view>
+
+    <view class="section-heading">
+      <view><text class="section-title">今日好味</text><text class="section-subtitle">按喜欢的来，今天也要好好吃饭</text></view>
+      <text class="section-more" data-category="recommend" bindtap="exploreMenu">全部 →</text>
+    </view>
+    <scroll-view class="recommend-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="recommend-row">
+        <view wx:for="{{recommendedItems}}" wx:key="id" class="mini-food-card">
+          <view class="mini-food-art tone-{{item.tone}}">
+            <text>{{item.emoji}}</text>
+            <view class="food-tag">{{item.tags[0]}}</view>
+          </view>
+          <text class="mini-food-name">{{item.name}}</text>
+          <view class="mini-food-bottom">
+            <view><text class="currency">¥</text><text class="mini-food-price">{{item.price}}</text></view>
+            <view class="add-mini" data-id="{{item.id}}" catchtap="addToCart" hover-class="add-pressed">＋</view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="section-heading todo-heading">
+      <view><text class="section-title">今日小事</text><text class="section-subtitle">一件件完成，生活就有了形状</text></view>
+      <text class="section-more" data-target="todo" bindtap="navigateFromCard">管理 →</text>
+    </view>
+    <view class="home-todo-card">
+      <block wx:if="{{homeTodos.length}}">
+        <view wx:for="{{homeTodos}}" wx:key="id" class="home-todo-row">
+          <view class="todo-check-small" data-id="{{item.id}}" bindtap="toggleTodo"></view>
+          <view class="home-todo-copy">
+            <text class="home-todo-title">{{item.title}}</text>
+            <text class="home-todo-meta">{{item.category}} · {{item.due}}</text>
+          </view>
+          <text class="todo-arrow">›</text>
+        </view>
+      </block>
+      <view wx:else class="home-empty">
+        <text class="home-empty-icon">✦</text>
+        <text>今天的事情都完成啦</text>
+      </view>
+    </view>
+    <view class="love-note">♡ 好好吃饭，好好生活，也好好爱你</view>
+  </view>
+
+  <!-- 点餐 -->
+  <view wx:elif="{{activeTab === 'menu'}}" class="page menu-page">
+    <view class="page-header">
+      <view><text class="page-kicker">OUR KITCHEN</text><text class="page-title">今天想吃什么？</text></view>
+      <view class="header-cart" bindtap="openCart" hover-class="tap-scale--active">
+        <text>⌑</text><text wx:if="{{cartCount}}" class="header-cart-badge">{{cartCount}}</text>
+      </view>
+    </view>
+
+    <view class="search-box">
+      <text class="search-icon">⌕</text>
+      <input class="search-input" value="{{searchKeyword}}" bindinput="onSearch" placeholder="搜一搜想吃的菜" placeholder-class="input-placeholder" />
+      <text wx:if="{{searchKeyword}}" class="search-clear" bindtap="clearSearch">×</text>
+    </view>
+
+    <scroll-view class="category-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="category-row">
+        <view
+          wx:for="{{categories}}"
+          wx:key="id"
+          class="category-pill {{currentCategory === item.id ? 'is-active' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="selectCategory"
+        ><text>{{item.icon}}</text><text>{{item.name}}</text></view>
+      </view>
+    </scroll-view>
+
+    <view wx:if="{{filteredItems.length}}" class="food-grid">
+      <view wx:for="{{filteredItems}}" wx:key="id" class="food-card">
+        <view class="food-art tone-{{item.tone}}">
+          <view class="food-art-glow"></view>
+          <text class="food-emoji">{{item.emoji}}</text>
+          <text wx:if="{{item.recommended}}" class="recommend-mark">今日推荐</text>
+        </view>
+        <view class="food-info">
+          <text class="food-name">{{item.name}}</text>
+          <text class="food-desc">{{item.description}}</text>
+          <view class="food-tags"><text wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text></view>
+          <view class="food-bottom">
+            <view class="price"><text>¥</text>{{item.price}}</view>
+            <view class="add-button" data-id="{{item.id}}" bindtap="addToCart" hover-class="add-pressed">＋</view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="menu-empty">
+      <view class="empty-art">🍽️</view>
+      <text class="empty-title">没找到这道菜</text>
+      <text class="empty-subtitle">换个关键词试试吧</text>
+      <button bindtap="clearSearch">看看全部推荐</button>
+    </view>
+  </view>
+
+  <!-- 待办 -->
+  <view wx:elif="{{activeTab === 'todo'}}" class="page todo-page">
+    <view class="page-header todo-page-header">
+      <view><text class="page-kicker">LITTLE THINGS</text><text class="page-title">生活待办</text></view>
+      <view class="todo-date-icon">{{todoStats.percent}}<text>%</text></view>
+    </view>
+
+    <view class="progress-card">
+      <view class="progress-top">
+        <view><text class="progress-title">今天也在认真生活</text><text class="progress-copy">已完成 {{todoStats.completed}} 件，还有 {{todoStats.pending}} 件小事</text></view>
+        <view class="progress-sun">☀</view>
+      </view>
+      <view class="progress-track"><view class="progress-fill" style="width: {{todoStats.percent}}%"></view></view>
+    </view>
+
+    <view class="todo-toolbar">
+      <view class="filter-tabs">
+        <text class="{{todoFilter === 'all' ? 'is-active' : ''}}" data-filter="all" bindtap="setTodoFilter">全部 {{todoStats.total}}</text>
+        <text class="{{todoFilter === 'pending' ? 'is-active' : ''}}" data-filter="pending" bindtap="setTodoFilter">进行中</text>
+        <text class="{{todoFilter === 'completed' ? 'is-active' : ''}}" data-filter="completed" bindtap="setTodoFilter">已完成</text>
+      </view>
+      <text class="toolbar-hint">长按删除</text>
+    </view>
+
+    <view wx:if="{{visibleTodos.length}}" class="todo-list">
+      <view
+        wx:for="{{visibleTodos}}"
+        wx:key="id"
+        class="todo-item {{item.completed ? 'is-completed' : ''}}"
+        data-id="{{item.id}}"
+        bindlongpress="deleteTodo"
+        bindtap="editTodo"
+        hover-class="todo-item--pressed"
+      >
+        <view class="todo-checkbox" data-id="{{item.id}}" catchtap="toggleTodo"><text wx:if="{{item.completed}}">✓</text></view>
+        <view class="todo-main">
+          <text class="todo-title">{{item.title}}</text>
+          <text wx:if="{{item.note}}" class="todo-note">{{item.note}}</text>
+          <view class="todo-meta"><text class="todo-category category-{{item.categoryClass}}">{{item.category}}</text><text class="todo-due">◷ {{item.due}}</text></view>
+        </view>
+        <text class="todo-more">···</text>
+      </view>
+    </view>
+    <view wx:else class="todo-empty">
+      <view class="empty-art">🫶</view>
+      <text class="empty-title">这里空空的</text>
+      <text class="empty-subtitle">给今天加一件值得期待的小事吧</text>
+    </view>
+    <button class="new-todo-button" bindtap="openTodoComposer" hover-class="button-pressed"><text>＋</text> 新建待办</button>
+  </view>
+
+  <!-- 我的 -->
+  <view wx:else class="page profile-page">
+    <view class="profile-hero">
+      <view class="profile-bubble bubble-one">♡</view>
+      <view class="profile-bubble bubble-two">✦</view>
+      <view class="profile-avatar"><text>☺</text><view>♥</view></view>
+      <text class="profile-title">我们的小家</text>
+      <text class="profile-subtitle">认真吃饭，好好生活</text>
+    </view>
+
+    <view class="stats-card">
+      <view><text class="stats-number">{{profileStats.orders}}</text><text class="stats-label">次点餐</text></view>
+      <view class="stats-divider"></view>
+      <view><text class="stats-number">{{profileStats.todos}}</text><text class="stats-label">件已完成</text></view>
+      <view class="stats-divider"></view>
+      <view><text class="stats-number"><text>¥</text>{{profileStats.saved}}</text><text class="stats-label">省下的钱</text></view>
+    </view>
+
+    <view class="profile-section-title">最近订单</view>
+    <view wx:if="{{orders.length}}" class="order-list">
+      <view wx:for="{{orders}}" wx:key="id" class="order-card">
+        <view class="order-icon">{{item.items[0].emoji}}</view>
+        <view class="order-copy"><text class="order-title">{{item.itemSummary}}</text><text class="order-time">{{item.createdAt}} · 订单 #{{item.id}}</text></view>
+        <view class="order-side"><text class="order-price">¥{{item.total}}</text><text class="order-status">{{item.status}}</text></view>
+      </view>
+    </view>
+    <view wx:else class="empty-order"><text>🍽</text><view><text>还没有点过餐</text><text>今晚就从喜欢的菜开始吧</text></view><text data-target="menu" bindtap="navigateFromCard">去点餐 →</text></view>
+
+    <view class="profile-section-title">更多</view>
+    <view class="settings-card">
+      <view class="setting-row" bindtap="showAbout"><view class="setting-icon setting-pink">♡</view><text>关于小家菜单</text><text class="setting-arrow">›</text></view>
+      <view class="setting-row" bindtap="clearAllData"><view class="setting-icon setting-gray">↻</view><text>清空本地数据</text><text class="setting-arrow">›</text></view>
+    </view>
+    <view class="version">小家菜单 · 1.0.0</view>
+  </view>
+</scroll-view>
+
+<!-- 菜单页购物车浮条 -->
+<view wx:if="{{activeTab === 'menu' && cartCount > 0 && !showCart}}" class="cart-float" bindtap="openCart" hover-class="cart-float--pressed">
+  <view class="cart-float-icon">⌑<text>{{cartCount}}</text></view>
+  <view class="cart-float-copy"><text>已选 {{cartCount}} 份</text><text>再选一点喜欢的</text></view>
+  <view class="cart-float-total"><text>¥{{cartTotal}}</text><text>选好了 →</text></view>
+</view>
+
+<bottom-nav active="{{activeTab}}" badge="{{cartCount}}" bindchange="setTab"></bottom-nav>
+
+<!-- 购物车 -->
+<view wx:if="{{showCart}}" class="overlay" bindtap="closeCart">
+  <view class="bottom-sheet cart-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="sheet-header"><view><text class="sheet-title">今晚吃这些</text><text class="sheet-subtitle">已选 {{cartCount}} 份，都是喜欢的</text></view><view class="sheet-close" bindtap="closeCart">×</view></view>
+    <scroll-view class="cart-list" scroll-y show-scrollbar="{{false}}">
+      <view wx:for="{{cartItems}}" wx:key="id" class="cart-item">
+        <view class="cart-item-art tone-{{item.tone}}">{{item.emoji}}</view>
+        <view class="cart-item-copy"><text>{{item.name}}</text><text>¥{{item.price}} / 份</text></view>
+        <view class="quantity-control">
+          <text data-id="{{item.id}}" data-delta="-1" bindtap="changeCartQuantity">−</text>
+          <text>{{item.quantity}}</text>
+          <text class="quantity-add" data-id="{{item.id}}" data-delta="1" bindtap="changeCartQuantity">＋</text>
+        </view>
+      </view>
+    </scroll-view>
+    <view class="remark-box"><text>✎</text><input value="{{orderRemark}}" bindinput="onRemarkInput" placeholder="口味、忌口或想说的话…" placeholder-class="input-placeholder" /></view>
+    <view class="checkout-row">
+      <view class="checkout-total"><text>合计</text><view><text>¥</text>{{cartTotal}}</view></view>
+      <button bindtap="submitOrder" hover-class="button-pressed">就吃这些 <text>→</text></button>
+    </view>
+  </view>
+</view>
+
+<!-- 待办编辑器 -->
+<view wx:if="{{showTodoComposer}}" class="overlay" bindtap="closeTodoComposer">
+  <view class="bottom-sheet todo-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="sheet-header"><view><text class="sheet-title">{{editingTodoId ? '编辑这件小事' : '记一件小事'}}</text><text class="sheet-subtitle">把生活慢慢装进清单里</text></view><view class="sheet-close" bindtap="closeTodoComposer">×</view></view>
+    <view class="form-group"><text class="form-label">要做什么</text><input class="form-input form-input-main" value="{{todoDraft.title}}" bindinput="onTodoTitleInput" maxlength="30" focus="{{showTodoComposer}}" placeholder="例如：买一束喜欢的花" placeholder-class="input-placeholder" /></view>
+    <view class="form-group"><text class="form-label">补充说明 <text>选填</text></text><input class="form-input" value="{{todoDraft.note}}" bindinput="onTodoNoteInput" maxlength="40" placeholder="加一点小提示" placeholder-class="input-placeholder" /></view>
+    <view class="form-group"><text class="form-label">分类</text><view class="option-row"><text wx:for="{{todoCategories}}" wx:key="*this" class="option-chip {{todoDraft.category === item ? 'is-active' : ''}}" data-value="{{item}}" bindtap="selectTodoCategory">{{item}}</text></view></view>
+    <view class="form-group"><text class="form-label">什么时候</text><view class="option-row"><text wx:for="{{dueOptions}}" wx:key="*this" class="option-chip {{todoDraft.due === item ? 'is-active' : ''}}" data-value="{{item}}" bindtap="selectTodoDue">{{item}}</text></view></view>
+    <button class="save-todo-button" bindtap="saveTodo" hover-class="button-pressed">{{editingTodoId ? '保存修改' : '加入今日清单'}}</button>
+  </view>
+</view>
+
+<!-- 下单成功 -->
+<view wx:if="{{showOrderSuccess}}" class="success-overlay">
+  <view class="success-card">
+    <view class="success-confetti confetti-one">✦</view><view class="success-confetti confetti-two">●</view><view class="success-confetti confetti-three">♥</view>
+    <view class="success-icon"><text>✓</text></view>
+    <text class="success-title">收到啦，准备开饭！</text>
+    <text class="success-copy">订单 #{{latestOrderId}} 已放进小家的厨房\n接下来只需要期待美味</text>
+    <button bindtap="finishOrder" hover-class="button-pressed">好呀</button>
+  </view>
+</view>
