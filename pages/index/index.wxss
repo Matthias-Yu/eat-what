@@ -397,6 +397,41 @@ page {
 .cart-float-total text:first-child { font-size: 27rpx; font-weight: 800; }
 .cart-float-total text:last-child { margin-top: 2rpx; color: #ffc9b9; font-size: 17rpx; }
 
+.flying-dish-card {
+  position: fixed;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  padding: 9rpx;
+  border: 3rpx solid rgba(255, 255, 255, .95);
+  border-radius: 26rpx;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 9rpx 22rpx rgba(115, 61, 42, .2);
+  transform: translate3d(0, 0, 0);
+  transform-origin: 50% 50%;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  animation: card-fly 1.7s cubic-bezier(.2, .72, .24, 1) forwards;
+  pointer-events: none;
+}
+.flying-card-art { width: 86rpx; height: 100%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 19rpx; }
+.flying-card-art text { font-size: 53rpx; }
+.flying-card-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center; margin-left: 12rpx; }
+.flying-card-copy text:first-child { overflow: hidden; color: #493832; font-size: 20rpx; line-height: 1.25; font-weight: 750; white-space: nowrap; text-overflow: ellipsis; }
+.flying-card-copy text:last-child { margin-top: 7rpx; color: #ad8c80; font-size: 16rpx; line-height: 1; white-space: nowrap; }
+.flying-card-heart { position: absolute; right: -10rpx; top: -12rpx; width: 37rpx; height: 37rpx; border: 3rpx solid #fff; border-radius: 50%; background: #ef6b56; color: #fff; font-size: 18rpx; line-height: 37rpx; text-align: center; box-shadow: 0 5rpx 12rpx rgba(197, 75, 55, .22); }
+@keyframes card-fly {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(var(--fly-end-x), var(--fly-end-y), 0) scale(.08) rotate(var(--fly-end-rotate));
+  }
+}
+
 /* Sheets and dialogs */
 .overlay, .success-overlay { position: fixed; z-index: 100; inset: 0; display: flex; align-items: flex-end; background: rgba(48, 35, 30, .43); animation: fade-in .2s ease both; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }

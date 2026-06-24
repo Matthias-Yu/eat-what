@@ -59,7 +59,7 @@
     </view>
     <scroll-view class="recommend-scroll" scroll-x enhanced show-scrollbar="{{false}}">
       <view class="recommend-row">
-        <view wx:for="{{recommendedItems}}" wx:key="id" class="mini-food-card">
+        <view wx:for="{{recommendedItems}}" wx:key="id" id="dish-card-{{item.id}}" class="mini-food-card">
           <view class="mini-food-art tone-{{item.tone}}">
             <text>{{item.emoji}}</text>
             <view class="food-tag">{{item.tags[0]}}</view>
@@ -124,7 +124,7 @@
     </scroll-view>
 
     <view wx:if="{{filteredItems.length}}" class="food-grid">
-      <view wx:for="{{filteredItems}}" wx:key="id" class="food-card">
+      <view wx:for="{{filteredItems}}" wx:key="id" id="dish-card-{{item.id}}" class="food-card">
         <view class="food-art tone-{{item.tone}}">
           <view class="food-art-glow"></view>
           <text class="food-emoji">{{item.emoji}}</text>
@@ -243,6 +243,17 @@
   <view class="cart-float-icon">⌑<text>{{cartCount}}</text></view>
   <view class="cart-float-copy"><text>已选 {{cartCount}} 份</text><text>再选一点喜欢的</text></view>
   <view class="cart-float-total"><text>选好了</text><text>去确认 →</text></view>
+</view>
+
+<!-- 加购卡片飞入动画 -->
+<view
+  wx:if="{{flyingItem.visible}}"
+  class="flying-dish-card"
+  style="left: {{flyingItem.x}}px; top: {{flyingItem.y}}px; width: {{flyingItem.width}}px; height: {{flyingItem.height}}px; --fly-end-x: {{flyingItem.endX}}px; --fly-end-y: {{flyingItem.endY}}px; --fly-end-rotate: {{flyingItem.endRotate}}deg;"
+>
+  <view class="flying-card-art tone-{{flyingItem.tone}}"><text>{{flyingItem.emoji}}</text></view>
+  <view class="flying-card-copy"><text>{{flyingItem.name}}</text><text>{{flyingItem.highlight}}</text></view>
+  <view class="flying-card-heart">♥</view>
 </view>
 
 <bottom-nav active="{{activeTab}}" badge="{{cartCount}}" bindchange="setTab"></bottom-nav>

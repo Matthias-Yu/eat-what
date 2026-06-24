@@ -29,6 +29,7 @@ Page({
     cart: {},
     cartItems: [],
     cartCount: 0,
+    flyingItem: { visible: false, emoji: '', name: '', highlight: '', tone: '', x: 0, y: 0, width: 0, height: 0, endX: 0, endY: 0, endRotate: 0 },
     showCart: false,
     orderRemark: '',
     orders: [],
@@ -67,6 +68,10 @@ Page({
 
   onShow() {
     this.setData({ greeting: dateUtil.greeting(), dateLabel: dateUtil.todayLabel() })
+  },
+
+  onUnload() {
+    if (this.flyTimer) clearTimeout(this.flyTimer)
   },
 
   onShareAppMessage() {
@@ -135,12 +140,79 @@ Page({
 
   addToCart(event) {
     const id = event.currentTarget.dataset.id
+    const menuItem = menuItems.find((item) => item.id === id)
+    if (menuItem) this.playAddToCartAnimation(event, menuItem)
     const cart = Object.assign({}, this.data.cart)
     cart[id] = (cart[id] || 0) + 1
     this.setData({ cart })
     storage.write('cart', cart)
     this.refreshCart()
     if (wx.vibrateShort) wx.vibrateShort({ type: 'light' })
+  },
+
+  playAddToCartAnimation(event, menuItem) {
+    const point = (event.changedTouches && event.changedTouches[0])
+      || (event.touches && event.touches[0])
+      || event.detail
+      || {}
+    const pointX = point.clientX !== undefined ? point.clientX : point.x
+    const pointY = point.clientY !== undefined ? point.clientY : point.y
+    const launch = (rect) => {
+      const centerX = rect ? rect.left + rect.width / 2 : pointX
+      const centerY = rect ? rect.top + rect.height / 2 : pointY
+      if (typeof centerX !== 'number' || typeof centerY !== 'number') return
+      this.launchFlyingCard(menuItem, centerX, centerY)
+    }
+
+    if (!wx.createSelectorQuery) {
+      launch(null)
+      return
+    }
+    wx.createSelectorQuery()
+      .in(this)
+      .select(`#dish-card-${menuItem.id}`)
+      .boundingClientRect((rect) => launch(rect || null))
+      .exec()
+  },
+
+  launchFlyingCard(menuItem, centerX, centerY) {
+    const windowInfo = wx.getWindowInfo()
+    const rpx = windowInfo.windowWidth / 750
+    const safeBottom = windowInfo.safeArea ? Math.max(0, windowInfo.windowHeight - windowInfo.safeArea.bottom) : 0
+    const isMenuPage = this.data.activeTab === 'menu'
+    const targetX = isMenuPage ? 89 * rpx : 287 * rpx
+    const targetY = windowInfo.windowHeight - safeBottom - (isMenuPage ? 188 : 66) * rpx
+    const cardWidth = 220 * rpx
+    const cardHeight = 132 * rpx
+    const deltaX = targetX - centerX
+    const deltaY = targetY - centerY
+    const tilt = (Math.random() - 0.5) * 18
+
+    if (this.flyTimer) clearTimeout(this.flyTimer)
+
+    const flyingItem = {
+      visible: true,
+      emoji: menuItem.emoji,
+      name: menuItem.name,
+      highlight: menuItem.highlight,
+      tone: menuItem.tone,
+      x: centerX - cardWidth / 2,
+      y: centerY - cardHeight / 2,
+      width: cardWidth,
+      height: cardHeight,
+      endX: deltaX,
+      endY: deltaY,
+      endRotate: tilt
+    }
+
+    this.setData({ 'flyingItem.visible': false })
+    wx.nextTick(() => {
+      this.setData({ flyingItem })
+    })
+
+    this.flyTimer = setTimeout(() => {
+      this.setData({ 'flyingItem.visible': false })
+    }, 1750)
   },
 
   changeCartQuantity(event) {
