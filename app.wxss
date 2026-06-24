@@ -4,6 +4,7 @@ page {
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
 }
 
+button { box-sizing: border-box; }
 button::after { border: 0; }
 
 .tap-scale { transition: transform .18s ease, opacity .18s ease; }

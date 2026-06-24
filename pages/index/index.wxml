@@ -66,7 +66,7 @@
           </view>
           <text class="mini-food-name">{{item.name}}</text>
           <view class="mini-food-bottom">
-            <view><text class="currency">¥</text><text class="mini-food-price">{{item.price}}</text></view>
+            <text class="mini-food-hint">{{item.highlight}}</text>
             <view class="add-mini" data-id="{{item.id}}" catchtap="addToCart" hover-class="add-pressed">＋</view>
           </view>
         </view>
@@ -135,7 +135,7 @@
           <text class="food-desc">{{item.description}}</text>
           <view class="food-tags"><text wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text></view>
           <view class="food-bottom">
-            <view class="price"><text>¥</text>{{item.price}}</view>
+            <text class="food-popularity">♡ {{item.sales}}% 喜欢</text>
             <view class="add-button" data-id="{{item.id}}" bindtap="addToCart" hover-class="add-pressed">＋</view>
           </view>
         </view>
@@ -215,15 +215,15 @@
       <view class="stats-divider"></view>
       <view><text class="stats-number">{{profileStats.todos}}</text><text class="stats-label">件已完成</text></view>
       <view class="stats-divider"></view>
-      <view><text class="stats-number"><text>¥</text>{{profileStats.saved}}</text><text class="stats-label">省下的钱</text></view>
+      <view><text class="stats-number">{{profileStats.pending}}</text><text class="stats-label">件待完成</text></view>
     </view>
 
     <view class="profile-section-title">最近订单</view>
     <view wx:if="{{orders.length}}" class="order-list">
-      <view wx:for="{{orders}}" wx:key="id" class="order-card">
+      <view wx:for="{{orders}}" wx:key="id" class="order-card" data-id="{{item.id}}" bindtap="openOrderDetail" hover-class="order-card--pressed">
         <view class="order-icon">{{item.items[0].emoji}}</view>
         <view class="order-copy"><text class="order-title">{{item.itemSummary}}</text><text class="order-time">{{item.createdAt}} · 订单 #{{item.id}}</text></view>
-        <view class="order-side"><text class="order-price">¥{{item.total}}</text><text class="order-status">{{item.status}}</text></view>
+        <view class="order-side"><text class="order-status">{{item.status}}</text><text class="order-arrow">›</text></view>
       </view>
     </view>
     <view wx:else class="empty-order"><text>🍽</text><view><text>还没有点过餐</text><text>今晚就从喜欢的菜开始吧</text></view><text data-target="menu" bindtap="navigateFromCard">去点餐 →</text></view>
@@ -242,7 +242,7 @@
 <view wx:if="{{activeTab === 'menu' && cartCount > 0 && !showCart}}" class="cart-float" bindtap="openCart" hover-class="cart-float--pressed">
   <view class="cart-float-icon">⌑<text>{{cartCount}}</text></view>
   <view class="cart-float-copy"><text>已选 {{cartCount}} 份</text><text>再选一点喜欢的</text></view>
-  <view class="cart-float-total"><text>¥{{cartTotal}}</text><text>选好了 →</text></view>
+  <view class="cart-float-total"><text>选好了</text><text>去确认 →</text></view>
 </view>
 
 <bottom-nav active="{{activeTab}}" badge="{{cartCount}}" bindchange="setTab"></bottom-nav>
@@ -255,7 +255,7 @@
     <scroll-view class="cart-list" scroll-y show-scrollbar="{{false}}">
       <view wx:for="{{cartItems}}" wx:key="id" class="cart-item">
         <view class="cart-item-art tone-{{item.tone}}">{{item.emoji}}</view>
-        <view class="cart-item-copy"><text>{{item.name}}</text><text>¥{{item.price}} / 份</text></view>
+        <view class="cart-item-copy"><text>{{item.name}}</text><text>{{item.tags[0]}} · {{item.tags[1]}}</text></view>
         <view class="quantity-control">
           <text data-id="{{item.id}}" data-delta="-1" bindtap="changeCartQuantity">−</text>
           <text>{{item.quantity}}</text>
@@ -265,9 +265,33 @@
     </scroll-view>
     <view class="remark-box"><text>✎</text><input value="{{orderRemark}}" bindinput="onRemarkInput" placeholder="口味、忌口或想说的话…" placeholder-class="input-placeholder" /></view>
     <view class="checkout-row">
-      <view class="checkout-total"><text>合计</text><view><text>¥</text>{{cartTotal}}</view></view>
+      <view class="checkout-total"><text>今晚准备</text><view>{{cartCount}}<text> 份</text></view></view>
       <button bindtap="submitOrder" hover-class="button-pressed">就吃这些 <text>→</text></button>
     </view>
+  </view>
+</view>
+
+<!-- 订单详情 -->
+<view wx:if="{{showOrderDetail}}" class="overlay" bindtap="closeOrderDetail">
+  <view class="bottom-sheet order-detail-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="sheet-header">
+      <view><text class="sheet-title">这次吃了什么</text><text class="sheet-subtitle">订单 #{{selectedOrder.id}}</text></view>
+      <view class="sheet-close" bindtap="closeOrderDetail">×</view>
+    </view>
+    <view class="order-detail-status"><view class="order-status-icon">✓</view><view><text>{{selectedOrder.status}}</text><text>小家的每一餐都值得记住</text></view></view>
+    <view class="order-detail-list">
+      <view wx:for="{{selectedOrder.items}}" wx:key="id" class="order-detail-item">
+        <view class="order-detail-food">{{item.emoji}}</view>
+        <text class="order-detail-name">{{item.name}}</text>
+        <text class="order-detail-quantity">× {{item.quantity}}</text>
+      </view>
+    </view>
+    <view class="order-detail-meta">
+      <view><text>下单时间</text><text>{{selectedOrder.createdAt}}</text></view>
+      <view><text>口味备注</text><text>{{selectedOrder.remark || '没有特别备注'}}</text></view>
+    </view>
+    <button class="order-detail-button" bindtap="closeOrderDetail" hover-class="button-pressed">知道啦</button>
   </view>
 </view>
 

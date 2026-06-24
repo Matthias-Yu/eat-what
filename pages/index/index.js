@@ -29,10 +29,11 @@ Page({
     cart: {},
     cartItems: [],
     cartCount: 0,
-    cartTotal: 0,
     showCart: false,
     orderRemark: '',
     orders: [],
+    selectedOrder: null,
+    showOrderDetail: false,
     showOrderSuccess: false,
     latestOrderId: '',
     todos: [],
@@ -45,7 +46,7 @@ Page({
     todoDraft: { title: '', note: '', category: '生活', due: '今天' },
     todoCategories: ['生活', '家务', '采购', '工作'],
     dueOptions: ['今天', '明天', '本周'],
-    profileStats: { orders: 0, todos: 0, saved: 0 }
+    profileStats: { orders: 0, todos: 0, pending: 0 }
   },
 
   onLoad() {
@@ -156,13 +157,9 @@ Page({
   refreshCart() {
     const cartItems = menuItems
       .filter((item) => this.data.cart[item.id])
-      .map((item) => {
-        const quantity = this.data.cart[item.id]
-        return Object.assign({}, item, { quantity, subtotal: item.price * quantity })
-      })
+      .map((item) => Object.assign({}, item, { quantity: this.data.cart[item.id] }))
     const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
-    const cartTotal = cartItems.reduce((sum, item) => sum + item.subtotal, 0)
-    this.setData({ cartItems, cartCount, cartTotal })
+    this.setData({ cartItems, cartCount })
   },
 
   openCart() {
@@ -189,7 +186,6 @@ Page({
       createdAt: dateUtil.orderTime(new Date(timestamp)),
       items: this.data.cartItems.map((item) => ({ id: item.id, name: item.name, emoji: item.emoji, quantity: item.quantity })),
       itemSummary: this.data.cartItems.map((item) => `${item.name} ×${item.quantity}`).join('、'),
-      total: this.data.cartTotal,
       remark: this.data.orderRemark,
       status: '等你开饭'
     }
@@ -210,6 +206,17 @@ Page({
 
   finishOrder() {
     this.setData({ showOrderSuccess: false, activeTab: 'home' })
+  },
+
+  openOrderDetail(event) {
+    const id = String(event.currentTarget.dataset.id)
+    const selectedOrder = this.data.orders.find((item) => String(item.id) === id)
+    if (!selectedOrder) return
+    this.setData({ selectedOrder, showOrderDetail: true })
+  },
+
+  closeOrderDetail() {
+    this.setData({ showOrderDetail: false, selectedOrder: null })
   },
 
   refreshTodos() {
@@ -331,9 +338,9 @@ Page({
 
   refreshProfile() {
     const completedTodos = this.data.todos.filter((item) => item.completed).length
-    const orderSavings = this.data.orders.reduce((sum, item) => sum + Math.round(item.total * .25), 0)
+    const pendingTodos = this.data.todos.filter((item) => !item.completed).length
     this.setData({
-      profileStats: { orders: this.data.orders.length, todos: completedTodos, saved: orderSavings }
+      profileStats: { orders: this.data.orders.length, todos: completedTodos, pending: pendingTodos }
     })
   },
 
