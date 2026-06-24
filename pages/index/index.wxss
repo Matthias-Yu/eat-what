@@ -441,16 +441,15 @@ page {
 .family-title { margin-top: 25rpx; color: #40322d; font-size: 32rpx; font-weight: 800; }
 .family-copy { max-width: 540rpx; margin-top: 10rpx; color: #97867f; font-size: 20rpx; line-height: 1.6; text-align: center; }
 .family-error { width: 100%; margin-top: 15rpx; color: #dc5d49; font-size: 19rpx; text-align: center; }
-.invite-code-box { width: 100%; height: 105rpx; display: flex; align-items: center; margin-top: 27rpx; padding: 0 15rpx 0 22rpx; border: 1rpx solid #efdcd2; border-radius: 25rpx; box-sizing: border-box; background: #fff2eb; }
-.invite-code-box > view { flex: 1; display: flex; flex-direction: column; }
-.invite-code-box > view text:first-child { color: #a5897f; font-size: 17rpx; }
-.invite-code-box > view text:last-child { margin-top: 3rpx; color: #df5e49; font-size: 34rpx; font-weight: 800; letter-spacing: 7rpx; }
-.invite-code-box button { width: 102rpx; height: 58rpx; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; border-radius: 20rpx; background: #ef6a51; color: #fff; font-size: 19rpx; line-height: 1; }
+.family-active-card { width: 100%; min-height: 100rpx; display: flex; align-items: center; margin-top: 27rpx; padding: 16rpx 20rpx; border: 1rpx solid #d9eadf; border-radius: 24rpx; box-sizing: border-box; background: #edf7f1; }
+.family-active-card > text { width: 54rpx; height: 54rpx; margin-right: 14rpx; border-radius: 18rpx; background: #fff; color: #6b9b82; font-size: 27rpx; line-height: 54rpx; text-align: center; }
+.family-active-card > view { display: flex; flex-direction: column; }
+.family-active-card > view text:first-child { color: #527663; font-size: 21rpx; font-weight: 700; }
+.family-active-card > view text:last-child { margin-top: 5rpx; color: #82978b; font-size: 17rpx; }
 .invite-input { width: 100%; height: 92rpx; margin-top: 28rpx; padding: 0 24rpx; border: 2rpx solid #efc6b7; border-radius: 25rpx; box-sizing: border-box; background: #fff; color: #493831; font-size: 31rpx; font-weight: 800; letter-spacing: 9rpx; text-align: center; }
-.family-primary-button, .family-secondary-button, .family-text-button { width: 100%; height: 80rpx; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 27rpx; font-size: 23rpx; line-height: 1; font-weight: 700; }
+.create-code-input { font-size: 25rpx; letter-spacing: 6rpx; }
+.family-primary-button { width: 100%; height: 80rpx; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 27rpx; font-size: 23rpx; line-height: 1; font-weight: 700; }
 .family-primary-button { margin: 26rpx 0 0; background: linear-gradient(135deg, #f17a5c, #e95c47); color: #fff; box-shadow: 0 11rpx 26rpx rgba(216, 83, 58, .18); }
-.family-secondary-button { margin: 14rpx 0 0; border: 1rpx solid #ead8cf; background: #fff; color: #df654e; }
-.family-text-button { height: 58rpx; margin: 8rpx 0 0; background: transparent; color: #9e8d85; font-size: 20rpx; font-weight: 500; }
 .family-tip { margin-top: 18rpx; color: #b09f97; font-size: 17rpx; line-height: 1.5; text-align: center; }
 
 /* Sheets and dialogs */

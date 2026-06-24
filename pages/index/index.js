@@ -41,8 +41,7 @@ Page({
     familyStatus: 'loading',
     family: null,
     showFamilyPanel: false,
-    familyJoinMode: false,
-    inviteCodeInput: '',
+    familyCreateCode: '',
     familyBusy: false,
     familyError: '',
     todos: [],
@@ -165,7 +164,7 @@ Page({
   },
 
   openFamilyPanel() {
-    this.setData({ showFamilyPanel: true, familyJoinMode: false, familyError: '' })
+    this.setData({ showFamilyPanel: true, familyError: '' })
     if (this.data.familyStatus === 'active') {
       cloudService.call('getSession')
         .then((session) => {
@@ -176,63 +175,40 @@ Page({
   },
 
   closeFamilyPanel() {
-    this.setData({ showFamilyPanel: false, familyJoinMode: false, familyError: '' })
+    this.setData({ showFamilyPanel: false, familyError: '' })
   },
 
-  showJoinFamily() {
-    this.setData({ familyJoinMode: true, familyError: '', inviteCodeInput: '' })
+  onFamilyCreateCodeInput(event) {
+    const value = event.detail.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)
+    this.setData({ familyCreateCode: value })
   },
 
-  cancelJoinFamily() {
-    this.setData({ familyJoinMode: false, familyError: '' })
-  },
-
-  onInviteCodeInput(event) {
-    const value = event.detail.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
-    this.setData({ inviteCodeInput: value })
-  },
-
-  async createFamily() {
+  async enterFamily() {
     if (this.data.familyBusy) return
-    this.setData({ familyBusy: true, familyError: '' })
-    try {
-      const result = await cloudService.call('createHousehold', { name: '我们的小家' })
-      this.setData({ familyStatus: 'active', family: result.household })
-      const data = await cloudService.call('migrateLocal', {
-        data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, places: [] }
-      })
-      this.applyCloudData(data)
-      this.startCloudPolling()
-      wx.showToast({ title: '家庭空间已创建', icon: 'success' })
-    } catch (error) {
-      this.setData({ familyError: error.message || '创建失败，请重试' })
-    } finally {
-      this.setData({ familyBusy: false })
-    }
-  },
-
-  async joinFamily() {
-    if (this.data.familyBusy) return
-    if (this.data.inviteCodeInput.length !== 6) {
-      this.setData({ familyError: '请输入完整的 6 位邀请码' })
+    if (this.data.familyCreateCode.length !== 10) {
+      this.setData({ familyError: '请输入完整的 10 位家庭口令' })
       return
     }
     this.setData({ familyBusy: true, familyError: '' })
     try {
-      const result = await cloudService.call('joinHousehold', { inviteCode: this.data.inviteCodeInput })
-      this.setData({ familyStatus: 'active', family: result.household, showFamilyPanel: false })
-      await this.pullCloudData()
+      const result = await cloudService.call('enterHousehold', { familyCode: this.data.familyCreateCode })
+      this.setData({ familyStatus: 'active', family: result.household, familyCreateCode: '' })
+      if (result.created) {
+        const data = await cloudService.call('migrateLocal', {
+          data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, places: [] }
+        })
+        this.applyCloudData(data)
+      } else {
+        await this.pullCloudData()
+      }
       this.startCloudPolling()
-      wx.showToast({ title: '已经加入小家', icon: 'success' })
+      this.setData({ showFamilyPanel: false })
+      wx.showToast({ title: result.created ? '小家已建立' : '已经回到小家', icon: 'success' })
     } catch (error) {
-      this.setData({ familyError: error.message || '加入失败，请检查邀请码' })
+      this.setData({ familyError: error.message || '进入失败，请重试' })
     } finally {
       this.setData({ familyBusy: false })
     }
-  },
-
-  copyInviteCode() {
-    if (this.data.family) wx.setClipboardData({ data: this.data.family.inviteCode })
   },
 
   retryCloud() {

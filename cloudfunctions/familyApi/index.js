@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const crypto = require('crypto')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -97,6 +98,67 @@ function publicHousehold(household) {
   }
 }
 
+function verifyFamilyCode(familyCode) {
+  const expected = process.env.FAMILY_CREATE_SECRET_HASH || ''
+  if (!expected) throw new Error('家庭创建权限尚未配置')
+  const actual = crypto.createHash('sha256').update(String(familyCode || '').trim().toUpperCase()).digest('hex')
+  const actualBuffer = Buffer.from(actual)
+  const expectedBuffer = Buffer.from(expected)
+  if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) {
+    throw new Error('家庭创建口令不正确')
+  }
+}
+
+async function enterHousehold(openid, event) {
+  const currentUser = await getUser(openid)
+  if (currentUser && currentUser.householdId) {
+    const existing = await getHousehold(currentUser.householdId)
+    if (existing && existing.members.includes(openid)) {
+      return success({ household: publicHousehold(existing), created: false })
+    }
+  }
+
+  verifyFamilyCode(event.familyCode)
+  const response = await db.collection('family_households').limit(1).get()
+  const household = response.data[0]
+
+  if (!household) {
+    const created = await db.collection('family_households').add({
+      data: {
+        name: '我们的小家',
+        ownerOpenid: openid,
+        members: [openid],
+        inviteActive: false,
+        createdAt: db.serverDate()
+      }
+    })
+    const householdId = created._id
+    await Promise.all([
+      db.collection('family_users').doc(openid).set({
+        data: { openid, householdId, joinedAt: db.serverDate() }
+      }),
+      db.collection('family_data').doc(householdId).set({
+        data: emptySharedData(householdId)
+      })
+    ])
+    const newHousehold = await getHousehold(householdId)
+    return success({ household: publicHousehold(newHousehold), created: true })
+  }
+
+  const members = Array.isArray(household.members) ? household.members : []
+  if (members.length >= 2) throw new Error('这个家庭已经有两位成员')
+  await Promise.all([
+    db.collection('family_households').doc(household._id).update({
+      data: { members: command.addToSet(openid), updatedAt: db.serverDate() }
+    }),
+    db.collection('family_users').doc(openid).set({
+      data: { openid, householdId: household._id, joinedAt: db.serverDate() }
+    })
+  ])
+  const updated = await getHousehold(household._id)
+  return success({ household: publicHousehold(updated), created: false })
+}
+
 async function getSession(openid) {
   const user = await getUser(openid)
   if (!user || !user.householdId) return success({ active: false })
@@ -111,6 +173,9 @@ async function createHousehold(openid, event) {
     const existing = await getHousehold(currentUser.householdId)
     if (existing) return success({ household: publicHousehold(existing) })
   }
+  verifyFamilyCode(event.createCode)
+  const anyHousehold = await db.collection('family_households').limit(1).get()
+  if (anyHousehold.data.length) throw new Error('家庭已经创建，请使用邀请码加入')
   const inviteCode = await uniqueInviteCode()
   const response = await db.collection('family_households').add({
     data: {
@@ -118,6 +183,7 @@ async function createHousehold(openid, event) {
       inviteCode,
       ownerOpenid: openid,
       members: [openid],
+      inviteActive: true,
       createdAt: db.serverDate()
     }
   })
@@ -139,14 +205,18 @@ async function joinHousehold(openid, event) {
   if (inviteCode.length !== 6) throw new Error('请输入 6 位邀请码')
   const currentUser = await getUser(openid)
   if (currentUser && currentUser.householdId) throw new Error('你已经加入了一个家庭')
-  const response = await db.collection('family_households').where({ inviteCode }).limit(1).get()
+  const response = await db.collection('family_households').where({ inviteCode, inviteActive: true }).limit(1).get()
   const household = response.data[0]
   if (!household) throw new Error('没有找到这个邀请码')
   const members = Array.isArray(household.members) ? household.members : []
   if (!members.includes(openid) && members.length >= 2) throw new Error('这个家庭已经有两位成员')
   await Promise.all([
     db.collection('family_households').doc(household._id).update({
-      data: { members: command.addToSet(openid), updatedAt: db.serverDate() }
+      data: {
+        members: command.addToSet(openid),
+        inviteActive: members.includes(openid) || members.length + 1 < 2,
+        updatedAt: db.serverDate()
+      }
     }),
     db.collection('family_users').doc(openid).set({
       data: { openid, householdId: household._id, joinedAt: db.serverDate() }
@@ -222,8 +292,7 @@ exports.main = async (event) => {
     if (!OPENID) return failure('无法识别微信用户')
     switch (event.action) {
       case 'getSession': return getSession(OPENID)
-      case 'createHousehold': return createHousehold(OPENID, event)
-      case 'joinHousehold': return joinHousehold(OPENID, event)
+      case 'enterHousehold': return enterHousehold(OPENID, event)
       case 'getData': return getSharedData(OPENID)
       case 'updateResource': return updateResource(OPENID, event)
       case 'migrateLocal': return migrateLocal(OPENID, event)
