@@ -68,6 +68,20 @@ Page({
     this.setData({ greeting: dateUtil.greeting(), dateLabel: dateUtil.todayLabel() })
   },
 
+  onShareAppMessage() {
+    return {
+      title: '认真吃饭，好好生活｜小家菜单',
+      path: '/pages/index/index?from=share'
+    }
+  },
+
+  onShareTimeline() {
+    return {
+      title: '认真吃饭，好好生活｜小家菜单',
+      query: 'from=timeline'
+    }
+  },
+
   noop() {},
 
   setTab(event) {

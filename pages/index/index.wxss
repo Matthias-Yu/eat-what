@@ -372,7 +372,11 @@ page {
 .settings-card { overflow: hidden; border: 1rpx solid #f1e6df; border-radius: 26rpx; background: #fff; }
 .setting-row { height: 95rpx; display: flex; align-items: center; padding: 0 21rpx; border-bottom: 1rpx solid #f5ece7; box-sizing: border-box; font-size: 22rpx; }
 .setting-row:last-child { border-bottom: 0; }
+.setting-share { width: 100%; margin: 0; border-radius: 0; background: transparent; color: #382d29; line-height: normal; text-align: left; }
+.setting-share::after { border: 0; }
+.setting-row--pressed { background: #fff7f2; }
 .setting-icon { width: 49rpx; height: 49rpx; margin-right: 16rpx; border-radius: 16rpx; font-size: 26rpx; line-height: 49rpx; text-align: center; font-weight: 700; }
+.setting-orange { background: #fff0e7; color: #e56a4f; }
 .setting-pink { background: #fff0f1; color: #dc7381; }
 .setting-gray { background: #f2efed; color: #887a73; }
 .setting-row > text:nth-child(2) { flex: 1; }

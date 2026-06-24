@@ -230,6 +230,7 @@
 
     <view class="profile-section-title">更多</view>
     <view class="settings-card">
+      <button class="setting-row setting-share" open-type="share" hover-class="setting-row--pressed"><view class="setting-icon setting-orange">↗</view><text>分享小家菜单</text><text class="setting-arrow">›</text></button>
       <view class="setting-row" bindtap="showAbout"><view class="setting-icon setting-pink">♡</view><text>关于小家菜单</text><text class="setting-arrow">›</text></view>
       <view class="setting-row" bindtap="clearAllData"><view class="setting-icon setting-gray">↻</view><text>清空本地数据</text><text class="setting-arrow">›</text></view>
     </view>
