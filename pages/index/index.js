@@ -107,7 +107,7 @@ Page({
       cloudService.init()
       const session = await cloudService.call('getSession')
       if (!session.active) {
-        this.setData({ familyStatus: 'none', family: null, showFamilyPanel: true, familyError: '' })
+        this.setData({ familyStatus: 'none', family: null, showFamilyPanel: false, familyError: '' })
         return
       }
       this.setData({ familyStatus: 'active', family: session.household, familyError: '' })
