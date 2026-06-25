@@ -165,7 +165,7 @@
 
     <view class="wishlist-action-row">
       <view><text class="section-title">愿望卡片</text><text class="section-subtitle">长按卡片可以删除</text></view>
-      <button class="new-wish-button" bindtap="openWishComposer" hover-class="button-pressed"><text>＋</text> 写一个</button>
+      <view class="new-wish-button" bindtap="openWishComposer" hover-class="new-wish-button--pressed">＋</view>
     </view>
 
     <view wx:if="{{wishes.length}}" class="wish-card-list">

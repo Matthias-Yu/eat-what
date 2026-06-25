@@ -350,10 +350,10 @@ page {
 .wishlist-stats view { min-height: 102rpx; display: flex; flex-direction: column; justify-content: center; padding: 0 18rpx; border: 1rpx solid #e2f0e8; border-radius: 24rpx; box-sizing: border-box; background: #fff; }
 .wishlist-stats text:first-child { color: #4f8f72; font-size: 34rpx; font-weight: 800; }
 .wishlist-stats text:last-child { margin-top: 4rpx; color: #8d9b91; font-size: 18rpx; }
-.wishlist-action-row { display: flex; align-items: center; justify-content: space-between; margin: 34rpx 0 18rpx; }
-.wishlist-action-row > view:first-child { display: flex; flex-direction: column; }
-.new-wish-button { width: 168rpx; height: 68rpx; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; border-radius: 24rpx; background: #4f9878; color: #fff; font-size: 22rpx; line-height: 1; font-weight: 700; box-shadow: 0 10rpx 22rpx rgba(70,139,108,.18); }
-.new-wish-button text { margin-right: 6rpx; font-size: 29rpx; line-height: 1; }
+.wishlist-action-row { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin: 34rpx 0 18rpx; }
+.wishlist-action-row > view:first-child { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.new-wish-button { width: 58rpx; height: 52rpx; flex: 0 0 58rpx; display: flex; align-items: center; justify-content: center; border-radius: 18rpx; background: #4f9878; color: #fff; font-size: 32rpx; line-height: 52rpx; font-weight: 700; box-shadow: 0 7rpx 15rpx rgba(70,139,108,.14); }
+.new-wish-button--pressed { transform: scale(.96); opacity: .9; }
 .wish-card-list { display: flex; flex-direction: column; gap: 18rpx; }
 .wish-card { position: relative; overflow: hidden; min-height: 210rpx; padding: 24rpx; border: 1rpx solid #e4efe8; border-radius: 28rpx; box-sizing: border-box; background: #fff; box-shadow: 0 10rpx 28rpx rgba(56, 105, 84, .07); transition: transform .15s ease; }
 .wish-card::before { content: ''; position: absolute; left: 0; top: 0; width: 9rpx; height: 100%; background: linear-gradient(180deg, #5fa984, #ef9278); }
