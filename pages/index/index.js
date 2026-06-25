@@ -625,7 +625,7 @@ Page({
   async joinFamily() {
     if (this.data.familyBusy) return
     if (this.data.familyInviteCode.length !== 6) {
-      this.setData({ familyError: '请输入完整的 6 位邀请码' })
+      this.setData({ familyError: '请输入完整的邀请码' })
       return
     }
     this.setData({ familyBusy: true, familyError: '' })

@@ -165,7 +165,7 @@ async function createHousehold(openid, event) {
 
 async function joinHousehold(openid, event) {
   const inviteCode = String(event.inviteCode || '').trim().toUpperCase()
-  if (inviteCode.length !== 6) throw new Error('请输入 6 位邀请码')
+  if (inviteCode.length !== 6) throw new Error('请输入邀请码')
   const currentUser = await getUser(openid)
   if (currentUser && currentUser.householdId) throw new Error('你已经加入了一个家庭')
   const response = await db.collection('family_households').where({ inviteCode, inviteActive: true }).limit(1).get()
