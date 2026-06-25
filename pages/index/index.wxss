@@ -239,6 +239,7 @@ page {
 }
 
 .mini-food-art { position: relative; height: 172rpx; display: flex; align-items: center; justify-content: center; margin-bottom: 16rpx; font-size: 92rpx; }
+.mini-food-image { position: relative; z-index: 1; width: 142rpx; height: 142rpx; filter: drop-shadow(0 12rpx 12rpx rgba(106,64,37,.13)); }
 .food-tag { position: absolute; top: 12rpx; left: 12rpx; padding: 5rpx 12rpx; border-radius: 14rpx; background: rgba(255,255,255,.88); color: #de624c; font-size: 17rpx; font-weight: 600; }
 .mini-food-name { display: block; overflow: hidden; margin: 0 18rpx; font-size: 24rpx; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
 .mini-food-bottom { margin: 10rpx 16rpx 0 18rpx; }
@@ -286,6 +287,7 @@ page {
 .food-card { overflow: hidden; border: 1rpx solid #f2e7e0; border-radius: 27rpx; background: #fff; box-shadow: 0 7rpx 22rpx rgba(77,46,34,.05); }
 .food-art { position: relative; height: 196rpx; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .food-art-glow { position: absolute; width: 160rpx; height: 160rpx; border-radius: 50%; background: rgba(255,255,255,.38); }
+.food-image { position: relative; z-index: 1; width: 174rpx; height: 174rpx; filter: drop-shadow(0 14rpx 14rpx rgba(106,64,37,.14)); }
 .food-emoji { position: relative; z-index: 1; font-size: 102rpx; filter: drop-shadow(0 10rpx 10rpx rgba(106,64,37,.12)); }
 .recommend-mark { position: absolute; z-index: 2; top: 14rpx; left: 14rpx; padding: 7rpx 13rpx; border-radius: 16rpx; background: rgba(255,255,255,.9); color: #e6654e; font-size: 17rpx; font-weight: 700; }
 .food-info { position: relative; min-height: 142rpx; padding: 16rpx 66rpx 17rpx 17rpx; box-sizing: border-box; }
@@ -395,7 +397,7 @@ page {
 .order-list { display: flex; flex-direction: column; gap: 13rpx; }
 .order-card { min-height: 110rpx; display: flex; align-items: center; padding: 18rpx; border: 1rpx solid #f1e6df; border-radius: 25rpx; box-sizing: border-box; background: #fff; }
 .order-card--pressed { transform: scale(.985); background: #fff8f4; }
-.order-icon { width: 70rpx; height: 70rpx; flex-shrink: 0; border-radius: 21rpx; background: #fff0e5; font-size: 39rpx; line-height: 70rpx; text-align: center; }
+.order-icon { width: 70rpx; height: 70rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 21rpx; background: #fff0e5; font-size: 39rpx; line-height: 70rpx; text-align: center; }
 .order-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; margin: 0 14rpx; }
 .order-title { overflow: hidden; font-size: 21rpx; font-weight: 650; white-space: nowrap; text-overflow: ellipsis; }
 .order-time { margin-top: 7rpx; color: #ad9e97; font-size: 16rpx; }
@@ -458,6 +460,7 @@ page {
 }
 .flying-card-art { width: 86rpx; height: 100%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 19rpx; }
 .flying-card-art text { font-size: 53rpx; }
+.flying-food-image { width: 78rpx; height: 78rpx; filter: drop-shadow(0 8rpx 8rpx rgba(106,64,37,.12)); }
 .flying-card-copy { min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center; margin-left: 12rpx; }
 .flying-card-copy text:first-child { overflow: hidden; color: #493832; font-size: 20rpx; line-height: 1.25; font-weight: 750; white-space: nowrap; text-overflow: ellipsis; }
 .flying-card-copy text:last-child { margin-top: 7rpx; color: #ad8c80; font-size: 16rpx; line-height: 1; white-space: nowrap; }
@@ -541,7 +544,8 @@ page {
 .sheet-close { width: 57rpx; height: 57rpx; border-radius: 50%; background: #f2eae6; color: #8f817a; font-size: 39rpx; line-height: 54rpx; text-align: center; }
 .cart-list { max-height: 550rpx; }
 .cart-item { height: 116rpx; display: flex; align-items: center; border-bottom: 1rpx solid #f0e6e1; }
-.cart-item-art { width: 78rpx; height: 78rpx; flex-shrink: 0; border-radius: 22rpx; font-size: 44rpx; line-height: 78rpx; text-align: center; }
+.cart-item-art { width: 78rpx; height: 78rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 22rpx; font-size: 44rpx; line-height: 78rpx; text-align: center; }
+.small-food-image { width: 88%; height: 88%; filter: drop-shadow(0 7rpx 7rpx rgba(106,64,37,.11)); }
 .cart-item-copy { flex: 1; display: flex; flex-direction: column; gap: 6rpx; margin-left: 16rpx; }
 .cart-item-copy text:first-child { font-size: 23rpx; font-weight: 700; }
 .cart-item-copy text:last-child { color: #ae9d95; font-size: 18rpx; }
@@ -568,7 +572,7 @@ page {
 .order-detail-list { margin-top: 18rpx; overflow: hidden; border: 1rpx solid #f0e5df; border-radius: 24rpx; background: #fff; }
 .order-detail-item { height: 96rpx; display: flex; align-items: center; padding: 0 20rpx; border-bottom: 1rpx solid #f5ece7; box-sizing: border-box; }
 .order-detail-item:last-child { border-bottom: 0; }
-.order-detail-food { width: 59rpx; height: 59rpx; margin-right: 15rpx; border-radius: 18rpx; background: #fff1e8; font-size: 34rpx; line-height: 59rpx; text-align: center; }
+.order-detail-food { width: 59rpx; height: 59rpx; display: flex; align-items: center; justify-content: center; margin-right: 15rpx; border-radius: 18rpx; background: #fff1e8; font-size: 34rpx; line-height: 59rpx; text-align: center; }
 .order-detail-name { flex: 1; color: #4b3b35; font-size: 22rpx; font-weight: 650; }
 .order-detail-quantity { color: #e06d55; font-size: 21rpx; font-weight: 700; }
 .order-detail-meta { margin-top: 18rpx; padding: 5rpx 20rpx; border-radius: 22rpx; background: #f6efeb; }
@@ -591,7 +595,8 @@ page {
 .menu-manager-scroll { max-height: 760rpx; padding-bottom: 4rpx; }
 .managed-menu-list { display: flex; flex-direction: column; gap: 12rpx; margin-bottom: 4rpx; }
 .managed-menu-item { min-height: 88rpx; display: flex; align-items: center; padding: 12rpx 16rpx; border: 1rpx solid #f0e5de; border-radius: 22rpx; box-sizing: border-box; background: #fff; }
-.managed-menu-art { width: 62rpx; height: 62rpx; flex-shrink: 0; border-radius: 18rpx; font-size: 34rpx; line-height: 62rpx; text-align: center; }
+.managed-menu-art { width: 62rpx; height: 62rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 18rpx; font-size: 34rpx; line-height: 62rpx; text-align: center; }
+.managed-food-image { width: 88%; height: 88%; filter: drop-shadow(0 6rpx 6rpx rgba(106,64,37,.1)); }
 .managed-menu-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; margin: 0 14rpx; }
 .managed-menu-copy text:first-child { overflow: hidden; color: #493832; font-size: 22rpx; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
 .managed-menu-copy text:last-child { margin-top: 5rpx; color: #a89790; font-size: 17rpx; }

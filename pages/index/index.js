@@ -71,6 +71,7 @@ function normalizeCustomMenuItem(item) {
     highlight: textSlice(source.highlight || tags[0], 12) || '小家新增',
     category,
     emoji: textSlice(source.emoji, 2) || CATEGORY_EMOJI[category],
+    image: textSlice(source.image, 120),
     tone: CATEGORY_TONE[category] || 'sunset',
     tags: tags.length > 1 ? tags : parseMenuTags(tags[0], category),
     recommended: !!source.recommended,
@@ -243,7 +244,7 @@ Page({
     cart: {},
     cartItems: [],
     cartCount: 0,
-    flyingItem: { visible: false, emoji: '', name: '', highlight: '', tone: '', x: 0, y: 0, width: 0, height: 0, endX: 0, endY: 0, endRotate: 0 },
+    flyingItem: { visible: false, emoji: '', image: '', name: '', highlight: '', tone: '', x: 0, y: 0, width: 0, height: 0, endX: 0, endY: 0, endRotate: 0 },
     showCart: false,
     orderRemark: '',
     orders: [],
@@ -829,6 +830,7 @@ Page({
     const flyingItem = {
       visible: true,
       emoji: menuItem.emoji,
+      image: menuItem.image || '',
       name: menuItem.name,
       highlight: menuItem.highlight,
       tone: menuItem.tone,
@@ -895,7 +897,7 @@ Page({
     const order = {
       id: String(timestamp).slice(-6),
       createdAt: dateUtil.orderTime(new Date(timestamp)),
-      items: this.data.cartItems.map((item) => ({ id: item.id, name: item.name, emoji: item.emoji, quantity: item.quantity })),
+      items: this.data.cartItems.map((item) => ({ id: item.id, name: item.name, emoji: item.emoji, image: item.image || '', quantity: item.quantity })),
       itemSummary: this.data.cartItems.map((item) => `${item.name} ×${item.quantity}`).join('、'),
       remark: this.data.orderRemark,
       status: '等你开饭'

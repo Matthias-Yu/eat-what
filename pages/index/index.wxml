@@ -61,7 +61,8 @@
       <view class="recommend-row">
         <view wx:for="{{recommendedItems}}" wx:key="id" id="dish-card-{{item.id}}" class="mini-food-card">
           <view class="mini-food-art tone-{{item.tone}}">
-            <text>{{item.emoji}}</text>
+            <image wx:if="{{item.image}}" class="mini-food-image" src="{{item.image}}" mode="aspectFit"></image>
+            <text wx:else>{{item.emoji}}</text>
             <view class="food-tag">{{item.tags[0]}}</view>
           </view>
           <text class="mini-food-name">{{item.name}}</text>
@@ -127,7 +128,8 @@
       <view wx:for="{{filteredItems}}" wx:key="id" id="dish-card-{{item.id}}" class="food-card">
         <view class="food-art tone-{{item.tone}}">
           <view class="food-art-glow"></view>
-          <text class="food-emoji">{{item.emoji}}</text>
+          <image wx:if="{{item.image}}" class="food-image" src="{{item.image}}" mode="aspectFit"></image>
+          <text wx:else class="food-emoji">{{item.emoji}}</text>
           <text wx:if="{{item.recommended}}" class="recommend-mark">今日推荐</text>
         </view>
         <view class="food-info">
@@ -268,7 +270,10 @@
     <view class="profile-section-title">最近订单</view>
     <view wx:if="{{orders.length}}" class="order-list">
       <view wx:for="{{orders}}" wx:key="id" class="order-card" data-id="{{item.id}}" bindtap="openOrderDetail" hover-class="order-card--pressed">
-        <view class="order-icon">{{item.items[0].emoji}}</view>
+        <view class="order-icon">
+          <image wx:if="{{item.items[0].image}}" class="small-food-image" src="{{item.items[0].image}}" mode="aspectFit"></image>
+          <text wx:else>{{item.items[0].emoji}}</text>
+        </view>
         <view class="order-copy"><text class="order-title">{{item.itemSummary}}</text><text class="order-time">{{item.createdAt}} · 订单 #{{item.id}}</text></view>
         <view class="order-side"><text class="order-status">{{item.status}}</text><text class="order-arrow">›</text></view>
       </view>
@@ -313,7 +318,10 @@
   class="flying-dish-card"
   style="left: {{flyingItem.x}}px; top: {{flyingItem.y}}px; width: {{flyingItem.width}}px; height: {{flyingItem.height}}px; --fly-end-x: {{flyingItem.endX}}px; --fly-end-y: {{flyingItem.endY}}px; --fly-end-rotate: {{flyingItem.endRotate}}deg;"
 >
-  <view class="flying-card-art tone-{{flyingItem.tone}}"><text>{{flyingItem.emoji}}</text></view>
+  <view class="flying-card-art tone-{{flyingItem.tone}}">
+    <image wx:if="{{flyingItem.image}}" class="flying-food-image" src="{{flyingItem.image}}" mode="aspectFit"></image>
+    <text wx:else>{{flyingItem.emoji}}</text>
+  </view>
   <view class="flying-card-copy"><text>{{flyingItem.name}}</text><text>{{flyingItem.highlight}}</text></view>
   <view class="flying-card-heart">♥</view>
 </view>
@@ -426,7 +434,10 @@
     <view class="sheet-header"><view><text class="sheet-title">今晚吃这些</text><text class="sheet-subtitle">已选 {{cartCount}} 份，都是喜欢的</text></view><view class="sheet-close" bindtap="closeCart">×</view></view>
     <scroll-view class="cart-list" scroll-y show-scrollbar="{{false}}">
       <view wx:for="{{cartItems}}" wx:key="id" class="cart-item">
-        <view class="cart-item-art tone-{{item.tone}}">{{item.emoji}}</view>
+        <view class="cart-item-art tone-{{item.tone}}">
+          <image wx:if="{{item.image}}" class="small-food-image" src="{{item.image}}" mode="aspectFit"></image>
+          <text wx:else>{{item.emoji}}</text>
+        </view>
         <view class="cart-item-copy"><text>{{item.name}}</text><text>{{item.tags[0]}} · {{item.tags[1]}}</text></view>
         <view class="quantity-control">
           <text data-id="{{item.id}}" data-delta="-1" bindtap="changeCartQuantity">−</text>
@@ -454,7 +465,10 @@
     <view class="order-detail-status"><view class="order-status-icon">✓</view><view><text>{{selectedOrder.status}}</text><text>小家的每一餐都值得记住</text></view></view>
     <view class="order-detail-list">
       <view wx:for="{{selectedOrder.items}}" wx:key="id" class="order-detail-item">
-        <view class="order-detail-food">{{item.emoji}}</view>
+        <view class="order-detail-food">
+          <image wx:if="{{item.image}}" class="small-food-image" src="{{item.image}}" mode="aspectFit"></image>
+          <text wx:else>{{item.emoji}}</text>
+        </view>
         <text class="order-detail-name">{{item.name}}</text>
         <text class="order-detail-quantity">× {{item.quantity}}</text>
       </view>
@@ -501,7 +515,10 @@
     <scroll-view class="menu-manager-scroll" scroll-y show-scrollbar="{{false}}">
       <view wx:if="{{customMenuItems.length}}" class="managed-menu-list">
         <view wx:for="{{customMenuItems}}" wx:key="id" class="managed-menu-item" data-id="{{item.id}}" bindlongpress="deleteCustomMenuItem">
-          <view class="managed-menu-art tone-{{item.tone}}">{{item.emoji}}</view>
+          <view class="managed-menu-art tone-{{item.tone}}">
+            <image wx:if="{{item.image}}" class="managed-food-image" src="{{item.image}}" mode="aspectFit"></image>
+            <text wx:else>{{item.emoji}}</text>
+          </view>
           <view class="managed-menu-copy"><text>{{item.name}}</text><text>{{item.tags[0]}} · {{item.tags[1]}}</text></view>
           <text wx:if="{{item.recommended}}" class="managed-menu-mark">推荐</text>
         </view>
