@@ -338,7 +338,22 @@ Page({
     if (this.data.dateLabel !== dateLabel) update.dateLabel = dateLabel
     if (this.data.greeting.text !== greeting.text || this.data.greeting.icon !== greeting.icon) update.greeting = greeting
     if (Object.keys(update).length) this.setData(update)
+    this.refreshFamilySession()
     this.startCloudPolling()
+  },
+
+  refreshFamilySession() {
+    if (this.data.familyStatus !== 'active') return
+    cloudService.call('getSession')
+      .then((session) => {
+        if (session.active) {
+          this.setData({ family: session.household })
+        } else {
+          this.stopCloudPolling()
+          this.setData({ familyStatus: 'none', family: null, familyMode: 'choose' })
+        }
+      })
+      .catch((error) => console.warn('刷新家庭信息失败', error))
   },
 
   onHide() {
