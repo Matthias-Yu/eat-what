@@ -117,9 +117,9 @@ function publicHousehold(household, openid) {
     name: household.name,
     inviteCode: household.inviteCode,
     memberCount: members.length,
-    maxMembers: 2,
+    isAdmin: isPrimaryAdmin,
     role: isPrimaryAdmin ? 'primary' : 'secondary',
-    roleLabel: isPrimaryAdmin ? '主管理员' : '从管理员',
+    roleLabel: isPrimaryAdmin ? '管理员' : '成员',
     canNotifyAdmin: !isPrimaryAdmin && members.length > 1 && members.includes(primaryAdminOpenid),
     orderNoticeTemplateId: process.env.ORDER_NOTICE_TEMPLATE_ID || ''
   }
@@ -134,57 +134,6 @@ function verifyFamilyCode(familyCode) {
   if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) {
     throw new Error('家庭创建口令不正确')
   }
-}
-
-async function enterHousehold(openid, event) {
-  const currentUser = await getUser(openid)
-  if (currentUser && currentUser.householdId) {
-    const existing = await getHousehold(currentUser.householdId)
-    if (existing && existing.members.includes(openid)) {
-      return success({ household: publicHousehold(existing, openid), created: false })
-    }
-  }
-
-  verifyFamilyCode(event.familyCode)
-  const response = await db.collection('family_households').limit(1).get()
-  const household = response.data[0]
-
-  if (!household) {
-    const created = await db.collection('family_households').add({
-      data: {
-        name: '我们的小家',
-        ownerOpenid: openid,
-        primaryAdminOpenid: openid,
-        members: [openid],
-        inviteActive: false,
-        createdAt: db.serverDate()
-      }
-    })
-    const householdId = created._id
-    await Promise.all([
-      db.collection('family_users').doc(openid).set({
-        data: { openid, householdId, joinedAt: db.serverDate() }
-      }),
-      db.collection('family_data').doc(householdId).set({
-        data: emptySharedData(householdId)
-      })
-    ])
-    const newHousehold = await getHousehold(householdId)
-    return success({ household: publicHousehold(newHousehold, openid), created: true })
-  }
-
-  const members = Array.isArray(household.members) ? household.members : []
-  if (members.length >= 2) throw new Error('这个家庭已经有两位成员')
-  await Promise.all([
-    db.collection('family_households').doc(household._id).update({
-      data: { members: command.addToSet(openid), updatedAt: db.serverDate() }
-    }),
-    db.collection('family_users').doc(openid).set({
-      data: { openid, householdId: household._id, joinedAt: db.serverDate() }
-    })
-  ])
-  const updated = await getHousehold(household._id)
-  return success({ household: publicHousehold(updated, openid), created: false })
 }
 
 async function getSession(openid) {
@@ -202,8 +151,6 @@ async function createHousehold(openid, event) {
     if (existing) return success({ household: publicHousehold(existing, openid) })
   }
   verifyFamilyCode(event.createCode)
-  const anyHousehold = await db.collection('family_households').limit(1).get()
-  if (anyHousehold.data.length) throw new Error('家庭已经创建，请使用邀请码加入')
   const inviteCode = await uniqueInviteCode()
   const response = await db.collection('family_households').add({
     data: {
@@ -219,7 +166,7 @@ async function createHousehold(openid, event) {
   const householdId = response._id
   await Promise.all([
     db.collection('family_users').doc(openid).set({
-      data: { openid, householdId, joinedAt: db.serverDate() }
+      data: { openid, householdId, nickname: textSlice(event.nickname, 12) || '管理员', joinedAt: db.serverDate() }
     }),
     db.collection('family_data').doc(householdId).set({
       data: emptySharedData(householdId)
@@ -237,18 +184,15 @@ async function joinHousehold(openid, event) {
   const response = await db.collection('family_households').where({ inviteCode, inviteActive: true }).limit(1).get()
   const household = response.data[0]
   if (!household) throw new Error('没有找到这个邀请码')
-  const members = Array.isArray(household.members) ? household.members : []
-  if (!members.includes(openid) && members.length >= 2) throw new Error('这个家庭已经有两位成员')
   await Promise.all([
     db.collection('family_households').doc(household._id).update({
       data: {
         members: command.addToSet(openid),
-        inviteActive: members.includes(openid) || members.length + 1 < 2,
         updatedAt: db.serverDate()
       }
     }),
     db.collection('family_users').doc(openid).set({
-      data: { openid, householdId: household._id, joinedAt: db.serverDate() }
+      data: { openid, householdId: household._id, nickname: textSlice(event.nickname, 12) || '成员', joinedAt: db.serverDate() }
     })
   ])
   const updated = await getHousehold(household._id)
@@ -489,6 +433,99 @@ async function transferPrimaryAdmin(openid) {
   return success({ household: publicHousehold(updated, openid) })
 }
 
+async function listMembers(openid) {
+  const { household } = await requireMembership(openid)
+  const members = Array.isArray(household.members) ? household.members : []
+  const primaryAdminOpenid = getPrimaryAdminOpenid(household)
+  const users = await Promise.all(members.map((memberOpenid) => getUser(memberOpenid)))
+  const list = members.map((memberOpenid, index) => {
+    const user = users[index] || {}
+    const isAdmin = memberOpenid === primaryAdminOpenid
+    return {
+      openid: memberOpenid,
+      nickname: textSlice(user.nickname, 12) || (isAdmin ? '管理员' : `成员${index + 1}`),
+      isAdmin,
+      isSelf: memberOpenid === openid,
+      roleLabel: isAdmin ? '管理员' : '成员'
+    }
+  })
+  return success({ members: list, isAdmin: openid === primaryAdminOpenid })
+}
+
+async function setMemberNickname(openid, event) {
+  const { household } = await requireMembership(openid)
+  const members = Array.isArray(household.members) ? household.members : []
+  const primaryAdminOpenid = getPrimaryAdminOpenid(household)
+  const targetOpenid = String(event.targetOpenid || openid)
+  if (!members.includes(targetOpenid)) throw new Error('找不到这位成员')
+  if (targetOpenid !== openid && openid !== primaryAdminOpenid) throw new Error('只有管理员可以修改其他成员的昵称')
+  const nickname = textSlice(event.nickname, 12)
+  if (!nickname) throw new Error('请输入昵称')
+  await db.collection('family_users').doc(targetOpenid).update({
+    data: { nickname, updatedAt: db.serverDate() }
+  })
+  return listMembers(openid)
+}
+
+async function removeMember(openid, event) {
+  const { household } = await requireMembership(openid)
+  const members = Array.isArray(household.members) ? household.members : []
+  const primaryAdminOpenid = getPrimaryAdminOpenid(household)
+  if (openid !== primaryAdminOpenid) throw new Error('只有管理员可以移除成员')
+  const targetOpenid = String(event.targetOpenid || '')
+  if (!targetOpenid || !members.includes(targetOpenid)) throw new Error('找不到这位成员')
+  if (targetOpenid === primaryAdminOpenid) throw new Error('管理员不能移除自己')
+  await Promise.all([
+    db.collection('family_households').doc(household._id).update({
+      data: { members: command.pull(targetOpenid), updatedAt: db.serverDate() }
+    }),
+    db.collection('family_users').doc(targetOpenid).set({
+      data: { openid: targetOpenid, householdId: '', nickname: '', updatedAt: db.serverDate() }
+    })
+  ])
+  return listMembers(openid)
+}
+
+async function leaveHousehold(openid) {
+  const user = await getUser(openid)
+  if (!user || !user.householdId) return success({ active: false, dissolved: false })
+  const household = await getHousehold(user.householdId)
+  if (!household) {
+    await db.collection('family_users').doc(openid).set({
+      data: { openid, householdId: '', nickname: '', updatedAt: db.serverDate() }
+    })
+    return success({ active: false, dissolved: false })
+  }
+  const members = Array.isArray(household.members) ? household.members : []
+  const primaryAdminOpenid = getPrimaryAdminOpenid(household)
+  const isAdmin = openid === primaryAdminOpenid
+
+  if (isAdmin) {
+    // 管理员退出即解散整个云空间，清理所有成员归属与共享数据
+    await Promise.all(members.map((memberOpenid) => (
+      db.collection('family_users').doc(memberOpenid).set({
+        data: { openid: memberOpenid, householdId: '', nickname: '', updatedAt: db.serverDate() }
+      })
+    )))
+    await Promise.all([
+      db.collection('family_households').doc(household._id).remove().catch(() => {}),
+      db.collection('family_data').doc(household._id).remove().catch(() => {})
+    ])
+    return success({ active: false, dissolved: true })
+  }
+
+  // 普通成员仅退出自己
+  await Promise.all([
+    db.collection('family_households').doc(household._id).update({
+      data: { members: command.pull(openid), updatedAt: db.serverDate() }
+    }),
+    db.collection('family_users').doc(openid).set({
+      data: { openid, householdId: '', nickname: '', updatedAt: db.serverDate() }
+    })
+  ])
+  return success({ active: false, dissolved: false })
+}
+
 exports.main = async (event) => {
   try {
     if (event.action === 'health') {
@@ -503,13 +540,18 @@ exports.main = async (event) => {
     if (!OPENID) return failure('无法识别微信用户')
     switch (event.action) {
       case 'getSession': return getSession(OPENID)
-      case 'enterHousehold': return enterHousehold(OPENID, event)
+      case 'createHousehold': return createHousehold(OPENID, event)
+      case 'joinHousehold': return joinHousehold(OPENID, event)
       case 'getData': return getSharedData(OPENID)
       case 'updateResource': return updateResource(OPENID, event)
       case 'migrateLocal': return migrateLocal(OPENID, event)
       case 'notifyOrderAdmin': return notifyOrderAdmin(OPENID, event)
       case 'markOrderNoticesRead': return markOrderNoticesRead(OPENID)
       case 'transferPrimaryAdmin': return transferPrimaryAdmin(OPENID)
+      case 'listMembers': return listMembers(OPENID)
+      case 'setMemberNickname': return setMemberNickname(OPENID, event)
+      case 'removeMember': return removeMember(OPENID, event)
+      case 'leaveHousehold': return leaveHousehold(OPENID)
       default: return failure('未知操作')
     }
   } catch (error) {

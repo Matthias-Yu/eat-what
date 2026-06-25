@@ -1,0 +1,40 @@
+<navigation-bar title="成员管理" back="{{true}}" background="#fffaf5" color="#3a2a22"></navigation-bar>
+
+<scroll-view scroll-y class="members-page">
+  <view class="members-header">
+    <text class="members-family-name">{{familyName || '家庭云空间'}}</text>
+    <text class="members-count">共 {{members.length}} 位成员{{isAdmin ? '，你可以修改昵称或移除成员' : ''}}</text>
+  </view>
+
+  <view wx:if="{{isAdmin && inviteCode}}" class="invite-card" bindtap="copyInviteCode">
+    <view class="invite-info">
+      <text class="invite-label">邀请码（发给家人即可加入）</text>
+      <text class="invite-code">{{inviteCode}}</text>
+    </view>
+    <text class="invite-copy">复制</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="members-loading">加载中…</view>
+
+  <view wx:else class="members-list">
+    <view wx:for="{{members}}" wx:key="openid" class="member-row">
+      <block wx:if="{{editingOpenid === item.openid}}">
+        <input class="member-nickname-input" value="{{nicknameDraft}}" bindinput="onNicknameInput" maxlength="12" placeholder="输入昵称" placeholder-class="input-placeholder" focus="{{true}}" />
+        <view class="member-edit-actions">
+          <text class="member-action save" data-openid="{{item.openid}}" bindtap="saveNickname">保存</text>
+          <text class="member-action" bindtap="cancelEditNickname">取消</text>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="member-info">
+          <text class="member-name">{{item.nickname}}</text>
+          <text class="member-role {{item.isAdmin ? 'is-admin' : ''}}">{{item.roleLabel}}{{item.isSelf ? ' · 我' : ''}}</text>
+        </view>
+        <view class="member-actions">
+          <text wx:if="{{isAdmin || item.isSelf}}" class="member-action" data-openid="{{item.openid}}" data-nickname="{{item.nickname}}" bindtap="startEditNickname">改昵称</text>
+          <text wx:if="{{isAdmin && !item.isAdmin}}" class="member-action remove" data-openid="{{item.openid}}" data-nickname="{{item.nickname}}" bindtap="removeMember">移除</text>
+        </view>
+      </block>
+    </view>
+  </view>
+</scroll-view>

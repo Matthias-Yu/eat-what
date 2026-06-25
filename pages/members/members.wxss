@@ -1,0 +1,28 @@
+page { background: #fffaf5; }
+.members-page { height: 100vh; box-sizing: border-box; padding: 0 30rpx calc(40rpx + env(safe-area-inset-bottom)); }
+.members-header { padding: 18rpx 4rpx 24rpx; }
+.members-family-name { display: block; color: #3a2a22; font-size: 38rpx; font-weight: 800; }
+.members-count { display: block; margin-top: 10rpx; color: #a8978f; font-size: 23rpx; }
+
+.invite-card { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26rpx; padding: 24rpx 28rpx; border: 2rpx dashed #efc6b7; border-radius: 26rpx; background: #fff7f2; }
+.invite-info { display: flex; flex-direction: column; }
+.invite-label { color: #b09f97; font-size: 19rpx; }
+.invite-code { margin-top: 8rpx; color: #493831; font-size: 40rpx; font-weight: 800; letter-spacing: 10rpx; }
+.invite-copy { color: #e95c47; font-size: 25rpx; font-weight: 700; }
+
+.members-loading { padding: 60rpx 0; color: #b09f97; font-size: 24rpx; text-align: center; }
+
+.members-list { border-radius: 28rpx; background: #fff; box-shadow: 0 12rpx 40rpx rgba(49, 31, 24, .06); }
+.member-row { display: flex; align-items: center; justify-content: space-between; min-height: 110rpx; padding: 22rpx 28rpx; border-bottom: 1rpx solid #f4ebe4; }
+.member-row:last-child { border-bottom: none; }
+.member-info { display: flex; flex-direction: column; align-items: flex-start; }
+.member-name { color: #493831; font-size: 30rpx; font-weight: 700; }
+.member-role { margin-top: 8rpx; color: #a8978f; font-size: 21rpx; }
+.member-role.is-admin { color: #e0894f; }
+.member-actions { display: flex; align-items: center; gap: 24rpx; }
+.member-action { color: #c98a73; font-size: 24rpx; font-weight: 600; }
+.member-action.remove { color: #e75c48; }
+.member-action.save { color: #e95c47; }
+.member-nickname-input { flex: 1; height: 72rpx; margin-right: 20rpx; padding: 0 22rpx; border: 2rpx solid #efc6b7; border-radius: 18rpx; box-sizing: border-box; background: #fff; color: #493831; font-size: 26rpx; }
+.member-edit-actions { display: flex; align-items: center; gap: 24rpx; }
+.input-placeholder { color: #c9bab2; }

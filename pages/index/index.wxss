@@ -495,6 +495,15 @@ page {
 .family-primary-button { width: 100%; height: 80rpx; display: flex; align-items: center; justify-content: center; padding: 0; border-radius: 27rpx; font-size: 23rpx; line-height: 1; font-weight: 700; }
 .family-primary-button { margin: 26rpx 0 0; background: linear-gradient(135deg, #f17a5c, #e95c47); color: #fff; box-shadow: 0 11rpx 26rpx rgba(216, 83, 58, .18); }
 .family-tip { margin-top: 18rpx; color: #b09f97; font-size: 17rpx; line-height: 1.5; text-align: center; }
+.family-secondary-button { width: 100%; height: 80rpx; display: flex; align-items: center; justify-content: center; margin: 16rpx 0 0; padding: 0; border-radius: 27rpx; font-size: 23rpx; line-height: 1; font-weight: 700; background: #f3e7e0; color: #8a6f63; }
+.family-link { margin-top: 20rpx; color: #c98a73; font-size: 21rpx; font-weight: 600; }
+.family-link.danger { color: #e75c48; }
+.family-nickname-input { margin-top: 16rpx; font-size: 25rpx; font-weight: 600; letter-spacing: 2rpx; }
+.family-invite-row { width: 100%; display: flex; align-items: center; justify-content: space-between; margin-top: 18rpx; padding: 18rpx 24rpx; border: 2rpx dashed #efc6b7; border-radius: 24rpx; box-sizing: border-box; background: #fff7f2; }
+.family-invite-info { display: flex; flex-direction: column; }
+.family-invite-label { color: #b09f97; font-size: 17rpx; }
+.family-invite-code { margin-top: 4rpx; color: #493831; font-size: 33rpx; font-weight: 800; letter-spacing: 8rpx; }
+.family-invite-copy { color: #e95c47; font-size: 23rpx; font-weight: 700; }
 
 /* Sheets and dialogs */
 .overlay, .success-overlay { position: fixed; z-index: 100; inset: 0; display: flex; align-items: flex-end; background: rgba(48, 35, 30, .43); animation: fade-in .2s ease both; }
