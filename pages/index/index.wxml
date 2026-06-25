@@ -19,14 +19,17 @@
       <view class="hero-glow hero-glow-two"></view>
       <view class="hero-copy">
         <view class="hero-kicker"><text class="hero-dot"></text> 今晚推荐</view>
-        <text class="hero-title">番茄浓汤\n肥牛锅</text>
-        <text class="hero-subtitle">酸甜浓郁，暖呼呼的幸福感</text>
+        <text class="hero-title">{{recommendedItems[0].name || '今晚一起好好吃饭'}}</text>
+        <text class="hero-subtitle">{{recommendedItems[0].description || '挑一道喜欢的菜开始吧'}}</text>
         <button class="hero-button" data-category="recommend" bindtap="exploreMenu" hover-class="button-pressed">去看看 <text>→</text></button>
       </view>
       <view class="hero-art">
         <view class="steam steam-one">〰</view>
         <view class="steam steam-two">〰</view>
-        <view class="hero-plate">🍲</view>
+        <view class="hero-plate {{recommendedItems[0].image ? 'has-image' : ''}}">
+          <image wx:if="{{recommendedItems[0].image}}" class="hero-plate-image" src="{{recommendedItems[0].image}}" mode="aspectFit"></image>
+          <text wx:else>{{recommendedItems[0].emoji || '🍲'}}</text>
+        </view>
         <view class="leaf leaf-one">✦</view>
         <view class="leaf leaf-two">●</view>
       </view>
@@ -371,7 +374,7 @@
       <view class="family-cloud-icon">♡</view>
       <text class="family-title">加入家庭云空间</text>
       <text class="family-copy">输入管理员分享的邀请码，以成员身份加入</text>
-      <input class="invite-input" value="{{familyInviteCode}}" bindinput="onFamilyInviteCodeInput" maxlength="6" placeholder="输入 6 位邀请码" placeholder-class="input-placeholder" />
+      <input class="invite-input" value="{{familyInviteCode}}" bindinput="onFamilyInviteCodeInput" maxlength="5" placeholder="输入 5 位邀请码" placeholder-class="input-placeholder" />
       <input class="invite-input family-nickname-input" value="{{familyNickname}}" bindinput="onFamilyNicknameInput" maxlength="12" placeholder="你的昵称（选填）" placeholder-class="input-placeholder" />
       <text wx:if="{{familyError}}" class="family-error">{{familyError}}</text>
       <button class="family-primary-button" bindtap="joinFamily" loading="{{familyBusy}}">{{familyBusy ? '正在加入…' : '加入小家'}}</button>

@@ -178,6 +178,24 @@ page {
   box-shadow: 0 18rpx 35rpx rgba(122, 34, 25, .23);
   font-size: 130rpx;
   transform: rotate(-7deg);
+  overflow: hidden;
+}
+.hero-plate-image { width: 100%; height: 100%; border-radius: 50%; transform: rotate(7deg) scale(1.12); }
+.hero-plate.has-image {
+  width: 280rpx;
+  height: 280rpx;
+  bottom: 6rpx;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  overflow: visible;
+}
+.hero-plate.has-image .hero-plate-image {
+  border-radius: 0;
+  transform: none;
+  filter: drop-shadow(0 14rpx 22rpx rgba(122, 34, 25, .28));
 }
 
 .steam { position: absolute; z-index: 2; color: rgba(255,255,255,.7); font-size: 52rpx; transform: rotate(75deg); }
