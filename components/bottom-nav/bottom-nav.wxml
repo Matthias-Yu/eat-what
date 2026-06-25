@@ -13,6 +13,7 @@
       <view class="nav-icon-wrap">
         <text class="nav-icon">{{item.icon}}</text>
         <text wx:if="{{item.id === 'menu' && badge > 0}}" class="nav-badge">{{badge > 99 ? '99+' : badge}}</text>
+        <text wx:if="{{item.id === 'wishlist' && wishBadge > 0}}" class="nav-badge">{{wishBadge > 99 ? '99+' : wishBadge}}</text>
       </view>
       <text class="nav-label">{{item.label}}</text>
     </view>

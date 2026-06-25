@@ -42,10 +42,10 @@
         <text>今日待办</text>
         <text wx:if="{{todoStats.pending}}" class="quick-badge">{{todoStats.pending}}</text>
       </view>
-      <view class="quick-item" data-target="cart" bindtap="navigateFromCard" hover-class="quick-item--pressed">
-        <view class="quick-icon quick-green">⌑</view>
-        <text>购物篮</text>
-        <text wx:if="{{cartCount}}" class="quick-badge">{{cartCount}}</text>
+      <view class="quick-item" data-target="wishlist" bindtap="navigateFromCard" hover-class="quick-item--pressed">
+        <view class="quick-icon quick-green">☆</view>
+        <text>心愿单</text>
+        <text wx:if="{{wishStats.pending}}" class="quick-badge">{{wishStats.pending}}</text>
       </view>
       <view class="quick-item" data-target="profile" bindtap="navigateFromCard" hover-class="quick-item--pressed">
         <view class="quick-icon quick-pink">♡</view>
@@ -143,6 +143,56 @@
       <text class="empty-title">没找到这道菜</text>
       <text class="empty-subtitle">换个关键词试试吧</text>
       <button bindtap="clearSearch">看看全部推荐</button>
+    </view>
+  </view>
+
+  <!-- 心愿单 -->
+  <view wx:elif="{{activeTab === 'wishlist'}}" class="page wishlist-page">
+    <view class="wishlist-hero-card">
+      <view class="wishlist-hero-copy">
+        <text class="page-kicker">WISH MAP</text>
+        <text class="wishlist-title">想一起做的事</text>
+        <text class="wishlist-subtitle">把“以后有空”先好好收起来</text>
+      </view>
+      <view class="wishlist-hero-mark">☆</view>
+    </view>
+
+    <view class="wishlist-stats">
+      <view><text>{{wishStats.pending}}</text><text>待实现</text></view>
+      <view><text>{{wishStats.completed}}</text><text>已实现</text></view>
+      <view><text>{{wishStats.total}}</text><text>全部心愿</text></view>
+    </view>
+
+    <view class="wishlist-action-row">
+      <view><text class="section-title">愿望卡片</text><text class="section-subtitle">长按卡片可以删除</text></view>
+      <button class="new-wish-button" bindtap="openWishComposer" hover-class="button-pressed"><text>＋</text> 写一个</button>
+    </view>
+
+    <view wx:if="{{wishes.length}}" class="wish-card-list">
+      <view
+        wx:for="{{wishes}}"
+        wx:key="id"
+        class="wish-card {{item.completed ? 'is-realized' : ''}}"
+        data-id="{{item.id}}"
+        bindlongpress="deleteWish"
+        hover-class="wish-card--pressed"
+      >
+        <view class="wish-card-top">
+          <view class="wish-card-stamp">{{item.completed ? '✓' : '☆'}}</view>
+          <text class="wish-status">{{item.completed ? '已经实现' : '一起期待'}}</text>
+        </view>
+        <text class="wish-card-title">{{item.title}}</text>
+        <text wx:if="{{item.note}}" class="wish-card-note">{{item.note}}</text>
+        <view class="wish-card-bottom">
+          <text>{{item.completed ? '这件事已经有了回忆' : '先放进以后的小计划'}}</text>
+          <button data-id="{{item.id}}" catchtap="toggleWish">{{item.completed ? '再期待' : '实现啦'}}</button>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="wish-page-empty">
+      <view>☆</view>
+      <text>还没有心愿卡片</text>
+      <button bindtap="openWishComposer" hover-class="button-pressed">写下第一个</button>
     </view>
   </view>
 
@@ -264,7 +314,7 @@
   <view class="flying-card-heart">♥</view>
 </view>
 
-<bottom-nav active="{{activeTab}}" badge="{{cartCount}}" bindchange="setTab"></bottom-nav>
+<bottom-nav active="{{activeTab}}" badge="{{cartCount}}" wish-badge="{{wishStats.pending}}" bindchange="setTab"></bottom-nav>
 
 <!-- 家庭云空间 -->
 <view wx:if="{{showFamilyPanel}}" class="family-overlay" bindtap="closeFamilyPanel">
@@ -362,6 +412,19 @@
     <view class="form-group"><text class="form-label">分类</text><view class="option-row"><text wx:for="{{todoCategories}}" wx:key="*this" class="option-chip {{todoDraft.category === item ? 'is-active' : ''}}" data-value="{{item}}" bindtap="selectTodoCategory">{{item}}</text></view></view>
     <view class="form-group"><text class="form-label">什么时候</text><view class="option-row"><text wx:for="{{dueOptions}}" wx:key="*this" class="option-chip {{todoDraft.due === item ? 'is-active' : ''}}" data-value="{{item}}" bindtap="selectTodoDue">{{item}}</text></view></view>
     <button class="save-todo-button" bindtap="saveTodo" hover-class="button-pressed">{{editingTodoId ? '保存修改' : '加入今日清单'}}</button>
+  </view>
+</view>
+
+<!-- 新增心愿 -->
+<view wx:if="{{showWishComposer}}" class="overlay" bindtap="closeWishComposer">
+  <view class="bottom-sheet wish-composer-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="sheet-header"><view><text class="sheet-title">写一张心愿卡</text><text class="sheet-subtitle">不是任务，是想一起拥有的以后</text></view><view class="sheet-close" bindtap="closeWishComposer">×</view></view>
+    <view class="wish-form">
+      <input class="wish-input" value="{{wishDraft.title}}" bindinput="onWishTitleInput" maxlength="30" focus="{{showWishComposer}}" placeholder="例如：周末去看一场电影" placeholder-class="input-placeholder" />
+      <input class="wish-input wish-note-input" value="{{wishDraft.note}}" bindinput="onWishNoteInput" maxlength="40" placeholder="补充一句小备注" placeholder-class="input-placeholder" />
+      <button class="save-wish-button" bindtap="saveWish" hover-class="button-pressed">记到心愿单</button>
+    </view>
   </view>
 </view>
 

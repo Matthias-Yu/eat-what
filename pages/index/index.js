@@ -116,6 +116,10 @@ function createMenuDraft() {
   }
 }
 
+function createWishDraft() {
+  return { title: '', note: '' }
+}
+
 function getTodoView(todos, filter) {
   const normalizedTodos = (todos || [])
     .map((item) => Object.assign({}, item, { categoryClass: TODO_CATEGORY_CLASS[item.category] || 'life' }))
@@ -131,6 +135,28 @@ function getTodoView(todos, filter) {
     visibleTodos,
     homeTodos: normalizedTodos.filter((item) => !item.completed).slice(0, 2),
     todoStats: { total, completed, pending, percent: total ? Math.round(completed / total * 100) : 0 }
+  }
+}
+
+function getWishView(wishes) {
+  const normalizedWishes = (wishes || [])
+    .map((item) => ({
+      id: item.id || Date.now(),
+      title: textSlice(item.title, 30) || '一起做一件小事',
+      note: textSlice(item.note, 40),
+      completed: !!item.completed,
+      createdAt: item.createdAt || Date.now()
+    }))
+    .sort((a, b) => Number(a.completed) - Number(b.completed) || Number(b.createdAt) - Number(a.createdAt))
+  const completed = normalizedWishes.filter((item) => item.completed).length
+  const total = normalizedWishes.length
+  return {
+    wishes: normalizedWishes,
+    wishStats: {
+      total,
+      completed,
+      pending: total - completed
+    }
   }
 }
 
@@ -198,6 +224,10 @@ Page({
     familyCreateCode: '',
     familyBusy: false,
     familyError: '',
+    wishes: [],
+    wishStats: { total: 0, completed: 0, pending: 0 },
+    showWishComposer: false,
+    wishDraft: createWishDraft(),
     todos: [],
     visibleTodos: [],
     homeTodos: [],
@@ -217,12 +247,14 @@ Page({
     const savedTodos = storage.read('todos', null)
     const cart = storage.read('cart', {})
     const orders = storage.read('orders', [])
+    const savedWishes = storage.read('wishes', [])
     const savedCustomMenuItems = storage.read('customMenuItems', [])
     const customMenuItems = (Array.isArray(savedCustomMenuItems) ? savedCustomMenuItems : [])
       .map(normalizeCustomMenuItem)
       .slice(0, CUSTOM_MENU_LIMIT)
     const allMenuItems = getAllMenuItems(customMenuItems)
     const todoView = getTodoView(savedTodos || DEFAULT_TODOS, this.data.todoFilter)
+    const wishView = getWishView(Array.isArray(savedWishes) ? savedWishes : [])
     const cartView = getCartView(cart, allMenuItems)
     this.menuItemMap = getMenuItemMap(allMenuItems)
     this.setData({
@@ -236,6 +268,8 @@ Page({
       visibleTodos: todoView.visibleTodos,
       homeTodos: todoView.homeTodos,
       todoStats: todoView.todoStats,
+      wishes: wishView.wishes,
+      wishStats: wishView.wishStats,
       cart,
       cartItems: cartView.cartItems,
       cartCount: cartView.cartCount,
@@ -312,13 +346,16 @@ Page({
     const cart = data.cart || {}
     const todos = Array.isArray(data.todos) ? data.todos : []
     const orders = Array.isArray(data.orders) ? data.orders : []
+    const wishes = Array.isArray(data.wishes) ? data.wishes : []
     const customMenuItems = Array.isArray(data.menus) ? data.menus.map(normalizeCustomMenuItem).slice(0, CUSTOM_MENU_LIMIT) : []
     const menuItemsForView = getAllMenuItems(customMenuItems)
     const cartView = getCartView(cart, menuItemsForView)
     const todoView = getTodoView(todos, this.data.todoFilter)
+    const wishView = getWishView(wishes)
     const cartChanged = !isSameCart(this.data.cart, cart)
     const todosChanged = !isSameTodos(this.data.todos, todoView.todos)
     const ordersChanged = !isSameList(this.data.orders, orders)
+    const wishesChanged = !isSameList(this.data.wishes, wishView.wishes)
     const menusChanged = !isSameList(this.data.customMenuItems, customMenuItems)
     const update = {}
 
@@ -352,6 +389,13 @@ Page({
     if (ordersChanged) {
       storage.write('orders', orders)
       update.orders = orders
+    }
+    if (wishesChanged) {
+      storage.write('wishes', wishView.wishes)
+      Object.assign(update, {
+        wishes: wishView.wishes,
+        wishStats: wishView.wishStats
+      })
     }
     if (todosChanged || ordersChanged) {
       update.profileStats = getProfileStats(todosChanged ? todoView.todos : this.data.todos, ordersChanged ? orders : this.data.orders)
@@ -479,7 +523,7 @@ Page({
       this.setData({ familyStatus: 'active', family: result.household, familyCreateCode: '' })
       if (result.created) {
         const data = await cloudService.call('migrateLocal', {
-          data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, menus: this.data.customMenuItems, places: [] }
+          data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, wishes: this.data.wishes, menus: this.data.customMenuItems, places: [] }
         })
         this.applyCloudData(data)
       } else {
@@ -715,6 +759,77 @@ Page({
     this.setData({ showOrderDetail: false, selectedOrder: null })
   },
 
+  commitWishes(wishes, options = {}) {
+    const wishView = getWishView(wishes)
+    this.setData(Object.assign(wishView, options.extraData || {}))
+    if (options.persist !== false) storage.write('wishes', wishView.wishes)
+    if (options.sync) this.syncCloudResource('wishes', wishView.wishes, { debounce: true })
+    return wishView
+  },
+
+  openWishComposer() {
+    this.setData({ showWishComposer: true })
+  },
+
+  closeWishComposer() {
+    this.setData({ showWishComposer: false })
+  },
+
+  onWishTitleInput(event) {
+    this.setData({ 'wishDraft.title': event.detail.value })
+  },
+
+  onWishNoteInput(event) {
+    this.setData({ 'wishDraft.note': event.detail.value })
+  },
+
+  saveWish() {
+    const draft = this.data.wishDraft
+    const title = textSlice(draft.title, 30)
+    if (!title) {
+      wx.showToast({ title: '写下想一起做的事吧', icon: 'none' })
+      return
+    }
+    const timestamp = Date.now()
+    const wish = {
+      id: timestamp,
+      title,
+      note: textSlice(draft.note, 40),
+      completed: false,
+      createdAt: timestamp
+    }
+    this.commitWishes([wish].concat(this.data.wishes), {
+      sync: true,
+      extraData: { wishDraft: createWishDraft(), showWishComposer: false }
+    })
+    wx.showToast({ title: '已记到心愿单', icon: 'success' })
+  },
+
+  toggleWish(event) {
+    const id = String(event.currentTarget.dataset.id)
+    const wishes = this.data.wishes.map((item) => {
+      if (String(item.id) !== id) return item
+      return Object.assign({}, item, { completed: !item.completed })
+    })
+    this.commitWishes(wishes, { sync: true })
+  },
+
+  deleteWish(event) {
+    const id = String(event.currentTarget.dataset.id)
+    const wish = this.data.wishes.find((item) => String(item.id) === id)
+    if (!wish) return
+    wx.showModal({
+      title: '删除这个心愿？',
+      content: `“${wish.title}”会从心愿单里移除。`,
+      confirmText: '删除',
+      confirmColor: '#e75c48',
+      success: (result) => {
+        if (!result.confirm) return
+        this.commitWishes(this.data.wishes.filter((item) => String(item.id) !== id), { sync: true })
+      }
+    })
+  },
+
   openMenuManager() {
     this.setData({ showMenuManager: true, menuDraft: createMenuDraft() })
   },
@@ -937,6 +1052,7 @@ Page({
         const allMenuItems = getAllMenuItems(customMenuItems)
         const cartView = getCartView(cart, allMenuItems)
         const todoView = getTodoView(DEFAULT_TODOS, this.data.todoFilter)
+        const wishView = getWishView([])
         this.menuItemMap = getMenuItemMap(allMenuItems)
         storage.clear()
         this.setData({
@@ -953,11 +1069,14 @@ Page({
           visibleTodos: todoView.visibleTodos,
           homeTodos: todoView.homeTodos,
           todoStats: todoView.todoStats,
+          wishes: wishView.wishes,
+          wishStats: wishView.wishStats,
           profileStats: getProfileStats(todoView.todos, orders)
         })
         this.syncCloudResource('cart', cart)
         this.syncCloudResource('orders', orders)
         this.syncCloudResource('todos', todoView.todos)
+        this.syncCloudResource('wishes', wishView.wishes)
         this.syncCloudResource('menus', customMenuItems)
         wx.showToast({ title: '已清空', icon: 'success' })
       }

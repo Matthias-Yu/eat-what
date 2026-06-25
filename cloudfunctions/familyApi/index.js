@@ -10,6 +10,7 @@ let collectionsReady = false
 const RESOURCE_LIMITS = {
   todos: 500,
   orders: 100,
+  wishes: 300,
   menus: 100,
   places: 500
 }
@@ -91,6 +92,7 @@ function emptySharedData(householdId) {
     cart: {},
     todos: [],
     orders: [],
+    wishes: [],
     menus: [],
     places: [],
     updatedAt: db.serverDate()
@@ -249,6 +251,7 @@ async function getSharedData(openid) {
     cart: data.cart || {},
     todos: Array.isArray(data.todos) ? data.todos : [],
     orders: Array.isArray(data.orders) ? data.orders : [],
+    wishes: Array.isArray(data.wishes) ? data.wishes : [],
     menus: Array.isArray(data.menus) ? data.menus : [],
     places: Array.isArray(data.places) ? data.places : [],
     updatedAt: data.updatedAt || null
@@ -281,6 +284,18 @@ function sanitizeMenuItem(item, index) {
   }
 }
 
+function sanitizeWishItem(item, index) {
+  const source = item && typeof item === 'object' && !Array.isArray(item) ? item : {}
+  const createdAt = Number(source.createdAt) || Date.now()
+  return {
+    id: source.id || `wish-${createdAt}-${index}`,
+    title: textSlice(source.title, 30) || '一起做一件小事',
+    note: textSlice(source.note, 40),
+    completed: !!source.completed,
+    createdAt
+  }
+}
+
 function sanitizeResource(resource, value) {
   if (resource === 'cart') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
@@ -288,6 +303,7 @@ function sanitizeResource(resource, value) {
   }
   if (!Object.prototype.hasOwnProperty.call(RESOURCE_LIMITS, resource)) throw new Error('不支持的数据类型')
   if (!Array.isArray(value)) throw new Error('数据格式不正确')
+  if (resource === 'wishes') return value.slice(0, RESOURCE_LIMITS.wishes).map(sanitizeWishItem)
   if (resource === 'menus') return value.slice(0, RESOURCE_LIMITS.menus).map(sanitizeMenuItem)
   return value.slice(0, RESOURCE_LIMITS[resource])
 }
@@ -314,6 +330,7 @@ async function migrateLocal(openid, event) {
   if (!Object.keys(current.cart || {}).length) update.cart = sanitizeResource('cart', local.cart || {})
   if (!(current.todos || []).length) update.todos = sanitizeResource('todos', local.todos || [])
   if (!(current.orders || []).length) update.orders = sanitizeResource('orders', local.orders || [])
+  if (!(current.wishes || []).length) update.wishes = sanitizeResource('wishes', local.wishes || [])
   if (!(current.menus || []).length) update.menus = sanitizeResource('menus', local.menus || [])
   if (!(current.places || []).length) update.places = sanitizeResource('places', local.places || [])
   await db.collection('family_data').doc(household._id).update({ data: update })

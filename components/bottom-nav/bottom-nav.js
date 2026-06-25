@@ -7,12 +7,17 @@ Component({
     badge: {
       type: Number,
       value: 0
+    },
+    wishBadge: {
+      type: Number,
+      value: 0
     }
   },
   data: {
     items: [
       { id: 'home', label: '首页', icon: '⌂' },
       { id: 'menu', label: '点餐', icon: '♨' },
+      { id: 'wishlist', label: '心愿', icon: '☆' },
       { id: 'todo', label: '待办', icon: '✓' },
       { id: 'profile', label: '我的', icon: '♡' }
     ]
