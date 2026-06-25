@@ -32,13 +32,16 @@ function failure(message) {
 
 async function ensureCollections() {
   if (collectionsReady) return
-  if (typeof db.createCollection !== 'function') return
+  if (typeof db.createCollection !== 'function') {
+    collectionsReady = true
+    return
+  }
   await Promise.all(COLLECTIONS.map(async (name) => {
     try {
       await db.createCollection(name)
     } catch (error) {
-      const message = String(error.errMsg || error.message || '')
-      if (!message.includes('exist') && !message.includes('-502005')) throw error
+      // 集合已存在、无权限或不支持自动建表时，均不阻断主流程（集合可在控制台手动创建）
+      console.warn(`createCollection ${name} 跳过`, error.errMsg || error.message || error)
     }
   }))
   collectionsReady = true
@@ -488,9 +491,13 @@ async function transferPrimaryAdmin(openid) {
 
 exports.main = async (event) => {
   try {
-    await ensureCollections()
     if (event.action === 'health') {
       return success({ status: 'ok', collections: COLLECTIONS })
+    }
+    try {
+      await ensureCollections()
+    } catch (error) {
+      console.warn('ensureCollections 失败，继续执行', error.errMsg || error.message || error)
     }
     const { OPENID } = cloud.getWXContext()
     if (!OPENID) return failure('无法识别微信用户')
