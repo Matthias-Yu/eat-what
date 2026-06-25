@@ -403,7 +403,23 @@ Page({
       this.applyCloudData(data)
     } catch (error) {
       console.warn('拉取家庭数据失败', error)
+      const message = (error && error.message) || ''
+      if (message.includes('权限') || message.includes('请先创建或加入')) {
+        this.handleFamilyRemoved()
+      }
     }
+  },
+
+  // 被移除或云空间被解散后，自动回到未加入状态
+  handleFamilyRemoved() {
+    if (this.data.familyStatus !== 'active') return
+    this.stopCloudPolling()
+    this.setData({
+      familyStatus: 'none',
+      family: null,
+      familyMode: 'choose'
+    })
+    wx.showToast({ title: '你已不在该云空间', icon: 'none' })
   },
 
   applyCloudData(data) {

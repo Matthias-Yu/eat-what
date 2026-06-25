@@ -451,9 +451,28 @@ async function removeMember(openid, event) {
     }),
     db.collection('family_users').doc(targetOpenid).set({
       data: { openid: targetOpenid, householdId: '', nickname: '', updatedAt: db.serverDate() }
-    })
+    }),
+    removeMemberNotices(household._id, targetOpenid)
   ])
   return listMembers(openid)
+}
+
+// 清理某位成员相关（发给 TA 或由 TA 触发）的点餐通知
+async function removeMemberNotices(householdId, memberOpenid) {
+  try {
+    const response = await db.collection('family_data').doc(householdId).get()
+    const data = response.data
+    if (!data || !Array.isArray(data.orderNotices) || !data.orderNotices.length) return
+    const orderNotices = data.orderNotices.filter((notice) => (
+      notice && notice.receiverOpenid !== memberOpenid && notice.actorOpenid !== memberOpenid
+    ))
+    if (orderNotices.length === data.orderNotices.length) return
+    await db.collection('family_data').doc(householdId).update({
+      data: { orderNotices, updatedAt: db.serverDate() }
+    })
+  } catch (error) {
+    console.warn('清理成员通知失败', error.errMsg || error.message || error)
+  }
 }
 
 async function leaveHousehold(openid) {
@@ -491,7 +510,8 @@ async function leaveHousehold(openid) {
     }),
     db.collection('family_users').doc(openid).set({
       data: { openid, householdId: '', nickname: '', updatedAt: db.serverDate() }
-    })
+    }),
+    removeMemberNotices(household._id, openid)
   ])
   return success({ active: false, dissolved: false })
 }
