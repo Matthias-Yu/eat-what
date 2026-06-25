@@ -322,6 +322,42 @@ Page({
       profileStats: getProfileStats(todoView.todos, orders)
     })
     this.initializeCloud()
+    this.resolveMenuImages()
+  },
+
+  // 将菜品图片的 cloud:// fileID 批量换成 https 临时链接，避免 <image> 直接加载 cloud:// 时报 500
+  async resolveMenuImages() {
+    if (!wx.cloud) return
+    const fileList = []
+    const collect = (items) => {
+      (items || []).forEach((item) => {
+        if (item && typeof item.image === 'string' && item.image.indexOf('cloud://') === 0) {
+          fileList.push(item.image)
+        }
+      })
+    }
+    collect(this.data.menuItems)
+    const uniqueFileIds = [...new Set(fileList)]
+    if (!uniqueFileIds.length) return
+    try {
+      const res = await wx.cloud.getTempFileURL({ fileList: uniqueFileIds })
+      const urlMap = {}
+      ;(res.fileList || []).forEach((f) => {
+        if (f.fileID && f.tempFileURL) urlMap[f.fileID] = f.tempFileURL
+      })
+      const mapImage = (items) => (items || []).map((item) => (
+        item && urlMap[item.image] ? { ...item, image: urlMap[item.image] } : item
+      ))
+      this.menuItemMap = getMenuItemMap(mapImage(this.data.menuItems))
+      this.setData({
+        menuItems: mapImage(this.data.menuItems),
+        recommendedItems: mapImage(this.data.recommendedItems),
+        filteredItems: mapImage(this.data.filteredItems),
+        cartItems: mapImage(this.data.cartItems)
+      })
+    } catch (error) {
+      console.warn('菜品图片地址解析失败', error)
+    }
   },
 
   onShow() {

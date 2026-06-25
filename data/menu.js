@@ -1,3 +1,5 @@
+const CLOUD_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/menu/'
+
 const categories = [
   { id: 'recommend', name: '今日推荐', icon: '✦' },
   { id: 'main', name: '主食', icon: '🍚' },
@@ -14,7 +16,7 @@ const menuItems = [
     highlight: '酸甜暖胃',
     category: 'dish',
     emoji: '🍲',
-    image: '/assets/menu/tomato-beef.png',
+    image: CLOUD_IMG_BASE + 'tomato-beef.png',
     tone: 'sunset',
     tags: ['招牌', '微辣'],
     recommended: true
@@ -26,7 +28,7 @@ const menuItems = [
     highlight: '焦香超下饭',
     category: 'main',
     emoji: '🍛',
-    image: '/assets/menu/teriyaki-rice.png',
+    image: CLOUD_IMG_BASE + 'teriyaki-rice.png',
     tone: 'honey',
     tags: ['人气', '饱腹'],
     recommended: true
@@ -38,7 +40,7 @@ const menuItems = [
     highlight: '鲜嫩又轻盈',
     category: 'dish',
     emoji: '🍤',
-    image: '/assets/menu/shrimp-egg.png',
+    image: CLOUD_IMG_BASE + 'shrimp-egg.png',
     tone: 'lemon',
     tags: ['清淡', '高蛋白'],
     recommended: true
@@ -50,7 +52,7 @@ const menuItems = [
     highlight: '清爽低负担',
     category: 'light',
     emoji: '🥗',
-    image: '/assets/menu/salmon-salad.png',
+    image: CLOUD_IMG_BASE + 'salmon-salad.png',
     tone: 'mint',
     tags: ['低卡', '轻食'],
     recommended: true
@@ -62,7 +64,7 @@ const menuItems = [
     highlight: '奶香很治愈',
     category: 'main',
     emoji: '🍝',
-    image: '/assets/menu/mushroom-pasta.png',
+    image: CLOUD_IMG_BASE + 'mushroom-pasta.png',
     tone: 'cream',
     tags: ['奶香', '不辣'],
     recommended: false
@@ -74,7 +76,7 @@ const menuItems = [
     highlight: '清淡高蛋白',
     category: 'light',
     emoji: '🥦',
-    image: '/assets/menu/broccoli-chicken.png',
+    image: CLOUD_IMG_BASE + 'broccoli-chicken.png',
     tone: 'mint',
     tags: ['低脂', '高蛋白'],
     recommended: false
@@ -86,7 +88,7 @@ const menuItems = [
     highlight: '麻香拌饭绝配',
     category: 'dish',
     emoji: '🌶️',
-    image: '/assets/menu/mapo-tofu.png',
+    image: CLOUD_IMG_BASE + 'mapo-tofu.png',
     tone: 'sunset',
     tags: ['下饭', '中辣'],
     recommended: false
@@ -98,7 +100,7 @@ const menuItems = [
     highlight: '桂花香甜暖',
     category: 'drink',
     emoji: '🥛',
-    image: '/assets/menu/sweet-milk.png',
+    image: CLOUD_IMG_BASE + 'sweet-milk.png',
     tone: 'blush',
     tags: ['热饮', '少糖'],
     recommended: true
@@ -110,7 +112,7 @@ const menuItems = [
     highlight: '清爽又解腻',
     category: 'drink',
     emoji: '🍋',
-    image: '/assets/menu/lemon-tea.png',
+    image: CLOUD_IMG_BASE + 'lemon-tea.png',
     tone: 'lemon',
     tags: ['冰饮', '清爽'],
     recommended: false
@@ -122,7 +124,7 @@ const menuItems = [
     highlight: '鲜甜下饭',
     category: 'dish',
     emoji: '🦐',
-    image: '/assets/menu/prawn-cabbage.png',
+    image: CLOUD_IMG_BASE + 'prawn-cabbage.png',
     tone: 'lemon',
     tags: ['鲜香', '家常'],
     recommended: true
@@ -134,7 +136,7 @@ const menuItems = [
     highlight: '酸甜开胃',
     category: 'light',
     emoji: '🥬',
-    image: '/assets/menu/sweet-sour-cabbage.png',
+    image: CLOUD_IMG_BASE + 'sweet-sour-cabbage.png',
     tone: 'mint',
     tags: ['酸甜', '爽口'],
     recommended: false
@@ -146,7 +148,7 @@ const menuItems = [
     highlight: '酱香过瘾',
     category: 'dish',
     emoji: '🍗',
-    image: '/assets/menu/linyi-chicken.png',
+    image: CLOUD_IMG_BASE + 'linyi-chicken.png',
     tone: 'sunset',
     tags: ['下饭', '微辣'],
     recommended: true
@@ -158,7 +160,7 @@ const menuItems = [
     highlight: '清爽脆嫩',
     category: 'light',
     emoji: '🥦',
-    image: '/assets/menu/stir-broccoli.png',
+    image: CLOUD_IMG_BASE + 'stir-broccoli.png',
     tone: 'mint',
     tags: ['清淡', '蔬菜'],
     recommended: false
@@ -170,7 +172,7 @@ const menuItems = [
     highlight: '虾香浓郁',
     category: 'dish',
     emoji: '🦐',
-    image: '/assets/menu/braised-prawns.png',
+    image: CLOUD_IMG_BASE + 'braised-prawns.png',
     tone: 'sunset',
     tags: ['招牌', '鲜香'],
     recommended: true
@@ -182,7 +184,7 @@ const menuItems = [
     highlight: '鲜嫩清蒸',
     category: 'dish',
     emoji: '🐟',
-    image: '/assets/menu/steamed-seabass.png',
+    image: CLOUD_IMG_BASE + 'steamed-seabass.png',
     tone: 'cream',
     tags: ['清淡', '鲜美'],
     recommended: true
@@ -194,7 +196,7 @@ const menuItems = [
     highlight: '家常拌饭',
     category: 'dish',
     emoji: '🍅',
-    image: '/assets/menu/tomato-egg.png',
+    image: CLOUD_IMG_BASE + 'tomato-egg.png',
     tone: 'honey',
     tags: ['家常', '不辣'],
     recommended: true
@@ -206,7 +208,7 @@ const menuItems = [
     highlight: '清爽搭配',
     category: 'light',
     emoji: '🥬',
-    image: '/assets/menu/seasonal-veg.png',
+    image: CLOUD_IMG_BASE + 'seasonal-veg.png',
     tone: 'mint',
     tags: ['蔬菜', '清淡'],
     recommended: false
@@ -218,7 +220,7 @@ const menuItems = [
     highlight: '外焦里嫩',
     category: 'dish',
     emoji: '🥩',
-    image: '/assets/menu/grilled-steak.png',
+    image: CLOUD_IMG_BASE + 'grilled-steak.png',
     tone: 'sunset',
     tags: ['肉食', '西式'],
     recommended: false
@@ -230,7 +232,7 @@ const menuItems = [
     highlight: '焦香多汁',
     category: 'dish',
     emoji: '🍖',
-    image: '/assets/menu/grilled-lamb.png',
+    image: CLOUD_IMG_BASE + 'grilled-lamb.png',
     tone: 'honey',
     tags: ['肉食', '香烤'],
     recommended: false
@@ -242,7 +244,7 @@ const menuItems = [
     highlight: '奶香柔和',
     category: 'drink',
     emoji: '☕',
-    image: '/assets/menu/latte.png',
+    image: CLOUD_IMG_BASE + 'latte.png',
     tone: 'cream',
     tags: ['咖啡', '热饮'],
     recommended: false
@@ -254,7 +256,7 @@ const menuItems = [
     highlight: '清爽咖啡',
     category: 'drink',
     emoji: '☕',
-    image: '/assets/menu/americano.png',
+    image: CLOUD_IMG_BASE + 'americano.png',
     tone: 'cream',
     tags: ['咖啡', '少负担'],
     recommended: false
@@ -266,7 +268,7 @@ const menuItems = [
     highlight: '酸甜酥香',
     category: 'dish',
     emoji: '🐟',
-    image: '/assets/menu/sweet-sour-carp.png',
+    image: CLOUD_IMG_BASE + 'sweet-sour-carp.png',
     tone: 'sunset',
     tags: ['酸甜', '硬菜'],
     recommended: true
@@ -278,7 +280,7 @@ const menuItems = [
     highlight: '嫩滑治愈',
     category: 'light',
     emoji: '🥚',
-    image: '/assets/menu/steamed-egg.png',
+    image: CLOUD_IMG_BASE + 'steamed-egg.png',
     tone: 'lemon',
     tags: ['清淡', '嫩滑'],
     recommended: false
@@ -290,7 +292,7 @@ const menuItems = [
     highlight: '椒香下饭',
     category: 'dish',
     emoji: '🌶️',
-    image: '/assets/menu/chili-pork.png',
+    image: CLOUD_IMG_BASE + 'chili-pork.png',
     tone: 'sunset',
     tags: ['下饭', '微辣'],
     recommended: true
@@ -302,7 +304,7 @@ const menuItems = [
     highlight: '清甜海鲜',
     category: 'dish',
     emoji: '🦪',
-    image: '/assets/menu/loofah-razor-clams.png',
+    image: CLOUD_IMG_BASE + 'loofah-razor-clams.png',
     tone: 'mint',
     tags: ['海鲜', '清爽'],
     recommended: false
@@ -314,7 +316,7 @@ const menuItems = [
     highlight: '软香入味',
     category: 'dish',
     emoji: '🍖',
-    image: '/assets/menu/braised-ribs.png',
+    image: CLOUD_IMG_BASE + 'braised-ribs.png',
     tone: 'sunset',
     tags: ['推荐', '硬菜'],
     recommended: true
@@ -326,7 +328,7 @@ const menuItems = [
     highlight: '酸甜微辣',
     category: 'dish',
     emoji: '🍗',
-    image: '/assets/menu/kung-pao-chicken.png',
+    image: CLOUD_IMG_BASE + 'kung-pao-chicken.png',
     tone: 'honey',
     tags: ['下饭', '微辣'],
     recommended: true
@@ -338,7 +340,7 @@ const menuItems = [
     highlight: '经典下饭',
     category: 'dish',
     emoji: '🥢',
-    image: '/assets/menu/yuxiang-pork.png',
+    image: CLOUD_IMG_BASE + 'yuxiang-pork.png',
     tone: 'sunset',
     tags: ['经典', '下饭'],
     recommended: true
@@ -350,7 +352,7 @@ const menuItems = [
     highlight: '浓香暖胃',
     category: 'dish',
     emoji: '🍲',
-    image: '/assets/menu/beef-brisket-potato.png',
+    image: CLOUD_IMG_BASE + 'beef-brisket-potato.png',
     tone: 'honey',
     tags: ['炖菜', '暖胃'],
     recommended: true
@@ -362,7 +364,7 @@ const menuItems = [
     highlight: '蒜香清甜',
     category: 'light',
     emoji: '🥬',
-    image: '/assets/menu/garlic-vermicelli-cabbage.png',
+    image: CLOUD_IMG_BASE + 'garlic-vermicelli-cabbage.png',
     tone: 'mint',
     tags: ['蒜香', '清爽'],
     recommended: false
@@ -374,7 +376,7 @@ const menuItems = [
     highlight: '焦香下饭',
     category: 'dish',
     emoji: '🫘',
-    image: '/assets/menu/dry-fried-green-beans.png',
+    image: CLOUD_IMG_BASE + 'dry-fried-green-beans.png',
     tone: 'sunset',
     tags: ['下饭', '微辣'],
     recommended: false
@@ -386,7 +388,7 @@ const menuItems = [
     highlight: '清脆鲜香',
     category: 'light',
     emoji: '🥬',
-    image: '/assets/menu/oyster-lettuce.png',
+    image: CLOUD_IMG_BASE + 'oyster-lettuce.png',
     tone: 'mint',
     tags: ['蔬菜', '清爽'],
     recommended: false
@@ -398,7 +400,7 @@ const menuItems = [
     highlight: '蒜香焦嫩',
     category: 'dish',
     emoji: '🍗',
-    image: '/assets/menu/garlic-chicken-wings.png',
+    image: CLOUD_IMG_BASE + 'garlic-chicken-wings.png',
     tone: 'honey',
     tags: ['人气', '香煎'],
     recommended: true
@@ -410,7 +412,7 @@ const menuItems = [
     highlight: '菇香清爽',
     category: 'light',
     emoji: '🥬',
-    image: '/assets/menu/mushroom-greens.png',
+    image: CLOUD_IMG_BASE + 'mushroom-greens.png',
     tone: 'mint',
     tags: ['蔬菜', '不辣'],
     recommended: false
@@ -422,7 +424,7 @@ const menuItems = [
     highlight: '清鲜舒服',
     category: 'dish',
     emoji: '🍲',
-    image: '/assets/menu/winter-melon-meatball-soup.png',
+    image: CLOUD_IMG_BASE + 'winter-melon-meatball-soup.png',
     tone: 'cream',
     tags: ['汤菜', '清淡'],
     recommended: true
