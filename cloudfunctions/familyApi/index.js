@@ -80,7 +80,7 @@ async function uniqueInviteCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   for (let attempt = 0; attempt < 8; attempt += 1) {
     let code = ''
-    for (let index = 0; index < 5; index += 1) {
+    for (let index = 0; index < 6; index += 1) {
       code += alphabet[Math.floor(Math.random() * alphabet.length)]
     }
     const existing = await db.collection('family_households').where({ inviteCode: code }).limit(1).get()
@@ -178,7 +178,7 @@ async function createHousehold(openid, event) {
 
 async function joinHousehold(openid, event) {
   const inviteCode = String(event.inviteCode || '').trim().toUpperCase()
-  if (inviteCode.length !== 5) throw new Error('请输入 5 位邀请码')
+  if (inviteCode.length !== 6) throw new Error('请输入 6 位邀请码')
   const currentUser = await getUser(openid)
   if (currentUser && currentUser.householdId) throw new Error('你已经加入了一个家庭')
   const response = await db.collection('family_households').where({ inviteCode, inviteActive: true }).limit(1).get()

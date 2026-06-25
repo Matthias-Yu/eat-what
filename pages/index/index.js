@@ -589,7 +589,7 @@ Page({
   },
 
   onFamilyInviteCodeInput(event) {
-    const value = event.detail.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5)
+    const value = event.detail.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
     this.setData({ familyInviteCode: value })
   },
 
@@ -631,8 +631,8 @@ Page({
 
   async joinFamily() {
     if (this.data.familyBusy) return
-    if (this.data.familyInviteCode.length !== 5) {
-      this.setData({ familyError: '请输入完整的 5 位邀请码' })
+    if (this.data.familyInviteCode.length !== 6) {
+      this.setData({ familyError: '请输入完整的 6 位邀请码' })
       return
     }
     this.setData({ familyBusy: true, familyError: '' })
