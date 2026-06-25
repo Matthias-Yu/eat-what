@@ -95,17 +95,30 @@ function emptySharedData(householdId) {
     wishes: [],
     menus: [],
     places: [],
+    orderNotices: [],
     updatedAt: db.serverDate()
   }
 }
 
-function publicHousehold(household) {
+function getPrimaryAdminOpenid(household) {
+  const members = Array.isArray(household.members) ? household.members : []
+  return household.primaryAdminOpenid || household.ownerOpenid || members[0] || ''
+}
+
+function publicHousehold(household, openid) {
+  const members = Array.isArray(household.members) ? household.members : []
+  const primaryAdminOpenid = getPrimaryAdminOpenid(household)
+  const isPrimaryAdmin = openid === primaryAdminOpenid
   return {
     id: household._id,
     name: household.name,
     inviteCode: household.inviteCode,
-    memberCount: Array.isArray(household.members) ? household.members.length : 0,
-    maxMembers: 2
+    memberCount: members.length,
+    maxMembers: 2,
+    role: isPrimaryAdmin ? 'primary' : 'secondary',
+    roleLabel: isPrimaryAdmin ? '主管理员' : '从管理员',
+    canNotifyAdmin: !isPrimaryAdmin && members.length > 1 && members.includes(primaryAdminOpenid),
+    orderNoticeTemplateId: process.env.ORDER_NOTICE_TEMPLATE_ID || ''
   }
 }
 
@@ -125,7 +138,7 @@ async function enterHousehold(openid, event) {
   if (currentUser && currentUser.householdId) {
     const existing = await getHousehold(currentUser.householdId)
     if (existing && existing.members.includes(openid)) {
-      return success({ household: publicHousehold(existing), created: false })
+      return success({ household: publicHousehold(existing, openid), created: false })
     }
   }
 
@@ -138,6 +151,7 @@ async function enterHousehold(openid, event) {
       data: {
         name: '我们的小家',
         ownerOpenid: openid,
+        primaryAdminOpenid: openid,
         members: [openid],
         inviteActive: false,
         createdAt: db.serverDate()
@@ -153,7 +167,7 @@ async function enterHousehold(openid, event) {
       })
     ])
     const newHousehold = await getHousehold(householdId)
-    return success({ household: publicHousehold(newHousehold), created: true })
+    return success({ household: publicHousehold(newHousehold, openid), created: true })
   }
 
   const members = Array.isArray(household.members) ? household.members : []
@@ -167,7 +181,7 @@ async function enterHousehold(openid, event) {
     })
   ])
   const updated = await getHousehold(household._id)
-  return success({ household: publicHousehold(updated), created: false })
+  return success({ household: publicHousehold(updated, openid), created: false })
 }
 
 async function getSession(openid) {
@@ -175,14 +189,14 @@ async function getSession(openid) {
   if (!user || !user.householdId) return success({ active: false })
   const household = await getHousehold(user.householdId)
   if (!household || !household.members.includes(openid)) return success({ active: false })
-  return success({ active: true, household: publicHousehold(household) })
+  return success({ active: true, household: publicHousehold(household, openid) })
 }
 
 async function createHousehold(openid, event) {
   const currentUser = await getUser(openid)
   if (currentUser && currentUser.householdId) {
     const existing = await getHousehold(currentUser.householdId)
-    if (existing) return success({ household: publicHousehold(existing) })
+    if (existing) return success({ household: publicHousehold(existing, openid) })
   }
   verifyFamilyCode(event.createCode)
   const anyHousehold = await db.collection('family_households').limit(1).get()
@@ -193,6 +207,7 @@ async function createHousehold(openid, event) {
       name: String(event.name || '我们的小家').slice(0, 20),
       inviteCode,
       ownerOpenid: openid,
+      primaryAdminOpenid: openid,
       members: [openid],
       inviteActive: true,
       createdAt: db.serverDate()
@@ -208,7 +223,7 @@ async function createHousehold(openid, event) {
     })
   ])
   const household = await getHousehold(householdId)
-  return success({ household: publicHousehold(household) })
+  return success({ household: publicHousehold(household, openid) })
 }
 
 async function joinHousehold(openid, event) {
@@ -234,7 +249,24 @@ async function joinHousehold(openid, event) {
     })
   ])
   const updated = await getHousehold(household._id)
-  return success({ household: publicHousehold(updated) })
+  return success({ household: publicHousehold(updated, openid) })
+}
+
+function getVisibleOrderNotices(data, openid) {
+  const notices = Array.isArray(data.orderNotices) ? data.orderNotices : []
+  return notices
+    .filter((notice) => notice && notice.receiverOpenid === openid)
+    .slice(0, 30)
+    .map((notice) => ({
+      id: notice.id,
+      orderId: notice.orderId,
+      summary: notice.summary,
+      remark: notice.remark,
+      itemCount: notice.itemCount,
+      createdAt: notice.createdAt,
+      createdAtText: notice.createdAtText,
+      read: !!notice.read
+    }))
 }
 
 async function getSharedData(openid) {
@@ -254,6 +286,7 @@ async function getSharedData(openid) {
     wishes: Array.isArray(data.wishes) ? data.wishes : [],
     menus: Array.isArray(data.menus) ? data.menus : [],
     places: Array.isArray(data.places) ? data.places : [],
+    orderNotices: getVisibleOrderNotices(data, openid),
     updatedAt: data.updatedAt || null
   })
 }
@@ -293,6 +326,43 @@ function sanitizeWishItem(item, index) {
     note: textSlice(source.note, 40),
     completed: !!source.completed,
     createdAt
+  }
+}
+
+function sanitizeOrderNoticeOrder(order) {
+  const source = order && typeof order === 'object' && !Array.isArray(order) ? order : {}
+  const items = Array.isArray(source.items) ? source.items : []
+  const itemCount = items.reduce((sum, item) => sum + Math.max(0, Number(item.quantity) || 0), 0)
+  const summary = textSlice(source.itemSummary || items.map((item) => `${item.name || '菜品'} ×${item.quantity || 1}`).join('、'), 80)
+  return {
+    id: textSlice(source.id, 20) || String(Date.now()).slice(-6),
+    summary: summary || '有新的点餐订单',
+    remark: textSlice(source.remark, 40),
+    itemCount,
+    createdAtText: textSlice(source.createdAt, 30)
+  }
+}
+
+async function trySendOrderSubscribeMessage(openid, notice) {
+  const templateId = process.env.ORDER_NOTICE_TEMPLATE_ID || ''
+  if (!templateId || !cloud.openapi || !cloud.openapi.subscribeMessage) {
+    return { sent: false, reason: 'not_configured' }
+  }
+  try {
+    await cloud.openapi.subscribeMessage.send({
+      touser: openid,
+      templateId,
+      page: 'pages/index/index',
+      data: {
+        thing1: { value: textSlice(notice.summary, 20) || '新的点餐订单' },
+        thing2: { value: textSlice(notice.remark || '没有特别备注', 20) },
+        thing3: { value: textSlice(notice.createdAtText || '刚刚', 20) }
+      }
+    })
+    return { sent: true }
+  } catch (error) {
+    console.warn('发送订阅消息失败', error)
+    return { sent: false, reason: error.errMsg || error.message || 'send_failed' }
   }
 }
 
@@ -337,6 +407,85 @@ async function migrateLocal(openid, event) {
   return getSharedData(openid)
 }
 
+async function notifyOrderAdmin(openid, event) {
+  const { household } = await requireMembership(openid)
+  const members = Array.isArray(household.members) ? household.members : []
+  const primaryAdminOpenid = getPrimaryAdminOpenid(household)
+  if (!primaryAdminOpenid || openid === primaryAdminOpenid || !members.includes(primaryAdminOpenid)) {
+    return success({ notified: false, reason: 'no_receiver' })
+  }
+  const order = sanitizeOrderNoticeOrder(event.order)
+  const timestamp = Date.now()
+  const notice = {
+    id: `notice-${timestamp}-${Math.random().toString(36).slice(2, 8)}`,
+    householdId: household._id,
+    orderId: order.id,
+    summary: order.summary,
+    remark: order.remark,
+    itemCount: order.itemCount,
+    createdAt: timestamp,
+    createdAtText: order.createdAtText,
+    read: false,
+    type: 'order',
+    actorOpenid: openid,
+    receiverOpenid: primaryAdminOpenid
+  }
+
+  let data
+  try {
+    const response = await db.collection('family_data').doc(household._id).get()
+    data = response.data || emptySharedData(household._id)
+  } catch (error) {
+    data = emptySharedData(household._id)
+    await db.collection('family_data').doc(household._id).set({ data })
+  }
+  const orderNotices = [notice].concat(Array.isArray(data.orderNotices) ? data.orderNotices : []).slice(0, 50)
+  await db.collection('family_data').doc(household._id).update({
+    data: {
+      orderNotices,
+      updatedAt: db.serverDate(),
+      updatedBy: openid
+    }
+  })
+  const push = await trySendOrderSubscribeMessage(primaryAdminOpenid, notice)
+  return success({ notified: true, pushed: push.sent, notice: { id: notice.id, orderId: notice.orderId } })
+}
+
+async function markOrderNoticesRead(openid) {
+  const { household } = await requireMembership(openid)
+  const response = await db.collection('family_data').doc(household._id).get()
+  const data = response.data || emptySharedData(household._id)
+  const orderNotices = (Array.isArray(data.orderNotices) ? data.orderNotices : []).map((notice) => {
+    if (notice && notice.receiverOpenid === openid) return Object.assign({}, notice, { read: true })
+    return notice
+  })
+  await db.collection('family_data').doc(household._id).update({
+    data: {
+      orderNotices,
+      updatedAt: db.serverDate(),
+      updatedBy: openid
+    }
+  })
+  return success({ updated: true })
+}
+
+async function transferPrimaryAdmin(openid) {
+  const { household } = await requireMembership(openid)
+  const members = Array.isArray(household.members) ? household.members : []
+  const primaryAdminOpenid = getPrimaryAdminOpenid(household)
+  if (openid !== primaryAdminOpenid) throw new Error('只有主管理员可以转交权限')
+  const nextAdminOpenid = members.find((member) => member !== openid)
+  if (!nextAdminOpenid) throw new Error('需要另一位成员加入后才能转交')
+  await db.collection('family_households').doc(household._id).update({
+    data: {
+      primaryAdminOpenid: nextAdminOpenid,
+      updatedAt: db.serverDate()
+    }
+  })
+  const updated = await getHousehold(household._id)
+  return success({ household: publicHousehold(updated, openid) })
+}
+
 exports.main = async (event) => {
   try {
     await ensureCollections()
@@ -351,6 +500,9 @@ exports.main = async (event) => {
       case 'getData': return getSharedData(OPENID)
       case 'updateResource': return updateResource(OPENID, event)
       case 'migrateLocal': return migrateLocal(OPENID, event)
+      case 'notifyOrderAdmin': return notifyOrderAdmin(OPENID, event)
+      case 'markOrderNoticesRead': return markOrderNoticesRead(OPENID)
+      case 'transferPrimaryAdmin': return transferPrimaryAdmin(OPENID)
       default: return failure('未知操作')
     }
   } catch (error) {

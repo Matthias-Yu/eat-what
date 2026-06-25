@@ -285,6 +285,10 @@
         <view class="setting-icon setting-cloud">☁</view><text>家庭云空间</text>
         <text class="setting-value">{{familyStatus === 'active' ? '已同步' : '去连接'}}</text><text class="setting-arrow">›</text>
       </view>
+      <view class="setting-row" bindtap="openRoleManager">
+        <view class="setting-icon setting-role">♚</view><text>主从管理</text>
+        <text class="setting-value {{unreadOrderNoticeCount ? 'has-unread' : ''}}">{{roleManagerSummary}}</text><text class="setting-arrow">›</text>
+      </view>
       <view class="setting-row setting-share">
         <view class="setting-icon setting-orange">↗</view><text>分享小家菜单</text><text class="setting-arrow">›</text>
         <button class="share-hit-area" open-type="share" aria-label="分享小家菜单"></button>
@@ -350,6 +354,67 @@
       <text wx:if="{{familyError}}" class="family-error">{{familyError}}</text>
       <button class="family-primary-button" bindtap="enterFamily" loading="{{familyBusy}}">{{familyBusy ? '正在进入…' : '进入我们的小家'}}</button>
       <text class="family-tip">也可以先关闭，继续使用本地模式。</text>
+    </block>
+  </view>
+</view>
+
+<!-- 主从管理 -->
+<view wx:if="{{showRoleManager}}" class="overlay" bindtap="closeRoleManager">
+  <view class="bottom-sheet role-manager-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="sheet-header"><view><text class="sheet-title">主从管理</text><text class="sheet-subtitle">点餐后把消息交给该知道的人</text></view><view class="sheet-close" bindtap="closeRoleManager">×</view></view>
+
+    <block wx:if="{{familyStatus !== 'active'}}">
+      <view class="role-empty-card">
+        <view>☁</view>
+        <text>先连接家庭云空间</text>
+        <text>连接后会自动区分主管理员和从管理员。</text>
+      </view>
+      <button class="role-primary-button" bindtap="openFamilyFromRoleManager" hover-class="button-pressed">去连接</button>
+    </block>
+
+    <block wx:else>
+      <view class="role-card">
+        <view class="role-badge {{family.role === 'primary' ? 'is-primary' : ''}}">{{family.role === 'primary' ? '主' : '从'}}</view>
+        <view class="role-copy">
+          <text>{{family.roleLabel}}</text>
+          <text>{{family.role === 'primary' ? '从管理员下单后会提醒你' : '你下单后会提醒主管理员'}}</text>
+        </view>
+      </view>
+
+      <view class="role-info-grid">
+        <view><text>{{family.memberCount}} / {{family.maxMembers}}</text><text>家庭成员</text></view>
+        <view><text>{{family.role === 'primary' ? '接收中' : (family.canNotifyAdmin ? '已开启' : '待加入')}}</text><text>订单通知</text></view>
+      </view>
+
+      <block wx:if="{{family.role === 'primary'}}">
+        <view class="role-notice-header">
+          <text>点餐通知</text>
+          <text wx:if="{{unreadOrderNoticeCount}}">{{unreadOrderNoticeCount}} 条未读</text>
+          <text wx:else>都看过啦</text>
+        </view>
+        <scroll-view wx:if="{{orderNotices.length}}" class="role-notice-list {{orderNotices.length > 2 ? 'is-scrollable' : ''}}" scroll-y show-scrollbar="{{false}}">
+          <view wx:for="{{orderNotices}}" wx:key="id" class="role-notice-item {{item.read ? 'is-read' : ''}}">
+            <view class="notice-marker"></view>
+            <view class="notice-copy">
+              <text>订单 #{{item.orderId}}</text>
+              <text>{{item.summary}}</text>
+              <text>{{item.createdAtText}}{{item.remark ? ' · ' + item.remark : ''}}</text>
+            </view>
+          </view>
+        </scroll-view>
+        <view wx:else class="role-notice-empty"><text>🍽</text><text>还没有点餐通知</text></view>
+        <button wx:if="{{family.orderNoticeTemplateId}}" class="role-secondary-button" bindtap="requestOrderNoticeSubscribe" hover-class="button-pressed">允许一次微信提醒</button>
+        <button wx:if="{{unreadOrderNoticeCount}}" class="role-primary-button" bindtap="markOrderNoticesRead" hover-class="button-pressed">全部标为已读</button>
+        <button wx:if="{{family.memberCount > 1}}" class="role-secondary-button" bindtap="transferPrimaryAdmin" hover-class="button-pressed">转交主管理员</button>
+      </block>
+
+      <block wx:else>
+        <view class="role-help-card">
+          <text>下单通知</text>
+          <text>点餐提交后，会在主管理员的小程序里生成一条通知。</text>
+        </view>
+      </block>
     </block>
   </view>
 </view>
@@ -460,7 +525,7 @@
     <view class="success-confetti confetti-one">✦</view><view class="success-confetti confetti-two">●</view><view class="success-confetti confetti-three">♥</view>
     <view class="success-icon"><text>✓</text></view>
     <text class="success-title">收到啦，准备开饭！</text>
-    <text class="success-copy">订单 #{{latestOrderId}} 已放进小家的厨房\n接下来只需要期待美味</text>
+    <text class="success-copy">{{orderSuccessCopy}}</text>
     <button bindtap="finishOrder" hover-class="button-pressed">好呀</button>
   </view>
 </view>
