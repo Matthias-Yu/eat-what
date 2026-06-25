@@ -3,6 +3,9 @@ const storage = require('../../utils/storage')
 const dateUtil = require('../../utils/date')
 const cloudService = require('../../utils/cloud')
 
+const SEARCH_DEBOUNCE_MS = 120
+const CLOUD_SYNC_DEBOUNCE_MS = 800
+
 const DEFAULT_TODOS = [
   { id: 1, title: '记得给绿植浇水', note: '客厅和阳台', category: '家务', due: '今天', completed: false },
   { id: 2, title: '挑一部周末电影', note: '想看轻松一点的', category: '生活', due: '今晚', completed: false },
@@ -16,6 +19,87 @@ const TODO_CATEGORY_CLASS = {
   '工作': 'work'
 }
 
+const RECOMMENDED_ITEMS = menuItems.filter((item) => item.recommended).slice(0, 4)
+const MENU_ITEM_MAP = menuItems.reduce((map, item) => {
+  map[item.id] = item
+  return map
+}, {})
+const MENU_SEARCH_INDEX = menuItems.map((item) => ({
+  item,
+  searchText: `${item.name}${item.description}${item.tags.join('')}`.toLowerCase()
+}))
+
+function getFilteredMenuItems(category, keyword) {
+  const normalizedKeyword = String(keyword || '').toLowerCase()
+  return MENU_SEARCH_INDEX
+    .filter(({ item, searchText }) => {
+      const categoryMatched = category === 'recommend' ? item.recommended : item.category === category
+      const keywordMatched = !normalizedKeyword || searchText.includes(normalizedKeyword)
+      return categoryMatched && keywordMatched
+    })
+    .map(({ item }) => item)
+}
+
+function getCartView(cart) {
+  const cartItems = menuItems
+    .filter((item) => cart[item.id])
+    .map((item) => Object.assign({}, item, { quantity: cart[item.id] }))
+  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
+  return { cartItems, cartCount }
+}
+
+function getTodoView(todos, filter) {
+  const normalizedTodos = (todos || [])
+    .map((item) => Object.assign({}, item, { categoryClass: TODO_CATEGORY_CLASS[item.category] || 'life' }))
+    .sort((a, b) => Number(a.completed) - Number(b.completed))
+  const completed = normalizedTodos.filter((item) => item.completed).length
+  const total = normalizedTodos.length
+  const pending = total - completed
+  let visibleTodos = normalizedTodos
+  if (filter === 'pending') visibleTodos = normalizedTodos.filter((item) => !item.completed)
+  if (filter === 'completed') visibleTodos = normalizedTodos.filter((item) => item.completed)
+  return {
+    todos: normalizedTodos,
+    visibleTodos,
+    homeTodos: normalizedTodos.filter((item) => !item.completed).slice(0, 2),
+    todoStats: { total, completed, pending, percent: total ? Math.round(completed / total * 100) : 0 }
+  }
+}
+
+function getProfileStats(todos, orders) {
+  const completedTodos = todos.filter((item) => item.completed).length
+  return {
+    orders: orders.length,
+    todos: completedTodos,
+    pending: todos.length - completedTodos
+  }
+}
+
+function isSameCart(currentCart, nextCart) {
+  const current = currentCart || {}
+  const next = nextCart || {}
+  const currentKeys = Object.keys(current)
+  const nextKeys = Object.keys(next)
+  return currentKeys.length === nextKeys.length && nextKeys.every((key) => current[key] === next[key])
+}
+
+function isSameTodos(currentTodos, nextTodos) {
+  if ((currentTodos || []).length !== (nextTodos || []).length) return false
+  return nextTodos.every((nextTodo, index) => {
+    const currentTodo = currentTodos[index] || {}
+    return currentTodo.id === nextTodo.id
+      && currentTodo.title === nextTodo.title
+      && currentTodo.note === nextTodo.note
+      && currentTodo.category === nextTodo.category
+      && currentTodo.due === nextTodo.due
+      && currentTodo.completed === nextTodo.completed
+  })
+}
+
+function isSameList(currentList, nextList) {
+  return JSON.stringify(currentList || []) === JSON.stringify(nextList || [])
+}
+
 Page({
   data: {
     activeTab: 'home',
@@ -23,8 +107,8 @@ Page({
     greeting: { text: '你好', icon: '☀️' },
     categories,
     menuItems,
-    recommendedItems: menuItems.filter((item) => item.recommended).slice(0, 4),
-    filteredItems: menuItems,
+    recommendedItems: RECOMMENDED_ITEMS,
+    filteredItems: RECOMMENDED_ITEMS,
     currentCategory: 'recommend',
     searchKeyword: '',
     cart: {},
@@ -61,30 +145,43 @@ Page({
     const savedTodos = storage.read('todos', null)
     const cart = storage.read('cart', {})
     const orders = storage.read('orders', [])
+    const todoView = getTodoView(savedTodos || DEFAULT_TODOS, this.data.todoFilter)
+    const cartView = getCartView(cart)
     this.setData({
       dateLabel: dateUtil.todayLabel(),
       greeting: dateUtil.greeting(),
-      todos: savedTodos || DEFAULT_TODOS,
+      todos: todoView.todos,
+      visibleTodos: todoView.visibleTodos,
+      homeTodos: todoView.homeTodos,
+      todoStats: todoView.todoStats,
       cart,
-      orders
+      cartItems: cartView.cartItems,
+      cartCount: cartView.cartCount,
+      orders,
+      profileStats: getProfileStats(todoView.todos, orders)
     })
-    this.refreshCart()
-    this.refreshTodos()
-    this.refreshProfile()
     this.initializeCloud()
   },
 
   onShow() {
-    this.setData({ greeting: dateUtil.greeting(), dateLabel: dateUtil.todayLabel() })
+    const greeting = dateUtil.greeting()
+    const dateLabel = dateUtil.todayLabel()
+    const update = {}
+    if (this.data.dateLabel !== dateLabel) update.dateLabel = dateLabel
+    if (this.data.greeting.text !== greeting.text || this.data.greeting.icon !== greeting.icon) update.greeting = greeting
+    if (Object.keys(update).length) this.setData(update)
     this.startCloudPolling()
   },
 
   onHide() {
+    this.flushCloudSyncs()
     this.stopCloudPolling()
   },
 
   onUnload() {
     if (this.flyTimer) clearTimeout(this.flyTimer)
+    if (this.searchTimer) clearTimeout(this.searchTimer)
+    this.flushCloudSyncs()
     this.stopCloudPolling()
   },
 
@@ -120,7 +217,7 @@ Page({
   },
 
   async pullCloudData() {
-    if (this.data.familyStatus !== 'active' || this.cloudWritePending > 0) return
+    if (this.data.familyStatus !== 'active' || this.cloudWritePending > 0 || this.hasQueuedCloudSync()) return
     try {
       const data = await cloudService.call('getData')
       this.applyCloudData(data)
@@ -133,16 +230,52 @@ Page({
     const cart = data.cart || {}
     const todos = Array.isArray(data.todos) ? data.todos : []
     const orders = Array.isArray(data.orders) ? data.orders : []
-    storage.write('cart', cart)
-    storage.write('todos', todos)
-    storage.write('orders', orders)
-    this.setData({ cart, todos, orders })
-    this.refreshCart()
-    this.refreshTodos()
-    this.refreshProfile()
+    const cartView = getCartView(cart)
+    const todoView = getTodoView(todos, this.data.todoFilter)
+    const cartChanged = !isSameCart(this.data.cart, cart)
+    const todosChanged = !isSameTodos(this.data.todos, todoView.todos)
+    const ordersChanged = !isSameList(this.data.orders, orders)
+    const update = {}
+
+    if (cartChanged) {
+      storage.write('cart', cart)
+      Object.assign(update, {
+        cart,
+        cartItems: cartView.cartItems,
+        cartCount: cartView.cartCount
+      })
+    }
+    if (todosChanged) {
+      storage.write('todos', todoView.todos)
+      Object.assign(update, {
+        todos: todoView.todos,
+        visibleTodos: todoView.visibleTodos,
+        homeTodos: todoView.homeTodos,
+        todoStats: todoView.todoStats
+      })
+    }
+    if (ordersChanged) {
+      storage.write('orders', orders)
+      update.orders = orders
+    }
+    if (todosChanged || ordersChanged) {
+      update.profileStats = getProfileStats(todosChanged ? todoView.todos : this.data.todos, ordersChanged ? orders : this.data.orders)
+    }
+    if (Object.keys(update).length) this.setData(update)
   },
 
-  syncCloudResource(resource, value) {
+  hasQueuedCloudSync() {
+    return !!(this.cloudSyncQueue && Object.keys(this.cloudSyncQueue).length)
+  },
+
+  syncCloudResource(resource, value, options = {}) {
+    if (this.data.familyStatus !== 'active') return Promise.resolve()
+    if (options.debounce) return this.queueCloudResourceSync(resource, value)
+    this.cancelQueuedCloudSync(resource)
+    return this.writeCloudResource(resource, value)
+  },
+
+  writeCloudResource(resource, value) {
     if (this.data.familyStatus !== 'active') return Promise.resolve()
     this.cloudWritePending = (this.cloudWritePending || 0) + 1
     return cloudService.call('updateResource', { resource, value })
@@ -150,6 +283,41 @@ Page({
       .finally(() => {
         this.cloudWritePending = Math.max(0, (this.cloudWritePending || 1) - 1)
       })
+  },
+
+  queueCloudResourceSync(resource, value) {
+    if (!this.cloudSyncQueue) this.cloudSyncQueue = {}
+    if (!this.cloudSyncTimers) this.cloudSyncTimers = {}
+    this.cloudSyncQueue[resource] = value
+    if (this.cloudSyncTimers[resource]) clearTimeout(this.cloudSyncTimers[resource])
+    this.cloudSyncTimers[resource] = setTimeout(() => {
+      this.flushCloudResourceSync(resource)
+    }, CLOUD_SYNC_DEBOUNCE_MS)
+    return Promise.resolve()
+  },
+
+  cancelQueuedCloudSync(resource) {
+    if (this.cloudSyncTimers && this.cloudSyncTimers[resource]) {
+      clearTimeout(this.cloudSyncTimers[resource])
+      delete this.cloudSyncTimers[resource]
+    }
+    if (this.cloudSyncQueue) delete this.cloudSyncQueue[resource]
+  },
+
+  flushCloudResourceSync(resource) {
+    if (!this.cloudSyncQueue || !Object.prototype.hasOwnProperty.call(this.cloudSyncQueue, resource)) {
+      return Promise.resolve()
+    }
+    const value = this.cloudSyncQueue[resource]
+    this.cancelQueuedCloudSync(resource)
+    return this.writeCloudResource(resource, value)
+  },
+
+  flushCloudSyncs() {
+    if (!this.cloudSyncQueue) return
+    Object.keys(this.cloudSyncQueue).forEach((resource) => {
+      this.flushCloudResourceSync(resource)
+    })
   },
 
   startCloudPolling() {
@@ -220,9 +388,10 @@ Page({
 
   setTab(event) {
     const activeTab = event.detail.id
-    this.setData({ activeTab, showCart: false })
-    if (activeTab === 'todo') this.refreshTodos()
-    if (activeTab === 'profile') this.refreshProfile()
+    const update = {}
+    if (this.data.activeTab !== activeTab) update.activeTab = activeTab
+    if (this.data.showCart) update.showCart = false
+    if (Object.keys(update).length) this.setData(update)
   },
 
   navigateFromCard(event) {
@@ -231,51 +400,54 @@ Page({
       this.openCart()
       return
     }
+    if (target === this.data.activeTab) return
     this.setData({ activeTab: target })
   },
 
   exploreMenu(event) {
     const category = event.currentTarget.dataset.category || 'recommend'
-    this.setData({ activeTab: 'menu', currentCategory: category, searchKeyword: '' })
-    this.filterMenu()
+    this.applyMenuFilter(category, '', { activeTab: 'menu' })
   },
 
   selectCategory(event) {
-    this.setData({ currentCategory: event.currentTarget.dataset.id })
-    this.filterMenu()
+    const category = event.currentTarget.dataset.id
+    if (category === this.data.currentCategory) return
+    this.applyMenuFilter(category, this.data.searchKeyword)
   },
 
   onSearch(event) {
-    this.setData({ searchKeyword: event.detail.value.trim() })
-    this.filterMenu()
+    const searchKeyword = event.detail.value.trim()
+    this.setData({ searchKeyword })
+    if (this.searchTimer) clearTimeout(this.searchTimer)
+    this.searchTimer = setTimeout(() => {
+      this.setData({ filteredItems: getFilteredMenuItems(this.data.currentCategory, this.data.searchKeyword) })
+      this.searchTimer = null
+    }, SEARCH_DEBOUNCE_MS)
   },
 
   clearSearch() {
-    this.setData({ searchKeyword: '' })
-    this.filterMenu()
+    if (this.searchTimer) clearTimeout(this.searchTimer)
+    this.searchTimer = null
+    this.applyMenuFilter(this.data.currentCategory, '')
   },
 
-  filterMenu() {
-    const { currentCategory, searchKeyword } = this.data
-    const keyword = searchKeyword.toLowerCase()
-    const filteredItems = menuItems.filter((item) => {
-      const categoryMatched = currentCategory === 'recommend' ? item.recommended : item.category === currentCategory
-      const keywordMatched = !keyword || `${item.name}${item.description}${item.tags.join('')}`.toLowerCase().includes(keyword)
-      return categoryMatched && keywordMatched
-    })
-    this.setData({ filteredItems })
+  applyMenuFilter(currentCategory, searchKeyword, extraData = {}) {
+    this.setData(Object.assign({
+      currentCategory,
+      searchKeyword,
+      filteredItems: getFilteredMenuItems(currentCategory, searchKeyword)
+    }, extraData))
   },
 
   addToCart(event) {
     const id = event.currentTarget.dataset.id
-    const menuItem = menuItems.find((item) => item.id === id)
+    const menuItem = MENU_ITEM_MAP[id]
     if (menuItem) this.playAddToCartAnimation(event, menuItem)
     const cart = Object.assign({}, this.data.cart)
     cart[id] = (cart[id] || 0) + 1
-    this.setData({ cart })
     storage.write('cart', cart)
-    this.syncCloudResource('cart', cart)
-    this.refreshCart()
+    this.updateCart(cart)
+    this.syncCloudResource('cart', cart, { debounce: true })
     if (wx.vibrateShort) wx.vibrateShort({ type: 'light' })
   },
 
@@ -349,19 +521,21 @@ Page({
     const cart = Object.assign({}, this.data.cart)
     cart[id] = (cart[id] || 0) + Number(delta)
     if (cart[id] <= 0) delete cart[id]
-    this.setData({ cart })
     storage.write('cart', cart)
-    this.syncCloudResource('cart', cart)
-    this.refreshCart()
-    if (!this.data.cartCount) this.setData({ showCart: false })
+    this.updateCart(cart, !Object.keys(cart).length ? { showCart: false } : {})
+    this.syncCloudResource('cart', cart, { debounce: true })
+  },
+
+  updateCart(cart, extraData = {}) {
+    const cartView = getCartView(cart)
+    this.setData(Object.assign({ cart }, cartView, extraData))
+    return cartView
   },
 
   refreshCart() {
-    const cartItems = menuItems
-      .filter((item) => this.data.cart[item.id])
-      .map((item) => Object.assign({}, item, { quantity: this.data.cart[item.id] }))
-    const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
-    this.setData({ cartItems, cartCount })
+    const cartView = getCartView(this.data.cart)
+    this.setData(cartView)
+    return cartView
   },
 
   openCart() {
@@ -392,6 +566,7 @@ Page({
       status: '等你开饭'
     }
     const orders = [order].concat(this.data.orders).slice(0, 20)
+    const emptyCartView = getCartView({})
     storage.write('orders', orders)
     storage.write('cart', {})
     this.syncCloudResource('orders', orders)
@@ -399,13 +574,14 @@ Page({
     this.setData({
       orders,
       cart: {},
+      cartItems: emptyCartView.cartItems,
+      cartCount: emptyCartView.cartCount,
       showCart: false,
       orderRemark: '',
       showOrderSuccess: true,
-      latestOrderId: order.id
+      latestOrderId: order.id,
+      profileStats: getProfileStats(this.data.todos, orders)
     })
-    this.refreshCart()
-    this.refreshProfile()
   },
 
   finishOrder() {
@@ -423,29 +599,27 @@ Page({
     this.setData({ showOrderDetail: false, selectedOrder: null })
   },
 
-  refreshTodos(shouldSync = false) {
-    const todos = this.data.todos
-      .map((item) => Object.assign({}, item, { categoryClass: TODO_CATEGORY_CLASS[item.category] || 'life' }))
-      .sort((a, b) => Number(a.completed) - Number(b.completed))
-    const completed = todos.filter((item) => item.completed).length
-    const total = todos.length
-    const pending = total - completed
-    let visibleTodos = todos
-    if (this.data.todoFilter === 'pending') visibleTodos = todos.filter((item) => !item.completed)
-    if (this.data.todoFilter === 'completed') visibleTodos = todos.filter((item) => item.completed)
-    this.setData({
-      todos,
-      visibleTodos,
-      homeTodos: todos.filter((item) => !item.completed).slice(0, 2),
-      todoStats: { total, completed, pending, percent: total ? Math.round(completed / total * 100) : 0 }
-    })
-    storage.write('todos', todos)
-    if (shouldSync) this.syncCloudResource('todos', todos)
+  commitTodos(todos, options = {}) {
+    const todoFilter = options.todoFilter || this.data.todoFilter
+    const todoView = getTodoView(todos, todoFilter)
+    const update = Object.assign({ todoFilter }, todoView, options.extraData || {})
+    if (options.updateProfile !== false) {
+      update.profileStats = getProfileStats(todoView.todos, this.data.orders)
+    }
+    this.setData(update)
+    if (options.persist !== false) storage.write('todos', todoView.todos)
+    if (options.sync) this.syncCloudResource('todos', todoView.todos, { debounce: true })
+    return todoView
+  },
+
+  refreshTodos(shouldSync = false, options = {}) {
+    return this.commitTodos(this.data.todos, Object.assign({ sync: shouldSync }, options))
   },
 
   setTodoFilter(event) {
-    this.setData({ todoFilter: event.currentTarget.dataset.filter })
-    this.refreshTodos()
+    const todoFilter = event.currentTarget.dataset.filter
+    if (todoFilter === this.data.todoFilter) return
+    this.refreshTodos(false, { todoFilter, persist: false, updateProfile: false })
   },
 
   toggleTodo(event) {
@@ -457,8 +631,7 @@ Page({
         due: !item.completed ? '已完成' : '今天'
       })
     })
-    this.setData({ todos })
-    this.refreshTodos(true)
+    this.commitTodos(todos, { sync: true })
   },
 
   openTodoComposer() {
@@ -520,9 +693,7 @@ Page({
       })
       todos = [newTodo].concat(this.data.todos)
     }
-    this.setData({ todos, showTodoComposer: false })
-    this.refreshTodos(true)
-    this.refreshProfile()
+    this.commitTodos(todos, { sync: true, extraData: { showTodoComposer: false } })
   },
 
   deleteTodo(event) {
@@ -534,18 +705,14 @@ Page({
       confirmColor: '#e75c48',
       success: (result) => {
         if (!result.confirm) return
-        this.setData({ todos: this.data.todos.filter((item) => Number(item.id) !== id) })
-        this.refreshTodos(true)
-        this.refreshProfile()
+        this.commitTodos(this.data.todos.filter((item) => Number(item.id) !== id), { sync: true })
       }
     })
   },
 
   refreshProfile() {
-    const completedTodos = this.data.todos.filter((item) => item.completed).length
-    const pendingTodos = this.data.todos.filter((item) => !item.completed).length
     this.setData({
-      profileStats: { orders: this.data.orders.length, todos: completedTodos, pending: pendingTodos }
+      profileStats: getProfileStats(this.data.todos, this.data.orders)
     })
   },
 
@@ -568,13 +735,26 @@ Page({
       confirmColor: '#e75c48',
       success: (result) => {
         if (!result.confirm) return
+        const cart = {}
+        const orders = []
+        const cartView = getCartView(cart)
+        const todoView = getTodoView(DEFAULT_TODOS, this.data.todoFilter)
         storage.clear()
-        this.setData({ cart: {}, orders: [], todos: DEFAULT_TODOS, activeTab: 'home' })
-        this.refreshCart()
-        this.refreshTodos(true)
-        this.refreshProfile()
-        this.syncCloudResource('cart', {})
-        this.syncCloudResource('orders', [])
+        this.setData({
+          activeTab: 'home',
+          cart,
+          cartItems: cartView.cartItems,
+          cartCount: cartView.cartCount,
+          orders,
+          todos: todoView.todos,
+          visibleTodos: todoView.visibleTodos,
+          homeTodos: todoView.homeTodos,
+          todoStats: todoView.todoStats,
+          profileStats: getProfileStats(todoView.todos, orders)
+        })
+        this.syncCloudResource('cart', cart)
+        this.syncCloudResource('orders', orders)
+        this.syncCloudResource('todos', todoView.todos)
         wx.showToast({ title: '已清空', icon: 'success' })
       }
     })

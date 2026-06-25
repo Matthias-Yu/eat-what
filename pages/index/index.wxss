@@ -432,12 +432,13 @@ page {
 }
 
 .family-overlay { position: fixed; z-index: 115; inset: 0; display: flex; align-items: center; justify-content: center; padding: 42rpx; box-sizing: border-box; background: rgba(49, 35, 30, .48); animation: fade-in .2s ease both; }
-.family-card { position: relative; width: 100%; min-height: 520rpx; display: flex; flex-direction: column; align-items: center; padding: 56rpx 38rpx 36rpx; border-radius: 38rpx; box-sizing: border-box; background: #fffaf7; box-shadow: 0 24rpx 70rpx rgba(49, 31, 24, .25); animation: pop-in .3s ease both; }
+.family-card { position: relative; width: 100%; min-height: 520rpx; display: flex; flex-direction: column; align-items: center; padding: 56rpx 38rpx 36rpx; border-radius: 38rpx; box-sizing: border-box; background: #fffaf7; box-shadow: 0 24rpx 70rpx rgba(49, 31, 24, .25); animation: dialog-in .24s ease both; }
 .family-card-close { position: absolute; right: 22rpx; top: 22rpx; width: 54rpx; height: 54rpx; border-radius: 50%; background: #f1e8e3; color: #8e7f78; font-size: 37rpx; line-height: 51rpx; text-align: center; }
 .family-cloud-icon { width: 104rpx; height: 104rpx; display: flex; align-items: center; justify-content: center; border-radius: 35rpx; background: linear-gradient(145deg, #ffe9dc, #f6b39a); color: #e55f49; font-size: 49rpx; box-shadow: 0 12rpx 28rpx rgba(195, 92, 62, .16); }
 .family-cloud-icon.is-loading { color: #6796b2; background: #e8f3fa; animation: cloud-breathe 1.2s ease-in-out infinite alternate; }
 .family-cloud-icon.is-offline { color: #948680; background: #eee9e6; box-shadow: none; }
 @keyframes cloud-breathe { from { transform: scale(.94); opacity: .7; } to { transform: scale(1.04); opacity: 1; } }
+@keyframes dialog-in { from { opacity: 0; transform: translateY(18rpx); } to { opacity: 1; transform: translateY(0); } }
 .family-title { margin-top: 25rpx; color: #40322d; font-size: 32rpx; font-weight: 800; }
 .family-copy { max-width: 540rpx; margin-top: 10rpx; color: #97867f; font-size: 20rpx; line-height: 1.6; text-align: center; }
 .family-error { width: 100%; margin-top: 15rpx; color: #dc5d49; font-size: 19rpx; text-align: center; }
