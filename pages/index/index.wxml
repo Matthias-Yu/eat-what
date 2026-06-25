@@ -61,7 +61,7 @@
       <view class="recommend-row">
         <view wx:for="{{recommendedItems}}" wx:key="id" id="dish-card-{{item.id}}" class="mini-food-card">
           <view class="mini-food-art tone-{{item.tone}}">
-            <image wx:if="{{item.image}}" class="mini-food-image" src="{{item.image}}" mode="aspectFit"></image>
+            <image wx:if="{{item.image}}" class="mini-food-image" src="{{item.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
             <text wx:else>{{item.emoji}}</text>
             <view class="food-tag">{{item.tags[0]}}</view>
           </view>
@@ -128,7 +128,7 @@
       <view wx:for="{{filteredItems}}" wx:key="id" id="dish-card-{{item.id}}" class="food-card">
         <view class="food-art tone-{{item.tone}}">
           <view class="food-art-glow"></view>
-          <image wx:if="{{item.image}}" class="food-image" src="{{item.image}}" mode="aspectFit"></image>
+          <image wx:if="{{item.image}}" class="food-image" src="{{item.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
           <text wx:else class="food-emoji">{{item.emoji}}</text>
           <text wx:if="{{item.recommended}}" class="recommend-mark">今日推荐</text>
         </view>
@@ -516,7 +516,7 @@
       <view wx:if="{{customMenuItems.length}}" class="managed-menu-list">
         <view wx:for="{{customMenuItems}}" wx:key="id" class="managed-menu-item" data-id="{{item.id}}" bindlongpress="deleteCustomMenuItem">
           <view class="managed-menu-art tone-{{item.tone}}">
-            <image wx:if="{{item.image}}" class="managed-food-image" src="{{item.image}}" mode="aspectFit"></image>
+            <image wx:if="{{item.image}}" class="managed-food-image" src="{{item.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
             <text wx:else>{{item.emoji}}</text>
           </view>
           <view class="managed-menu-copy"><text>{{item.name}}</text><text>{{item.tags[0]}} · {{item.tags[1]}}</text></view>
