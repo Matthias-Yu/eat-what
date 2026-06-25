@@ -403,23 +403,6 @@ async function markOrderNoticesRead(openid) {
   return success({ updated: true })
 }
 
-async function transferPrimaryAdmin(openid) {
-  const { household } = await requireMembership(openid)
-  const members = Array.isArray(household.members) ? household.members : []
-  const primaryAdminOpenid = getPrimaryAdminOpenid(household)
-  if (openid !== primaryAdminOpenid) throw new Error('只有主管理员可以转交权限')
-  const nextAdminOpenid = members.find((member) => member !== openid)
-  if (!nextAdminOpenid) throw new Error('需要另一位成员加入后才能转交')
-  await db.collection('family_households').doc(household._id).update({
-    data: {
-      primaryAdminOpenid: nextAdminOpenid,
-      updatedAt: db.serverDate()
-    }
-  })
-  const updated = await getHousehold(household._id)
-  return success({ household: publicHousehold(updated, openid) })
-}
-
 async function listMembers(openid) {
   const { household } = await requireMembership(openid)
   const members = Array.isArray(household.members) ? household.members : []
@@ -534,7 +517,6 @@ exports.main = async (event) => {
       case 'migrateLocal': return migrateLocal(OPENID, event)
       case 'notifyOrderAdmin': return notifyOrderAdmin(OPENID, event)
       case 'markOrderNoticesRead': return markOrderNoticesRead(OPENID)
-      case 'transferPrimaryAdmin': return transferPrimaryAdmin(OPENID)
       case 'listMembers': return listMembers(OPENID)
       case 'setMemberNickname': return setMemberNickname(OPENID, event)
       case 'removeMember': return removeMember(OPENID, event)

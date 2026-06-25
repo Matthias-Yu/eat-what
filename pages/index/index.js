@@ -560,17 +560,7 @@ Page({
 
   openFamilyPanel() {
     this.setData({ showFamilyPanel: true, familyError: '', familyMode: 'choose' })
-    if (this.data.familyStatus === 'active') {
-      cloudService.call('getSession')
-        .then((session) => {
-          if (session.active) {
-            this.setData({
-              family: session.household
-            })
-          }
-        })
-        .catch((error) => console.warn('刷新家庭信息失败', error))
-    }
+    this.refreshFamilySession()
   },
 
   closeFamilyPanel() {
