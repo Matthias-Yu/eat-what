@@ -363,8 +363,7 @@
     <block wx:elif="{{familyMode === 'create'}}">
       <view class="family-cloud-icon">♡</view>
       <text class="family-title">创建家庭云空间</text>
-      <text class="family-copy">创建者将成为管理员，可邀请并管理成员</text>
-      <input class="invite-input create-code-input" password="{{true}}" value="{{familyCreateCode}}" bindinput="onFamilyCreateCodeInput" maxlength="10" placeholder="输入 10 位创建口令" placeholder-class="input-placeholder" />
+      <text class="family-copy">创建后你将成为管理员，并自动生成邀请码，发给家人即可加入</text>
       <input class="invite-input family-nickname-input" value="{{familyNickname}}" bindinput="onFamilyNicknameInput" maxlength="12" placeholder="你的昵称（选填）" placeholder-class="input-placeholder" />
       <text wx:if="{{familyError}}" class="family-error">{{familyError}}</text>
       <button class="family-primary-button" bindtap="createFamily" loading="{{familyBusy}}">{{familyBusy ? '正在创建…' : '创建并成为管理员'}}</button>

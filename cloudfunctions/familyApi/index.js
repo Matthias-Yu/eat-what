@@ -1,5 +1,4 @@
 const cloud = require('wx-server-sdk')
-const crypto = require('crypto')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -125,17 +124,6 @@ function publicHousehold(household, openid) {
   }
 }
 
-function verifyFamilyCode(familyCode) {
-  const expected = process.env.FAMILY_CREATE_SECRET_HASH || ''
-  if (!expected) throw new Error('家庭创建权限尚未配置')
-  const actual = crypto.createHash('sha256').update(String(familyCode || '').trim().toUpperCase()).digest('hex')
-  const actualBuffer = Buffer.from(actual)
-  const expectedBuffer = Buffer.from(expected)
-  if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) {
-    throw new Error('家庭创建口令不正确')
-  }
-}
-
 async function getSession(openid) {
   const user = await getUser(openid)
   if (!user || !user.householdId) return success({ active: false })
@@ -150,7 +138,6 @@ async function createHousehold(openid, event) {
     const existing = await getHousehold(currentUser.householdId)
     if (existing) return success({ household: publicHousehold(existing, openid) })
   }
-  verifyFamilyCode(event.createCode)
   const inviteCode = await uniqueInviteCode()
   const response = await db.collection('family_households').add({
     data: {

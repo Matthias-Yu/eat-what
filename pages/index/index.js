@@ -236,7 +236,6 @@ Page({
     family: null,
     showFamilyPanel: false,
     familyMode: 'choose',
-    familyCreateCode: '',
     familyInviteCode: '',
     familyNickname: '',
     familyBusy: false,
@@ -583,11 +582,6 @@ Page({
     this.setData({ familyMode: mode, familyError: '' })
   },
 
-  onFamilyCreateCodeInput(event) {
-    const value = event.detail.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)
-    this.setData({ familyCreateCode: value })
-  },
-
   onFamilyInviteCodeInput(event) {
     const value = event.detail.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
     this.setData({ familyInviteCode: value })
@@ -599,20 +593,14 @@ Page({
 
   async createFamily() {
     if (this.data.familyBusy) return
-    if (this.data.familyCreateCode.length !== 10) {
-      this.setData({ familyError: '请输入完整的 10 位创建口令' })
-      return
-    }
     this.setData({ familyBusy: true, familyError: '' })
     try {
       const result = await cloudService.call('createHousehold', {
-        createCode: this.data.familyCreateCode,
         nickname: this.data.familyNickname
       })
       this.setData({
         familyStatus: 'active',
         family: result.household,
-        familyCreateCode: '',
         familyNickname: ''
       })
       const data = await cloudService.call('migrateLocal', {
@@ -620,7 +608,6 @@ Page({
       })
       this.applyCloudData(data)
       this.startCloudPolling()
-      this.setData({ showFamilyPanel: false })
       wx.showToast({ title: '小家已创建', icon: 'success' })
     } catch (error) {
       this.setData({ familyError: error.message || '创建失败，请重试' })
