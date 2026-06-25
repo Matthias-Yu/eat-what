@@ -179,36 +179,7 @@ function getProfileStats(todos, orders) {
   }
 }
 
-function normalizeOrderNotice(item, index) {
-  const source = item && typeof item === 'object' && !Array.isArray(item) ? item : {}
-  const createdAt = Number(source.createdAt) || Date.now()
-  return {
-    id: String(source.id || `notice-${createdAt}-${index}`),
-    orderId: textSlice(source.orderId, 20),
-    summary: textSlice(source.summary, 80) || '有新的点餐订单',
-    remark: textSlice(source.remark, 40),
-    itemCount: Math.max(0, Number(source.itemCount) || 0),
-    createdAt,
-    createdAtText: textSlice(source.createdAtText, 30) || '刚刚',
-    read: !!source.read
-  }
-}
-
-function getUnreadOrderNoticeCount(notices) {
-  return (notices || []).filter((notice) => !notice.read).length
-}
-
-function getRoleManagerSummary(familyStatus, family, unreadCount) {
-  if (familyStatus === 'loading') return '正在连接'
-  if (familyStatus !== 'active' || !family) return '先连接'
-  const roleLabel = family.roleLabel || (family.role === 'primary' ? '主管理员' : '从管理员')
-  return unreadCount ? `${roleLabel} · ${unreadCount}条` : roleLabel
-}
-
-function getOrderSuccessCopy(order, family) {
-  if (family && family.canNotifyAdmin) {
-    return `订单 #${order.id} 已放进小家的厨房\n也会提醒主管理员来看一眼`
-  }
+function getOrderSuccessCopy(order) {
   return `订单 #${order.id} 已放进小家的厨房\n接下来只需要期待美味`
 }
 
@@ -267,10 +238,6 @@ Page({
     familyCreateCode: '',
     familyBusy: false,
     familyError: '',
-    showRoleManager: false,
-    orderNotices: [],
-    unreadOrderNoticeCount: 0,
-    roleManagerSummary: getRoleManagerSummary('loading', null, 0),
     wishes: [],
     wishStats: { total: 0, completed: 0, pending: 0 },
     showWishComposer: false,
@@ -295,7 +262,6 @@ Page({
     const cart = storage.read('cart', {})
     const orders = storage.read('orders', [])
     const savedWishes = storage.read('wishes', [])
-    const savedOrderNotices = storage.read('orderNotices', [])
     const savedCustomMenuItems = storage.read('customMenuItems', [])
     const customMenuItems = (Array.isArray(savedCustomMenuItems) ? savedCustomMenuItems : [])
       .map(normalizeCustomMenuItem)
@@ -303,8 +269,6 @@ Page({
     const allMenuItems = getAllMenuItems(customMenuItems)
     const todoView = getTodoView(savedTodos || DEFAULT_TODOS, this.data.todoFilter)
     const wishView = getWishView(Array.isArray(savedWishes) ? savedWishes : [])
-    const orderNotices = (Array.isArray(savedOrderNotices) ? savedOrderNotices : []).map(normalizeOrderNotice)
-    const unreadOrderNoticeCount = getUnreadOrderNoticeCount(orderNotices)
     const cartView = getCartView(cart, allMenuItems)
     this.allMenuItems = allMenuItems
     this.menuItemMap = getMenuItemMap(allMenuItems)
@@ -320,9 +284,6 @@ Page({
       todoStats: todoView.todoStats,
       wishes: wishView.wishes,
       wishStats: wishView.wishStats,
-      orderNotices,
-      unreadOrderNoticeCount,
-      roleManagerSummary: getRoleManagerSummary(this.data.familyStatus, this.data.family, unreadOrderNoticeCount),
       cart,
       cartItems: cartView.cartItems,
       cartCount: cartView.cartCount,
@@ -413,16 +374,14 @@ Page({
           familyStatus: 'none',
           family: null,
           showFamilyPanel: false,
-          familyError: '',
-          roleManagerSummary: getRoleManagerSummary('none', null, this.data.unreadOrderNoticeCount)
+          familyError: ''
         })
         return
       }
       this.setData({
         familyStatus: 'active',
         family: session.household,
-        familyError: '',
-        roleManagerSummary: getRoleManagerSummary('active', session.household, this.data.unreadOrderNoticeCount)
+        familyError: ''
       })
       await this.pullCloudData()
       this.startCloudPolling()
@@ -430,8 +389,7 @@ Page({
       console.warn('云端初始化失败', error)
       this.setData({
         familyStatus: 'offline',
-        familyError: error.message || '暂时无法连接云端',
-        roleManagerSummary: getRoleManagerSummary('offline', this.data.family, this.data.unreadOrderNoticeCount)
+        familyError: error.message || '暂时无法连接云端'
       })
     }
   },
@@ -451,7 +409,6 @@ Page({
     const todos = Array.isArray(data.todos) ? data.todos : []
     const orders = Array.isArray(data.orders) ? data.orders : []
     const wishes = Array.isArray(data.wishes) ? data.wishes : []
-    const orderNotices = Array.isArray(data.orderNotices) ? data.orderNotices.map(normalizeOrderNotice) : []
     const customMenuItems = Array.isArray(data.menus) ? data.menus.map(normalizeCustomMenuItem).slice(0, CUSTOM_MENU_LIMIT) : []
     const menuItemsForView = getAllMenuItems(customMenuItems)
     const cartView = getCartView(cart, menuItemsForView)
@@ -461,9 +418,7 @@ Page({
     const todosChanged = !isSameTodos(this.data.todos, todoView.todos)
     const ordersChanged = !isSameList(this.data.orders, orders)
     const wishesChanged = !isSameList(this.data.wishes, wishView.wishes)
-    const noticesChanged = !isSameList(this.data.orderNotices, orderNotices)
     const menusChanged = !isSameList(this.data.customMenuItems, customMenuItems)
-    const previousUnreadNoticeCount = this.data.unreadOrderNoticeCount
     const update = {}
 
     if (menusChanged) {
@@ -503,18 +458,6 @@ Page({
         wishes: wishView.wishes,
         wishStats: wishView.wishStats
       })
-    }
-    if (noticesChanged) {
-      const unreadOrderNoticeCount = getUnreadOrderNoticeCount(orderNotices)
-      storage.write('orderNotices', orderNotices)
-      Object.assign(update, {
-        orderNotices,
-        unreadOrderNoticeCount,
-        roleManagerSummary: getRoleManagerSummary(this.data.familyStatus, this.data.family, unreadOrderNoticeCount)
-      })
-      if (this.cloudDataReady && unreadOrderNoticeCount > previousUnreadNoticeCount && this.data.family && this.data.family.role === 'primary') {
-        wx.showToast({ title: '收到新的点餐通知', icon: 'none' })
-      }
     }
     if (todosChanged || ordersChanged) {
       update.profileStats = getProfileStats(todosChanged ? todoView.todos : this.data.todos, ordersChanged ? orders : this.data.orders)
@@ -620,8 +563,7 @@ Page({
         .then((session) => {
           if (session.active) {
             this.setData({
-              family: session.household,
-              roleManagerSummary: getRoleManagerSummary(this.data.familyStatus, session.household, this.data.unreadOrderNoticeCount)
+              family: session.household
             })
           }
         })
@@ -650,8 +592,7 @@ Page({
       this.setData({
         familyStatus: 'active',
         family: result.household,
-        familyCreateCode: '',
-        roleManagerSummary: getRoleManagerSummary('active', result.household, this.data.unreadOrderNoticeCount)
+        familyCreateCode: ''
       })
       if (result.created) {
         const data = await cloudService.call('migrateLocal', {
@@ -674,96 +615,9 @@ Page({
   retryCloud() {
     this.setData({
       familyStatus: 'loading',
-      familyError: '',
-      roleManagerSummary: getRoleManagerSummary('loading', this.data.family, this.data.unreadOrderNoticeCount)
+      familyError: ''
     })
     this.initializeCloud()
-  },
-
-  openRoleManager() {
-    this.setData({ showRoleManager: true })
-    if (this.data.familyStatus === 'active') {
-      cloudService.call('getSession')
-        .then((session) => {
-          if (!session.active) return
-          this.setData({
-            family: session.household,
-            roleManagerSummary: getRoleManagerSummary('active', session.household, this.data.unreadOrderNoticeCount)
-          })
-          this.pullCloudData()
-        })
-        .catch((error) => console.warn('刷新主从管理失败', error))
-    }
-  },
-
-  closeRoleManager() {
-    this.setData({ showRoleManager: false })
-  },
-
-  openFamilyFromRoleManager() {
-    this.setData({ showRoleManager: false })
-    this.openFamilyPanel()
-  },
-
-  markOrderNoticesRead() {
-    if (!this.data.unreadOrderNoticeCount) return
-    const orderNotices = this.data.orderNotices.map((notice) => Object.assign({}, notice, { read: true }))
-    this.setData({
-      orderNotices,
-      unreadOrderNoticeCount: 0,
-      roleManagerSummary: getRoleManagerSummary(this.data.familyStatus, this.data.family, 0)
-    })
-    storage.write('orderNotices', orderNotices)
-    cloudService.call('markOrderNoticesRead')
-      .catch((error) => {
-        console.warn('同步通知已读失败', error)
-        wx.showToast({ title: '已读状态稍后同步', icon: 'none' })
-      })
-  },
-
-  requestOrderNoticeSubscribe() {
-    const templateId = this.data.family && this.data.family.orderNoticeTemplateId
-    if (!templateId || !wx.requestSubscribeMessage) {
-      wx.showToast({ title: '暂未配置微信提醒', icon: 'none' })
-      return
-    }
-    wx.requestSubscribeMessage({
-      tmplIds: [templateId],
-      success: (result) => {
-        if (result[templateId] === 'accept') {
-          wx.showToast({ title: '已允许一次提醒', icon: 'success' })
-        } else {
-          wx.showToast({ title: '未开启微信提醒', icon: 'none' })
-        }
-      },
-      fail: () => {
-        wx.showToast({ title: '授权失败，请稍后再试', icon: 'none' })
-      }
-    })
-  },
-
-  transferPrimaryAdmin() {
-    if (!this.data.family || this.data.family.role !== 'primary') return
-    wx.showModal({
-      title: '转交主管理员？',
-      content: '转交后，对方会成为主管理员，并接收新的点餐通知。',
-      confirmText: '转交',
-      confirmColor: '#e75c48',
-      success: (result) => {
-        if (!result.confirm) return
-        cloudService.call('transferPrimaryAdmin')
-          .then((data) => {
-            this.setData({
-              family: data.household,
-              roleManagerSummary: getRoleManagerSummary('active', data.household, this.data.unreadOrderNoticeCount)
-            })
-            wx.showToast({ title: '已转交', icon: 'success' })
-          })
-          .catch((error) => {
-            wx.showToast({ title: error.message || '转交失败', icon: 'none' })
-          })
-      }
-    })
   },
 
   noop() {},
@@ -954,7 +808,6 @@ Page({
     storage.write('cart', {})
     this.syncCloudResource('orders', orders)
     this.syncCloudResource('cart', {})
-    this.notifyPrimaryAdmin(order)
     this.setData({
       orders,
       cart: {},
@@ -964,15 +817,9 @@ Page({
       orderRemark: '',
       showOrderSuccess: true,
       latestOrderId: order.id,
-      orderSuccessCopy: getOrderSuccessCopy(order, this.data.family),
+      orderSuccessCopy: getOrderSuccessCopy(order),
       profileStats: getProfileStats(this.data.todos, orders)
     })
-  },
-
-  notifyPrimaryAdmin(order) {
-    if (this.data.familyStatus !== 'active' || !this.data.family || !this.data.family.canNotifyAdmin) return
-    cloudService.call('notifyOrderAdmin', { order })
-      .catch((error) => console.warn('通知主管理员失败', error))
   },
 
   finishOrder() {
@@ -1302,9 +1149,6 @@ Page({
           todoStats: todoView.todoStats,
           wishes: wishView.wishes,
           wishStats: wishView.wishStats,
-          orderNotices: [],
-          unreadOrderNoticeCount: 0,
-          roleManagerSummary: getRoleManagerSummary(this.data.familyStatus, this.data.family, 0),
           profileStats: getProfileStats(todoView.todos, orders)
         })
         this.resolveMenuImages()
