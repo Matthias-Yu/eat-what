@@ -19,33 +19,101 @@ const TODO_CATEGORY_CLASS = {
   '工作': 'work'
 }
 
-const RECOMMENDED_ITEMS = menuItems.filter((item) => item.recommended).slice(0, 4)
-const MENU_ITEM_MAP = menuItems.reduce((map, item) => {
+const CUSTOM_MENU_LIMIT = 100
+const MENU_CATEGORIES = categories.filter((item) => item.id !== 'recommend')
+const MENU_CATEGORY_MAP = MENU_CATEGORIES.reduce((map, item) => {
   map[item.id] = item
   return map
 }, {})
-const MENU_SEARCH_INDEX = menuItems.map((item) => ({
-  item,
-  searchText: `${item.name}${item.description}${item.tags.join('')}`.toLowerCase()
-}))
+const CATEGORY_TONE = {
+  main: 'honey',
+  dish: 'sunset',
+  light: 'mint',
+  drink: 'blush'
+}
+const CATEGORY_EMOJI = {
+  main: '🍚',
+  dish: '🥢',
+  light: '🥗',
+  drink: '🥛'
+}
 
-function getFilteredMenuItems(category, keyword) {
+function getMenuItemMap(items) {
+  return items.reduce((map, item) => {
+    map[item.id] = item
+    return map
+  }, {})
+}
+
+function textSlice(value, length) {
+  return Array.from(String(value || '').trim()).slice(0, length).join('')
+}
+
+function parseMenuTags(value, category) {
+  const tags = String(value || '')
+    .split(/[,\s，、]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .slice(0, 2)
+  if (!tags.length) tags.push((MENU_CATEGORY_MAP[category] && MENU_CATEGORY_MAP[category].name) || '自定义')
+  if (tags.length === 1) tags.push('新菜')
+  return tags
+}
+
+function normalizeCustomMenuItem(item) {
+  const source = item && typeof item === 'object' && !Array.isArray(item) ? item : {}
+  const category = MENU_CATEGORY_MAP[source.category] ? source.category : 'dish'
+  const tags = Array.isArray(source.tags) ? source.tags.filter(Boolean).slice(0, 2) : parseMenuTags(source.tags, category)
+  return {
+    id: String(source.id || `custom-${Date.now()}`),
+    name: textSlice(source.name, 18) || '小家新菜',
+    description: textSlice(source.description, 28) || '小家新增菜单',
+    highlight: textSlice(source.highlight || tags[0], 12) || '小家新增',
+    category,
+    emoji: textSlice(source.emoji, 2) || CATEGORY_EMOJI[category],
+    tone: CATEGORY_TONE[category] || 'sunset',
+    tags: tags.length > 1 ? tags : parseMenuTags(tags[0], category),
+    recommended: !!source.recommended,
+    custom: true
+  }
+}
+
+function getAllMenuItems(customMenuItems) {
+  return menuItems.concat((customMenuItems || []).map(normalizeCustomMenuItem))
+}
+
+function getRecommendedMenuItems(items) {
+  return items.filter((item) => item.recommended).slice(0, 4)
+}
+
+function getFilteredMenuItems(items, category, keyword) {
   const normalizedKeyword = String(keyword || '').toLowerCase()
-  return MENU_SEARCH_INDEX
-    .filter(({ item, searchText }) => {
+  return items
+    .filter((item) => {
       const categoryMatched = category === 'recommend' ? item.recommended : item.category === category
+      const searchText = `${item.name}${item.description}${item.tags.join('')}`.toLowerCase()
       const keywordMatched = !normalizedKeyword || searchText.includes(normalizedKeyword)
       return categoryMatched && keywordMatched
     })
-    .map(({ item }) => item)
 }
 
-function getCartView(cart) {
-  const cartItems = menuItems
+function getCartView(cart, items) {
+  const cartItems = items
     .filter((item) => cart[item.id])
     .map((item) => Object.assign({}, item, { quantity: cart[item.id] }))
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
   return { cartItems, cartCount }
+}
+
+function createMenuDraft() {
+  return {
+    name: '',
+    description: '',
+    emoji: '',
+    tags: '',
+    category: 'dish',
+    recommended: false
+  }
 }
 
 function getTodoView(todos, filter) {
@@ -106,9 +174,11 @@ Page({
     dateLabel: '',
     greeting: { text: '你好', icon: '☀️' },
     categories,
+    menuCategories: MENU_CATEGORIES,
     menuItems,
-    recommendedItems: RECOMMENDED_ITEMS,
-    filteredItems: RECOMMENDED_ITEMS,
+    customMenuItems: [],
+    recommendedItems: getRecommendedMenuItems(menuItems),
+    filteredItems: getRecommendedMenuItems(menuItems),
     currentCategory: 'recommend',
     searchKeyword: '',
     cart: {},
@@ -138,18 +208,30 @@ Page({
     todoDraft: { title: '', note: '', category: '生活', due: '今天' },
     todoCategories: ['生活', '家务', '采购', '工作'],
     dueOptions: ['今天', '明天', '本周'],
-    profileStats: { orders: 0, todos: 0, pending: 0 }
+    profileStats: { orders: 0, todos: 0, pending: 0 },
+    showMenuManager: false,
+    menuDraft: createMenuDraft()
   },
 
   onLoad() {
     const savedTodos = storage.read('todos', null)
     const cart = storage.read('cart', {})
     const orders = storage.read('orders', [])
+    const savedCustomMenuItems = storage.read('customMenuItems', [])
+    const customMenuItems = (Array.isArray(savedCustomMenuItems) ? savedCustomMenuItems : [])
+      .map(normalizeCustomMenuItem)
+      .slice(0, CUSTOM_MENU_LIMIT)
+    const allMenuItems = getAllMenuItems(customMenuItems)
     const todoView = getTodoView(savedTodos || DEFAULT_TODOS, this.data.todoFilter)
-    const cartView = getCartView(cart)
+    const cartView = getCartView(cart, allMenuItems)
+    this.menuItemMap = getMenuItemMap(allMenuItems)
     this.setData({
       dateLabel: dateUtil.todayLabel(),
       greeting: dateUtil.greeting(),
+      menuItems: allMenuItems,
+      customMenuItems,
+      recommendedItems: getRecommendedMenuItems(allMenuItems),
+      filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
       todos: todoView.todos,
       visibleTodos: todoView.visibleTodos,
       homeTodos: todoView.homeTodos,
@@ -230,14 +312,27 @@ Page({
     const cart = data.cart || {}
     const todos = Array.isArray(data.todos) ? data.todos : []
     const orders = Array.isArray(data.orders) ? data.orders : []
-    const cartView = getCartView(cart)
+    const customMenuItems = Array.isArray(data.menus) ? data.menus.map(normalizeCustomMenuItem).slice(0, CUSTOM_MENU_LIMIT) : []
+    const menuItemsForView = getAllMenuItems(customMenuItems)
+    const cartView = getCartView(cart, menuItemsForView)
     const todoView = getTodoView(todos, this.data.todoFilter)
     const cartChanged = !isSameCart(this.data.cart, cart)
     const todosChanged = !isSameTodos(this.data.todos, todoView.todos)
     const ordersChanged = !isSameList(this.data.orders, orders)
+    const menusChanged = !isSameList(this.data.customMenuItems, customMenuItems)
     const update = {}
 
-    if (cartChanged) {
+    if (menusChanged) {
+      this.menuItemMap = getMenuItemMap(menuItemsForView)
+      storage.write('customMenuItems', customMenuItems)
+      Object.assign(update, {
+        menuItems: menuItemsForView,
+        customMenuItems,
+        recommendedItems: getRecommendedMenuItems(menuItemsForView),
+        filteredItems: getFilteredMenuItems(menuItemsForView, this.data.currentCategory, this.data.searchKeyword)
+      })
+    }
+    if (cartChanged || menusChanged) {
       storage.write('cart', cart)
       Object.assign(update, {
         cart,
@@ -262,6 +357,27 @@ Page({
       update.profileStats = getProfileStats(todosChanged ? todoView.todos : this.data.todos, ordersChanged ? orders : this.data.orders)
     }
     if (Object.keys(update).length) this.setData(update)
+  },
+
+  commitCustomMenuItems(customMenuItems, options = {}) {
+    const normalizedMenuItems = customMenuItems.map(normalizeCustomMenuItem).slice(0, CUSTOM_MENU_LIMIT)
+    const allMenuItems = getAllMenuItems(normalizedMenuItems)
+    const cart = options.cart || this.data.cart
+    const cartView = getCartView(cart, allMenuItems)
+    this.menuItemMap = getMenuItemMap(allMenuItems)
+    const update = Object.assign({
+      menuItems: allMenuItems,
+      customMenuItems: normalizedMenuItems,
+      recommendedItems: getRecommendedMenuItems(allMenuItems),
+      filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
+      cartItems: cartView.cartItems,
+      cartCount: cartView.cartCount
+    }, options.extraData || {})
+    if (options.cart) update.cart = cart
+    this.setData(update)
+    if (options.persist !== false) storage.write('customMenuItems', normalizedMenuItems)
+    if (options.sync) this.syncCloudResource('menus', normalizedMenuItems, { debounce: true })
+    return normalizedMenuItems
   },
 
   hasQueuedCloudSync() {
@@ -363,7 +479,7 @@ Page({
       this.setData({ familyStatus: 'active', family: result.household, familyCreateCode: '' })
       if (result.created) {
         const data = await cloudService.call('migrateLocal', {
-          data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, places: [] }
+          data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, menus: this.data.customMenuItems, places: [] }
         })
         this.applyCloudData(data)
       } else {
@@ -420,7 +536,7 @@ Page({
     this.setData({ searchKeyword })
     if (this.searchTimer) clearTimeout(this.searchTimer)
     this.searchTimer = setTimeout(() => {
-      this.setData({ filteredItems: getFilteredMenuItems(this.data.currentCategory, this.data.searchKeyword) })
+      this.setData({ filteredItems: getFilteredMenuItems(this.data.menuItems, this.data.currentCategory, this.data.searchKeyword) })
       this.searchTimer = null
     }, SEARCH_DEBOUNCE_MS)
   },
@@ -435,13 +551,13 @@ Page({
     this.setData(Object.assign({
       currentCategory,
       searchKeyword,
-      filteredItems: getFilteredMenuItems(currentCategory, searchKeyword)
+      filteredItems: getFilteredMenuItems(this.data.menuItems, currentCategory, searchKeyword)
     }, extraData))
   },
 
   addToCart(event) {
     const id = event.currentTarget.dataset.id
-    const menuItem = MENU_ITEM_MAP[id]
+    const menuItem = (this.menuItemMap && this.menuItemMap[id]) || this.data.menuItems.find((item) => item.id === id)
     if (menuItem) this.playAddToCartAnimation(event, menuItem)
     const cart = Object.assign({}, this.data.cart)
     cart[id] = (cart[id] || 0) + 1
@@ -527,13 +643,13 @@ Page({
   },
 
   updateCart(cart, extraData = {}) {
-    const cartView = getCartView(cart)
+    const cartView = getCartView(cart, this.data.menuItems)
     this.setData(Object.assign({ cart }, cartView, extraData))
     return cartView
   },
 
   refreshCart() {
-    const cartView = getCartView(this.data.cart)
+    const cartView = getCartView(this.data.cart, this.data.menuItems)
     this.setData(cartView)
     return cartView
   },
@@ -566,7 +682,7 @@ Page({
       status: '等你开饭'
     }
     const orders = [order].concat(this.data.orders).slice(0, 20)
-    const emptyCartView = getCartView({})
+    const emptyCartView = getCartView({}, this.data.menuItems)
     storage.write('orders', orders)
     storage.write('cart', {})
     this.syncCloudResource('orders', orders)
@@ -597,6 +713,86 @@ Page({
 
   closeOrderDetail() {
     this.setData({ showOrderDetail: false, selectedOrder: null })
+  },
+
+  openMenuManager() {
+    this.setData({ showMenuManager: true, menuDraft: createMenuDraft() })
+  },
+
+  closeMenuManager() {
+    this.setData({ showMenuManager: false })
+  },
+
+  onMenuDraftInput(event) {
+    const field = event.currentTarget.dataset.field
+    if (!field) return
+    this.setData({ [`menuDraft.${field}`]: event.detail.value })
+  },
+
+  selectMenuCategory(event) {
+    const category = event.currentTarget.dataset.value
+    if (!MENU_CATEGORY_MAP[category]) return
+    this.setData({ 'menuDraft.category': category })
+  },
+
+  toggleMenuRecommended() {
+    this.setData({ 'menuDraft.recommended': !this.data.menuDraft.recommended })
+  },
+
+  saveMenuItem() {
+    const draft = this.data.menuDraft
+    const name = textSlice(draft.name, 18)
+    if (!name) {
+      wx.showToast({ title: '写下菜名吧', icon: 'none' })
+      return
+    }
+    if (this.data.menuItems.some((item) => item.name === name)) {
+      wx.showToast({ title: '菜单里已经有这道啦', icon: 'none' })
+      return
+    }
+    const category = MENU_CATEGORY_MAP[draft.category] ? draft.category : 'dish'
+    const tags = parseMenuTags(draft.tags, category)
+    const menuItem = normalizeCustomMenuItem({
+      id: `custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      name,
+      description: textSlice(draft.description, 28) || `${tags[0]} · 小家新增`,
+      highlight: tags[0],
+      category,
+      emoji: textSlice(draft.emoji, 2) || CATEGORY_EMOJI[category],
+      tags,
+      recommended: draft.recommended
+    })
+    this.commitCustomMenuItems([menuItem].concat(this.data.customMenuItems), {
+      sync: true,
+      extraData: { menuDraft: createMenuDraft() }
+    })
+    wx.showToast({ title: '已加入菜单', icon: 'success' })
+  },
+
+  deleteCustomMenuItem(event) {
+    const id = String(event.currentTarget.dataset.id || '')
+    const menuItem = this.data.customMenuItems.find((item) => item.id === id)
+    if (!menuItem) return
+    wx.showModal({
+      title: '删除这道菜？',
+      content: `“${menuItem.name}”会从自定义菜单里移除。`,
+      confirmText: '删除',
+      confirmColor: '#e75c48',
+      success: (result) => {
+        if (!result.confirm) return
+        const cart = Object.assign({}, this.data.cart)
+        const hadCartItem = !!cart[id]
+        if (hadCartItem) {
+          delete cart[id]
+          storage.write('cart', cart)
+          this.syncCloudResource('cart', cart, { debounce: true })
+        }
+        this.commitCustomMenuItems(this.data.customMenuItems.filter((item) => item.id !== id), {
+          sync: true,
+          cart: hadCartItem ? cart : undefined
+        })
+      }
+    })
   },
 
   commitTodos(todos, options = {}) {
@@ -737,11 +933,18 @@ Page({
         if (!result.confirm) return
         const cart = {}
         const orders = []
-        const cartView = getCartView(cart)
+        const customMenuItems = []
+        const allMenuItems = getAllMenuItems(customMenuItems)
+        const cartView = getCartView(cart, allMenuItems)
         const todoView = getTodoView(DEFAULT_TODOS, this.data.todoFilter)
+        this.menuItemMap = getMenuItemMap(allMenuItems)
         storage.clear()
         this.setData({
           activeTab: 'home',
+          menuItems: allMenuItems,
+          customMenuItems,
+          recommendedItems: getRecommendedMenuItems(allMenuItems),
+          filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
           cart,
           cartItems: cartView.cartItems,
           cartCount: cartView.cartCount,
@@ -755,6 +958,7 @@ Page({
         this.syncCloudResource('cart', cart)
         this.syncCloudResource('orders', orders)
         this.syncCloudResource('todos', todoView.todos)
+        this.syncCloudResource('menus', customMenuItems)
         wx.showToast({ title: '已清空', icon: 'success' })
       }
     })

@@ -10,7 +10,15 @@ let collectionsReady = false
 const RESOURCE_LIMITS = {
   todos: 500,
   orders: 100,
+  menus: 100,
   places: 500
+}
+const MENU_CATEGORIES = ['main', 'dish', 'light', 'drink']
+const CATEGORY_TONE = {
+  main: 'honey',
+  dish: 'sunset',
+  light: 'mint',
+  drink: 'blush'
 }
 
 function success(data) {
@@ -83,6 +91,7 @@ function emptySharedData(householdId) {
     cart: {},
     todos: [],
     orders: [],
+    menus: [],
     places: [],
     updatedAt: db.serverDate()
   }
@@ -240,9 +249,36 @@ async function getSharedData(openid) {
     cart: data.cart || {},
     todos: Array.isArray(data.todos) ? data.todos : [],
     orders: Array.isArray(data.orders) ? data.orders : [],
+    menus: Array.isArray(data.menus) ? data.menus : [],
     places: Array.isArray(data.places) ? data.places : [],
     updatedAt: data.updatedAt || null
   })
+}
+
+function textSlice(value, length) {
+  return Array.from(String(value || '').trim()).slice(0, length).join('')
+}
+
+function sanitizeMenuItem(item, index) {
+  const source = item && typeof item === 'object' && !Array.isArray(item) ? item : {}
+  const category = MENU_CATEGORIES.includes(source.category) ? source.category : 'dish'
+  const tags = Array.isArray(source.tags)
+    ? source.tags.map((tag) => textSlice(tag, 8)).filter(Boolean).slice(0, 2)
+    : []
+  if (!tags.length) tags.push('自定义')
+  if (tags.length === 1) tags.push('新菜')
+  return {
+    id: textSlice(source.id, 40) || `custom-${Date.now()}-${index}`,
+    name: textSlice(source.name, 18) || '小家新菜',
+    description: textSlice(source.description, 28) || '小家新增菜单',
+    highlight: textSlice(source.highlight || tags[0], 12) || '小家新增',
+    category,
+    emoji: textSlice(source.emoji, 2) || '🍽',
+    tone: CATEGORY_TONE[category] || 'sunset',
+    tags,
+    recommended: !!source.recommended,
+    custom: true
+  }
 }
 
 function sanitizeResource(resource, value) {
@@ -252,6 +288,7 @@ function sanitizeResource(resource, value) {
   }
   if (!Object.prototype.hasOwnProperty.call(RESOURCE_LIMITS, resource)) throw new Error('不支持的数据类型')
   if (!Array.isArray(value)) throw new Error('数据格式不正确')
+  if (resource === 'menus') return value.slice(0, RESOURCE_LIMITS.menus).map(sanitizeMenuItem)
   return value.slice(0, RESOURCE_LIMITS[resource])
 }
 
@@ -277,6 +314,7 @@ async function migrateLocal(openid, event) {
   if (!Object.keys(current.cart || {}).length) update.cart = sanitizeResource('cart', local.cart || {})
   if (!(current.todos || []).length) update.todos = sanitizeResource('todos', local.todos || [])
   if (!(current.orders || []).length) update.orders = sanitizeResource('orders', local.orders || [])
+  if (!(current.menus || []).length) update.menus = sanitizeResource('menus', local.menus || [])
   if (!(current.places || []).length) update.places = sanitizeResource('places', local.places || [])
   await db.collection('family_data').doc(household._id).update({ data: update })
   return getSharedData(openid)

@@ -1,7 +1,8 @@
 const KEYS = {
   cart: 'home_menu_cart_v1',
   todos: 'home_menu_todos_v1',
-  orders: 'home_menu_orders_v1'
+  orders: 'home_menu_orders_v1',
+  customMenuItems: 'home_menu_custom_items_v1'
 }
 
 function read(key, fallback) {
