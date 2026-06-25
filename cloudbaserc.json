@@ -10,7 +10,7 @@
       "timeout": 15,
       "installDependency": true,
       "envVariables": {
-        "FAMILY_CREATE_SECRET_HASH": "332d941a550ac473d1d7c0322cb446258f4cbdca2ea1fd8538336d3e56c2f213"
+        "FAMILY_CREATE_SECRET_HASH": "f88bac075d8b0127d412120ec7f7142fa39b545b143ffd7120c7c15333a1454b"
       }
     }
   ]
