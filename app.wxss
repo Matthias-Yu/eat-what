@@ -1,14 +1,128 @@
 page {
   color: #382d29;
   background: #fffaf5;
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue",
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-button { box-sizing: border-box; }
-button::after { border: 0; }
+button {
+  box-sizing: border-box;
+}
+button::after {
+  border: 0;
+}
 
-.tap-scale { transition: transform .18s ease, opacity .18s ease; }
-.tap-scale--active { transform: scale(.96); opacity: .88; }
+.tap-scale {
+  transition:
+    transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.2s ease;
+}
+.tap-scale--active {
+  transform: scale(0.94);
+  opacity: 0.9;
+}
+
+/* 苹果式分层错落入场动画：子元素依次上浮淡入 */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(28rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stagger > view,
+.stagger > scroll-view,
+.stagger > button {
+  opacity: 0;
+  animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger > view:nth-child(1),
+.stagger > scroll-view:nth-child(1),
+.stagger > button:nth-child(1) {
+  animation-delay: 0.04s;
+}
+.stagger > view:nth-child(2),
+.stagger > scroll-view:nth-child(2),
+.stagger > button:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.stagger > view:nth-child(3),
+.stagger > scroll-view:nth-child(3),
+.stagger > button:nth-child(3) {
+  animation-delay: 0.16s;
+}
+.stagger > view:nth-child(4),
+.stagger > scroll-view:nth-child(4),
+.stagger > button:nth-child(4) {
+  animation-delay: 0.22s;
+}
+.stagger > view:nth-child(5),
+.stagger > scroll-view:nth-child(5),
+.stagger > button:nth-child(5) {
+  animation-delay: 0.28s;
+}
+.stagger > view:nth-child(6),
+.stagger > scroll-view:nth-child(6),
+.stagger > button:nth-child(6) {
+  animation-delay: 0.34s;
+}
+.stagger > view:nth-child(7),
+.stagger > scroll-view:nth-child(7),
+.stagger > button:nth-child(7) {
+  animation-delay: 0.4s;
+}
+.stagger > view:nth-child(8),
+.stagger > scroll-view:nth-child(8),
+.stagger > button:nth-child(8) {
+  animation-delay: 0.46s;
+}
+.stagger > view:nth-child(9),
+.stagger > scroll-view:nth-child(9),
+.stagger > button:nth-child(9) {
+  animation-delay: 0.52s;
+}
+
+/* 点餐网格：每张卡片按行错落浮入（两列，循环延迟避免菜多时过久） */
+.stagger > view.food-stagger {
+  opacity: 1;
+  animation: none;
+}
+.food-stagger > view {
+  opacity: 0;
+  animation: rise-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.food-stagger > view:nth-child(1),
+.food-stagger > view:nth-child(2) {
+  animation-delay: 0.05s;
+}
+.food-stagger > view:nth-child(3),
+.food-stagger > view:nth-child(4) {
+  animation-delay: 0.12s;
+}
+.food-stagger > view:nth-child(5),
+.food-stagger > view:nth-child(6) {
+  animation-delay: 0.19s;
+}
+.food-stagger > view:nth-child(7),
+.food-stagger > view:nth-child(8) {
+  animation-delay: 0.26s;
+}
+.food-stagger > view:nth-child(9),
+.food-stagger > view:nth-child(10) {
+  animation-delay: 0.33s;
+}
+.food-stagger > view:nth-child(11),
+.food-stagger > view:nth-child(12) {
+  animation-delay: 0.4s;
+}
+.food-stagger > view:nth-child(n + 13) {
+  animation-delay: 0.46s;
+}

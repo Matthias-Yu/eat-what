@@ -2,7 +2,7 @@
 
 <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}">
   <!-- 首页 -->
-  <view wx:if="{{activeTab === 'home'}}" class="page home-page">
+  <view wx:if="{{activeTab === 'home'}}" class="page home-page stagger">
     <view class="home-top">
       <view>
         <view class="eyebrow"><text>{{greeting.icon}}</text><text>{{greeting.text}}，宝贝</text></view>
@@ -102,7 +102,7 @@
   </view>
 
   <!-- 点餐 -->
-  <view wx:elif="{{activeTab === 'menu'}}" class="page menu-page">
+  <view wx:elif="{{activeTab === 'menu'}}" class="page menu-page stagger">
     <view class="page-header">
       <view><text class="page-kicker">OUR KITCHEN</text><text class="page-title">今天想吃什么？</text></view>
       <view class="header-cart" bindtap="openCart" hover-class="tap-scale--active">
@@ -128,8 +128,8 @@
       </view>
     </scroll-view>
 
-    <view wx:if="{{filteredItems.length}}" class="food-grid">
-      <view wx:for="{{filteredItems}}" wx:key="id" id="dish-card-{{item.id}}" class="food-card">
+    <view wx:if="{{filteredItems.length}}" class="food-grid food-stagger">
+      <view wx:for="{{filteredItems}}" wx:key="viewKey" id="dish-card-{{item.id}}" class="food-card">
         <view class="food-art tone-{{item.tone}}">
           <view class="food-art-glow"></view>
           <image wx:if="{{item.image}}" class="food-image" src="{{item.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
@@ -153,7 +153,7 @@
   </view>
 
   <!-- 心愿单 -->
-  <view wx:elif="{{activeTab === 'wishlist'}}" class="page wishlist-page">
+  <view wx:elif="{{activeTab === 'wishlist'}}" class="page wishlist-page stagger">
     <view class="wishlist-hero-card">
       <view class="wishlist-hero-copy">
         <text class="page-kicker">WISH MAP</text>
@@ -203,7 +203,7 @@
   </view>
 
   <!-- 待办 -->
-  <view wx:elif="{{activeTab === 'todo'}}" class="page todo-page">
+  <view wx:elif="{{activeTab === 'todo'}}" class="page todo-page stagger">
     <view class="page-header todo-page-header">
       <view><text class="page-kicker">LITTLE THINGS</text><text class="page-title">生活待办</text></view>
       <view class="todo-date-icon">{{todoStats.percent}}<text>%</text></view>
@@ -254,7 +254,7 @@
   </view>
 
   <!-- 我的 -->
-  <view wx:else class="page profile-page">
+  <view wx:else class="page profile-page stagger">
     <view class="profile-hero">
       <view class="profile-bubble bubble-one">♡</view>
       <view class="profile-bubble bubble-two">✦</view>

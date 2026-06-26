@@ -97,6 +97,8 @@ function getRecommendedMenuItems(items) {
 
 function getFilteredMenuItems(items, category, keyword) {
   const normalizedKeyword = String(keyword || '').toLowerCase()
+  // viewKey 带上当前分类与搜索词，切换筛选时让卡片视为新节点重建，从而重新触发入场动画
+  const viewTag = `${category}|${normalizedKeyword}`
   return items
     .filter((item) => {
       const categoryMatched = category === 'recommend' ? item.recommended : item.category === category
@@ -105,6 +107,7 @@ function getFilteredMenuItems(items, category, keyword) {
       const searchText = item.searchText || `${item.name}${item.description}${item.tags.join('')}`.toLowerCase()
       return searchText.includes(normalizedKeyword)
     })
+    .map((item) => Object.assign({}, item, { viewKey: `${item.id}-${viewTag}` }))
 }
 
 function getCartView(cart, items) {
