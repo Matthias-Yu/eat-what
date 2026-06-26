@@ -309,10 +309,10 @@
 
     <view class="profile-section-title">最近订单</view>
     <view wx:if="{{orders.length}}" class="order-list">
-      <view wx:for="{{orders}}" wx:key="id" class="order-card" data-id="{{item.id}}" bindtap="openOrderDetail" hover-class="order-card--pressed">
+      <view wx:for="{{ordersView}}" wx:key="id" class="order-card" data-id="{{item.id}}" bindtap="openOrderDetail" hover-class="order-card--pressed">
         <view class="order-icon">
-          <image wx:if="{{item.items[0].image}}" class="small-food-image" src="{{item.items[0].image}}" mode="aspectFit"></image>
-          <text wx:else>{{item.items[0].emoji}}</text>
+          <image wx:if="{{item.firstItem.image}}" class="small-food-image" src="{{item.firstItem.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
+          <text wx:else>{{item.firstItem.emoji}}</text>
         </view>
         <view class="order-copy"><text class="order-title">{{item.itemSummary}}</text><text class="order-time">{{item.createdAt}} · 订单 #{{item.id}}</text></view>
         <view class="order-side"><text class="order-status">{{item.status}}</text><text class="order-arrow">›</text></view>
@@ -436,10 +436,10 @@
     <scroll-view class="cart-list" scroll-y show-scrollbar="{{false}}">
       <view wx:for="{{cartItems}}" wx:key="id" class="cart-item">
         <view class="cart-item-art tone-{{item.tone}}">
-          <image wx:if="{{item.image}}" class="small-food-image" src="{{item.image}}" mode="aspectFit"></image>
+          <image wx:if="{{item.image}}" class="small-food-image" src="{{item.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
           <text wx:else>{{item.emoji}}</text>
         </view>
-        <view class="cart-item-copy"><text>{{item.name}}</text><text>{{item.tags[0]}} · {{item.tags[1]}}</text></view>
+        <view class="cart-item-copy"><text>{{item.name}}</text><text>{{item.tagSummary}}</text></view>
         <view class="quantity-control">
           <text data-id="{{item.id}}" data-delta="-1" bindtap="changeCartQuantity">−</text>
           <text>{{item.quantity}}</text>
@@ -467,7 +467,7 @@
     <view class="order-detail-list">
       <view wx:for="{{selectedOrder.items}}" wx:key="id" class="order-detail-item">
         <view class="order-detail-food">
-          <image wx:if="{{item.image}}" class="small-food-image" src="{{item.image}}" mode="aspectFit"></image>
+          <image wx:if="{{item.image}}" class="small-food-image" src="{{item.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
           <text wx:else>{{item.emoji}}</text>
         </view>
         <text class="order-detail-name">{{item.name}}</text>
@@ -520,7 +520,7 @@
             <image wx:if="{{item.image}}" class="managed-food-image" src="{{item.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
             <text wx:else>{{item.emoji}}</text>
           </view>
-          <view class="managed-menu-copy"><text>{{item.name}}</text><text>{{item.tags[0]}} · {{item.tags[1]}}</text></view>
+          <view class="managed-menu-copy"><text>{{item.name}}</text><text>{{item.tagSummary}}</text></view>
           <text wx:if="{{item.recommended}}" class="managed-menu-mark">推荐</text>
           <view class="managed-menu-actions">
             <text class="managed-menu-action" data-id="{{item.id}}" catchtap="editMenuItem">编辑</text>

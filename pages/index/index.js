@@ -20,6 +20,9 @@ const TODO_CATEGORY_CLASS = {
 }
 
 const CUSTOM_MENU_LIMIT = 100
+const MESSAGES_LIMIT = 200
+// 云存储临时链接约 2 小时过期，留出裕量按 90 分钟刷新
+const IMAGE_URL_TTL_MS = 90 * 60 * 1000
 const MENU_CATEGORIES = categories.filter((item) => item.id !== 'recommend')
 const MENU_CATEGORY_MAP = MENU_CATEGORIES.reduce((map, item) => {
   map[item.id] = item
@@ -100,6 +103,7 @@ function normalizeMessages(messages) {
       createdAt: Number(item && item.createdAt) || Date.now()
     }))
     .filter((item) => item.text)
+    .slice(0, MESSAGES_LIMIT)
 }
 
 function getMessagesView(messages) {
@@ -144,16 +148,41 @@ function normalizeCustomMenuItem(item) {
   }
 }
 
-function withSearchText(item) {
-  return item.searchText ? item : Object.assign({}, item, {
-    searchText: `${item.name}${item.description}${(item.tags || []).join('')}`.toLowerCase()
-  })
+function decorateMenuItem(item) {
+  const patch = {}
+  if (!item.searchText) {
+    patch.searchText = `${item.name}${item.description}${(item.tags || []).join('')}`.toLowerCase()
+  }
+  if (!item.tagSummary) {
+    patch.tagSummary = (item.tags || []).filter(Boolean).join(' · ')
+  }
+  return Object.keys(patch).length ? Object.assign({}, item, patch) : item
 }
 
+// 内置菜单的 searchText/tagSummary 只需计算一次，后续复用
+const DECORATED_MENU_ITEMS = menuItems.map(decorateMenuItem)
+
 function getAllMenuItems(customMenuItems) {
-  return menuItems
-    .concat((customMenuItems || []).map(normalizeCustomMenuItem))
-    .map(withSearchText)
+  return DECORATED_MENU_ITEMS
+    .concat((customMenuItems || []).map(normalizeCustomMenuItem).map(decorateMenuItem))
+}
+
+// 用 fileID→URL 缓存把 cloud:// 图片替换为可直接加载的 https 临时链接。
+// 无任何替换时返回原引用，便于上层据此跳过多余 setData。
+function applyImageCache(items, cache) {
+  if (!cache || !items) return items
+  let changed = false
+  const mapped = items.map((item) => {
+    if (item && typeof item.image === 'string' && item.image.indexOf('cloud://') === 0) {
+      const entry = cache[item.image]
+      if (entry && entry.url) {
+        changed = true
+        return Object.assign({}, item, { image: entry.url })
+      }
+    }
+    return item
+  })
+  return changed ? mapped : items
 }
 
 function getRecommendedMenuItems(items) {
@@ -247,6 +276,13 @@ function getProfileStats(todos, orders) {
   }
 }
 
+// 为订单预计算首项，避免模板里 item.items[0] 在空订单时渲染 undefined
+function getOrdersView(orders) {
+  return (Array.isArray(orders) ? orders : []).map((order) => Object.assign({}, order, {
+    firstItem: (order.items && order.items[0]) || {}
+  }))
+}
+
 function getOrderSuccessCopy(order) {
   return `订单 #${order.id} 已放进小家的厨房\n接下来只需要期待美味`
 }
@@ -296,6 +332,7 @@ Page({
     showCart: false,
     orderRemark: '',
     orders: [],
+    ordersView: [],
     selectedOrder: null,
     showOrderDetail: false,
     showOrderSuccess: false,
@@ -375,6 +412,7 @@ Page({
       cartItems: cartView.cartItems,
       cartCount: cartView.cartCount,
       orders,
+      ordersView: getOrdersView(orders),
       profileStats: getProfileStats(todoView.todos, orders),
       todayDate: todayDateString(),
       anniversary,
@@ -387,39 +425,58 @@ Page({
     this.resolveMenuImages()
   },
 
-  // 将菜品图片的 cloud:// fileID 批量换成 https 临时链接，避免 <image> 直接加载 cloud:// 时报 500
+  // 将菜品图片的 cloud:// fileID 换成 https 临时链接，避免 <image> 直接加载 cloud:// 时报 500。
+  // 借助 this.imageUrlCache 仅解析缺失/过期项，并用在途标志避免轮询与多入口并发重复请求。
   async resolveMenuImages() {
     if (!wx.cloud) return
-    const fileList = []
+    if (!this.imageUrlCache) this.imageUrlCache = {}
+    const cache = this.imageUrlCache
+    const now = Date.now()
+
+    // 先用现有缓存即时回填，命中即可避免重复网络请求
+    this.applyResolvedImages()
+
+    const pending = new Set()
     const collect = (items) => {
       (items || []).forEach((item) => {
         if (item && typeof item.image === 'string' && item.image.indexOf('cloud://') === 0) {
-          fileList.push(item.image)
+          const entry = cache[item.image]
+          if (!entry || entry.expireAt <= now) pending.add(item.image)
         }
       })
     }
     collect(this.allMenuItems)
-    const uniqueFileIds = [...new Set(fileList)]
-    if (!uniqueFileIds.length) return
+    if (!pending.size || this.imageResolving) return
+
+    this.imageResolving = true
     try {
-      const res = await wx.cloud.getTempFileURL({ fileList: uniqueFileIds })
-      const urlMap = {}
+      const res = await wx.cloud.getTempFileURL({ fileList: [...pending] })
+      const expireAt = Date.now() + IMAGE_URL_TTL_MS
       ;(res.fileList || []).forEach((f) => {
-        if (f.fileID && f.tempFileURL) urlMap[f.fileID] = f.tempFileURL
+        if (f.fileID && f.tempFileURL) cache[f.fileID] = { url: f.tempFileURL, expireAt }
       })
-      const mapImage = (items) => (items || []).map((item) => (
-        item && urlMap[item.image] ? { ...item, image: urlMap[item.image] } : item
-      ))
-      this.allMenuItems = mapImage(this.allMenuItems)
-      this.menuItemMap = getMenuItemMap(this.allMenuItems)
-      this.setData({
-        recommendedItems: mapImage(this.data.recommendedItems),
-        filteredItems: mapImage(this.data.filteredItems),
-        cartItems: mapImage(this.data.cartItems)
-      })
+      this.applyResolvedImages()
     } catch (error) {
       console.warn('菜品图片地址解析失败', error)
+    } finally {
+      this.imageResolving = false
     }
+  },
+
+  // 把缓存中的链接套用到内存数据与视图字段，仅在发生替换时才 setData
+  applyResolvedImages() {
+    const cache = this.imageUrlCache
+    if (!cache) return
+    this.allMenuItems = applyImageCache(this.allMenuItems, cache)
+    this.menuItemMap = getMenuItemMap(this.allMenuItems)
+    const update = {}
+    const recommendedItems = applyImageCache(this.data.recommendedItems, cache)
+    if (recommendedItems !== this.data.recommendedItems) update.recommendedItems = recommendedItems
+    const filteredItems = applyImageCache(this.data.filteredItems, cache)
+    if (filteredItems !== this.data.filteredItems) update.filteredItems = filteredItems
+    const cartItems = applyImageCache(this.data.cartItems, cache)
+    if (cartItems !== this.data.cartItems) update.cartItems = cartItems
+    if (Object.keys(update).length) this.setData(update)
   },
 
   onShow() {
@@ -448,13 +505,17 @@ Page({
   },
 
   onHide() {
+    this.clearRollTimer()
+    if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
+    if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
     this.flushCloudSyncs()
     this.stopCloudPolling()
   },
 
   onUnload() {
-    if (this.flyTimer) clearTimeout(this.flyTimer)
-    if (this.searchTimer) clearTimeout(this.searchTimer)
+    this.clearRollTimer()
+    if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
+    if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
     this.flushCloudSyncs()
     this.stopCloudPolling()
   },
@@ -575,6 +636,7 @@ Page({
     if (ordersChanged) {
       storage.write('orders', orders)
       update.orders = orders
+      update.ordersView = getOrdersView(orders)
     }
     if (wishesChanged) {
       storage.write('wishes', wishView.wishes)
@@ -1031,6 +1093,7 @@ Page({
     this.syncCloudResource('cart', {})
     this.setData({
       orders,
+      ordersView: getOrdersView(orders),
       cart: {},
       cartItems: emptyCartView.cartItems,
       cartCount: emptyCartView.cartCount,
@@ -1182,25 +1245,35 @@ Page({
     if (wx.vibrateShort) wx.vibrateShort({ type: 'light' })
     this.setData({ randomRolling: true })
     let count = 0
-    const timer = setInterval(() => {
+    this.clearRollTimer()
+    this.rollTimer = setInterval(() => {
       const dish = this.pickRandomDish()
       if (dish) this.setData({ randomDish: dish })
       count += 1
       if (count >= 7) {
-        clearInterval(timer)
+        this.clearRollTimer()
         this.setData({ randomRolling: false })
         if (wx.vibrateShort) wx.vibrateShort({ type: 'medium' })
       }
     }, 75)
   },
 
+  clearRollTimer() {
+    if (this.rollTimer) {
+      clearInterval(this.rollTimer)
+      this.rollTimer = null
+    }
+  },
+
   closeRandomDish() {
+    this.clearRollTimer()
     this.setData({ showRandomDish: false, randomRolling: false })
   },
 
   addRandomToCart(event) {
     const id = event.currentTarget.dataset.id
     if (!id) return
+    this.clearRollTimer()
     const cart = Object.assign({}, this.data.cart)
     cart[id] = (cart[id] || 0) + 1
     storage.write('cart', cart)
@@ -1586,6 +1659,7 @@ Page({
           cartItems: cartView.cartItems,
           cartCount: cartView.cartCount,
           orders,
+          ordersView: getOrdersView(orders),
           todos: todoView.todos,
           visibleTodos: todoView.visibleTodos,
           homeTodos: todoView.homeTodos,

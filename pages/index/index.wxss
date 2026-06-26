@@ -287,9 +287,10 @@ page {
   height: 18rpx;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.6);
-  filter: blur(6rpx);
+  filter: blur(4rpx);
   opacity: 0;
-  animation: mist-rise 3.4s ease-in-out infinite;
+  will-change: transform, opacity;
+  animation: mist-rise 5s ease-in-out infinite;
 }
 .mist-one {
   left: 30rpx;
@@ -2100,6 +2101,7 @@ page {
   border-radius: 40rpx 40rpx 0 0;
   box-sizing: border-box;
   background: #fffaf7;
+  will-change: transform;
   animation: sheet-in 0.28s ease both;
 }
 @keyframes sheet-in {
