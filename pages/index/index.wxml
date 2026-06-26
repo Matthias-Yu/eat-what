@@ -34,15 +34,15 @@
       wx:if="{{bannerItems.length}}"
       class="hero-swiper"
       autoplay
-      interval="3500"
-      duration="500"
+      interval="5000"
+      duration="600"
       circular="{{bannerItems.length > 1}}"
       indicator-dots="{{bannerItems.length > 1}}"
       indicator-color="rgba(255,255,255,0.5)"
       indicator-active-color="#ffffff"
     >
       <swiper-item wx:for="{{bannerItems}}" wx:key="id" class="hero-swiper-item">
-        <view class="hero-card {{item.bannerTag === '新品' ? 'hero-card--new tone-' + item.tone : ''}}">
+        <view class="hero-card {{item.bannerTag === '新品' ? 'hero-card--new tone-' + (item.tone || 'sunset') : ''}}">
           <view class="hero-glow hero-glow-one"></view>
           <view class="hero-glow hero-glow-two"></view>
           <view class="hero-copy">
@@ -321,9 +321,12 @@
       <view><text class="stats-number">{{profileStats.pending}}</text><text class="stats-label">件待完成</text></view>
     </view>
 
-    <view class="profile-section-title">最近订单</view>
+    <view class="profile-section-title order-section-title">
+      <text>最近订单</text>
+      <text wx:if="{{orders.length > 3}}" class="section-more" bindtap="openAllOrders">查看全部 →</text>
+    </view>
     <view wx:if="{{orders.length}}" class="order-list">
-      <view wx:for="{{ordersView}}" wx:key="id" class="order-card" data-id="{{item.id}}" bindtap="openOrderDetail" hover-class="order-card--pressed">
+      <view wx:for="{{recentOrders}}" wx:key="id" class="order-card" data-id="{{item.id}}" bindtap="openOrderDetail" bindlongpress="deleteOrder" hover-class="order-card--pressed">
         <view class="order-icon">
           <image wx:if="{{item.firstItem.image}}" class="small-food-image" src="{{item.firstItem.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
           <text wx:else>{{item.firstItem.emoji}}</text>
@@ -466,6 +469,25 @@
       <view class="checkout-total"><text>今晚准备</text><view>{{cartCount}}<text> 份</text></view></view>
       <button bindtap="submitOrder" hover-class="button-pressed">就吃这些 <text>→</text></button>
     </view>
+  </view>
+</view>
+
+<!-- 全部订单 -->
+<view wx:if="{{showAllOrders}}" class="overlay" bindtap="closeAllOrders">
+  <view class="bottom-sheet all-orders-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="sheet-header"><view><text class="sheet-title">全部订单</text><text class="sheet-subtitle">长按可以删除订单</text></view><view class="sheet-close" bindtap="closeAllOrders">×</view></view>
+    <scroll-view wx:if="{{ordersView.length}}" class="all-orders-list" scroll-y show-scrollbar="{{false}}">
+      <view wx:for="{{ordersView}}" wx:key="id" class="order-card" data-id="{{item.id}}" bindtap="openOrderDetail" bindlongpress="deleteOrder" hover-class="order-card--pressed">
+        <view class="order-icon">
+          <image wx:if="{{item.firstItem.image}}" class="small-food-image" src="{{item.firstItem.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
+          <text wx:else>{{item.firstItem.emoji}}</text>
+        </view>
+        <view class="order-copy"><text class="order-title">{{item.itemSummary}}</text><text class="order-time">{{item.createdAt}} · 订单 #{{item.id}}</text></view>
+        <view class="order-side"><text class="order-status">{{item.status}}</text><text class="order-arrow">›</text></view>
+      </view>
+    </scroll-view>
+    <view wx:else class="messages-sheet-empty"><text>🍽</text><text>还没有订单</text></view>
   </view>
 </view>
 

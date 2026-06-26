@@ -357,13 +357,14 @@ async function updateResource(openid, event) {
     updatedAt: db.serverDate(),
     updatedBy: openid
   }
-  update[resource] = value
+  // 用 command.set 强制整字段替换：空对象 {} 直接 update 时 MongoDB 不会清空原字段（无子键即无操作），会导致清空购物车失效
+  update[resource] = command.set(value)
   try {
     await db.collection('family_data').doc(household._id).update({ data: update })
   } catch (error) {
     // 文档不存在或更新失败时，确保有基础文档后重试，避免数据写丢
     const base = emptySharedData(household._id)
-    await db.collection('family_data').doc(household._id).set({ data: Object.assign(base, update) })
+    await db.collection('family_data').doc(household._id).set({ data: Object.assign(base, { [resource]: value, updatedAt: db.serverDate(), updatedBy: openid }) })
   }
   return success({ resource, updated: true })
 }

@@ -301,6 +301,14 @@ function getOrdersView(orders) {
   }))
 }
 
+const RECENT_ORDERS_LIMIT = 3
+
+// 同时产出全部订单视图与首页折叠展示的最近订单，避免各处重复 slice
+function getOrdersViews(orders) {
+  const ordersView = getOrdersView(orders)
+  return { ordersView, recentOrders: ordersView.slice(0, RECENT_ORDERS_LIMIT) }
+}
+
 function getOrderSuccessCopy(order) {
   return `订单 #${order.id} 已放进小家的厨房\n接下来只需要期待美味`
 }
@@ -352,6 +360,8 @@ Page({
     orderRemark: '',
     orders: [],
     ordersView: [],
+    recentOrders: [],
+    showAllOrders: false,
     selectedOrder: null,
     showOrderDetail: false,
     showOrderSuccess: false,
@@ -411,6 +421,7 @@ Page({
     const todoView = getTodoView(savedTodos || DEFAULT_TODOS, this.data.todoFilter)
     const wishView = getWishView(Array.isArray(savedWishes) ? savedWishes : [])
     const cartView = getCartView(cart, allMenuItems)
+    const ordersViews = getOrdersViews(orders)
     const anniversary = normalizeAnniversary(storage.read('anniversary', null))
     const messagesView = getMessagesView(storage.read('messages', []))
     this.allMenuItems = allMenuItems
@@ -432,7 +443,8 @@ Page({
       cartItems: cartView.cartItems,
       cartCount: cartView.cartCount,
       orders,
-      ordersView: getOrdersView(orders),
+      ordersView: ordersViews.ordersView,
+      recentOrders: ordersViews.recentOrders,
       profileStats: getProfileStats(todoView.todos, orders),
       todayDate: todayDateString(),
       anniversary,
@@ -678,8 +690,10 @@ Page({
     }
     if (ordersChanged) {
       storage.write('orders', orders)
+      const ordersViews = getOrdersViews(orders)
       update.orders = orders
-      update.ordersView = getOrdersView(orders)
+      update.ordersView = ordersViews.ordersView
+      update.recentOrders = ordersViews.recentOrders
     }
     if (wishesChanged) {
       storage.write('wishes', wishView.wishes)
@@ -1130,14 +1144,14 @@ Page({
       status: '等你开饭'
     }
     const orders = [order].concat(this.data.orders).slice(0, 20)
+    const ordersViews = getOrdersViews(orders)
     const emptyCartView = getCartView({}, this.allMenuItems)
     storage.write('orders', orders)
     storage.write('cart', {})
-    this.syncCloudResource('orders', orders)
-    this.syncCloudResource('cart', {})
     this.setData({
       orders,
-      ordersView: getOrdersView(orders),
+      ordersView: ordersViews.ordersView,
+      recentOrders: ordersViews.recentOrders,
       cart: {},
       cartItems: emptyCartView.cartItems,
       cartCount: emptyCartView.cartCount,
@@ -1148,6 +1162,13 @@ Page({
       orderSuccessCopy: getOrderSuccessCopy(order),
       profileStats: getProfileStats(this.data.todos, orders)
     })
+    // 下单同时写 orders 与清空 cart：等两次写都完成后再拉取对齐，避免轮询拉到中间态导致购物车被旧数据复活
+    if (this.data.familyStatus === 'active') {
+      Promise.all([
+        this.syncCloudResource('orders', orders),
+        this.syncCloudResource('cart', {})
+      ]).then(() => this.pullCloudData())
+    }
   },
 
   finishOrder() {
@@ -1164,6 +1185,46 @@ Page({
 
   closeOrderDetail() {
     this.setData({ showOrderDetail: false, selectedOrder: null })
+  },
+
+  openAllOrders() {
+    this.setData({ showAllOrders: true })
+  },
+
+  closeAllOrders() {
+    this.setData({ showAllOrders: false })
+  },
+
+  commitOrders(orders, options = {}) {
+    const ordersViews = getOrdersViews(orders)
+    const update = Object.assign({
+      orders,
+      ordersView: ordersViews.ordersView,
+      recentOrders: ordersViews.recentOrders,
+      profileStats: getProfileStats(this.data.todos, orders)
+    }, options.extraData || {})
+    this.setData(update)
+    if (options.persist !== false) storage.write('orders', orders)
+    if (options.sync) this.syncCloudResource('orders', orders)
+    return ordersViews
+  },
+
+  deleteOrder(event) {
+    const id = String(event.currentTarget.dataset.id)
+    const order = this.data.orders.find((item) => String(item.id) === id)
+    if (!order) return
+    wx.showModal({
+      title: '删除这条订单？',
+      content: '删除后就找不回来啦',
+      confirmText: '删除',
+      confirmColor: '#e75c48',
+      success: (result) => {
+        if (!result.confirm) return
+        const orders = this.data.orders.filter((item) => String(item.id) !== id)
+        const extraData = orders.length ? {} : { showAllOrders: false }
+        this.commitOrders(orders, { sync: true, extraData })
+      }
+    })
   },
 
   commitWishes(wishes, options = {}) {
@@ -1705,6 +1766,7 @@ Page({
           cartCount: cartView.cartCount,
           orders,
           ordersView: getOrdersView(orders),
+          recentOrders: [],
           todos: todoView.todos,
           visibleTodos: todoView.visibleTodos,
           homeTodos: todoView.homeTodos,

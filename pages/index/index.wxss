@@ -113,37 +113,13 @@ page {
 .hero-swiper {
   height: 350rpx;
   background: transparent;
-  border-radius: 38rpx;
-  overflow: hidden;
 }
 .hero-swiper-item {
   box-sizing: border-box;
   display: flex;
   align-items: flex-start;
+  padding: 0 8rpx;
   background: transparent;
-}
-/* 新品卡：浅色 tone 背景，文字与控件改深色保证可读 */
-.hero-card--new {
-  color: #5a4034;
-  box-shadow:
-    0 22rpx 52rpx rgba(120, 80, 50, 0.16),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.5);
-}
-.hero-card--new .hero-glow {
-  background: rgba(255, 255, 255, 0.35);
-}
-.hero-card--new .hero-kicker {
-  opacity: 1;
-}
-.hero-card--new .hero-subtitle {
-  opacity: 0.62;
-}
-.hero-card--new .hero-button {
-  background: #5a4034;
-  color: #fff;
-}
-.hero-card--new .hero-plate.has-image .hero-plate-image {
-  filter: drop-shadow(0 16rpx 26rpx rgba(120, 80, 50, 0.28));
 }
 
 .hero-card {
@@ -161,10 +137,31 @@ page {
       transparent 42%
     ),
     linear-gradient(135deg, #f5895f 0%, #ec5a47 56%, #d6443a 100%);
-  box-shadow:
-    0 22rpx 52rpx rgba(211, 82, 57, 0.28),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.2);
+  box-shadow: none;
   color: #fff;
+}
+/* 新品卡：浅色 tone 背景（同 mini 卡）+ 深棕字，文字加白色描边保证任何浅 tone 下清晰 */
+.hero-card--new {
+  color: #4a3326;
+  box-shadow: none;
+}
+.hero-card--new .hero-copy {
+  text-shadow:
+    0 0 4rpx rgba(255, 255, 255, 0.85),
+    0 1rpx 2rpx rgba(255, 255, 255, 0.9);
+}
+.hero-card--new .hero-glow {
+  background: rgba(255, 255, 255, 0.4);
+}
+.hero-card--new .hero-subtitle {
+  opacity: 0.78;
+}
+.hero-card--new .hero-button {
+  background: #4a3326;
+  color: #fff;
+}
+.hero-card--new .hero-plate.has-image .hero-plate-image {
+  filter: drop-shadow(0 16rpx 26rpx rgba(80, 55, 35, 0.28));
 }
 
 .hero-glow {
@@ -211,7 +208,7 @@ page {
   background: #ffe49a;
 }
 .hero-dot--new {
-  background: #aef0c8;
+  background: #4a3326;
 }
 .hero-title {
   display: block;
@@ -1519,6 +1516,14 @@ page {
   margin: 34rpx 3rpx 17rpx;
   font-size: 26rpx;
   font-weight: 750;
+}
+.order-section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.order-section-title .section-more {
+  font-weight: 600;
 }
 .order-list {
   display: flex;
@@ -3110,6 +3115,15 @@ page {
 /* 悄悄话留言弹层 */
 .messages-list {
   max-height: 620rpx;
+}
+.all-orders-list {
+  max-height: 720rpx;
+}
+.all-orders-list .order-card {
+  margin-bottom: 13rpx;
+}
+.all-orders-list .order-card:last-child {
+  margin-bottom: 0;
 }
 .message-item {
   padding: 22rpx 0;
