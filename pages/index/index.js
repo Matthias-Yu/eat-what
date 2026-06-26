@@ -477,6 +477,24 @@ Page({
     const cartItems = applyImageCache(this.data.cartItems, cache)
     if (cartItems !== this.data.cartItems) update.cartItems = cartItems
     if (Object.keys(update).length) this.setData(update)
+    this.prefetchMenuImages()
+  },
+
+  // 预下载全部菜品图片，让切换分类/打开点餐页时图片可直接命中缓存秒显示。
+  // 用 prefetchedImageUrls 去重，避免对同一临时链接重复发起下载。
+  prefetchMenuImages() {
+    const cache = this.imageUrlCache
+    if (!cache || !wx.getImageInfo) return
+    if (!this.prefetchedImageUrls) this.prefetchedImageUrls = new Set()
+    Object.keys(cache).forEach((fileID) => {
+      const entry = cache[fileID]
+      if (!entry || !entry.url || this.prefetchedImageUrls.has(entry.url)) return
+      this.prefetchedImageUrls.add(entry.url)
+      wx.getImageInfo({
+        src: entry.url,
+        fail: () => this.prefetchedImageUrls.delete(entry.url)
+      })
+    })
   },
 
   onShow() {
@@ -1255,7 +1273,7 @@ Page({
         this.setData({ randomRolling: false })
         if (wx.vibrateShort) wx.vibrateShort({ type: 'medium' })
       }
-    }, 75)
+    }, 160)
   },
 
   clearRollTimer() {
