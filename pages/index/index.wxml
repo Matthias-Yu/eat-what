@@ -30,27 +30,41 @@
       </view>
     </view>
 
-    <view class="hero-card">
-      <view class="hero-glow hero-glow-one"></view>
-      <view class="hero-glow hero-glow-two"></view>
-      <view class="hero-copy">
-        <view class="hero-kicker"><text class="hero-dot"></text> 今晚推荐</view>
-        <text class="hero-title">{{recommendedItems[0].name || '今晚一起好好吃饭'}}</text>
-        <text class="hero-subtitle">{{recommendedItems[0].description || '挑一道喜欢的菜开始吧'}}</text>
-        <button class="hero-button" data-category="recommend" bindtap="exploreMenu" hover-class="button-pressed">去看看 <text>→</text></button>
-      </view>
-      <view class="hero-art">
-        <view wx:if="{{recommendedItems[0].image}}" class="hero-mist">
-          <view class="mist mist-one"></view>
-          <view class="mist mist-two"></view>
-          <view class="mist mist-three"></view>
+    <swiper
+      wx:if="{{bannerItems.length}}"
+      class="hero-swiper"
+      autoplay
+      interval="3500"
+      duration="500"
+      circular="{{bannerItems.length > 1}}"
+      indicator-dots="{{bannerItems.length > 1}}"
+      indicator-color="rgba(255,255,255,0.5)"
+      indicator-active-color="#ffffff"
+    >
+      <swiper-item wx:for="{{bannerItems}}" wx:key="id" class="hero-swiper-item">
+        <view class="hero-card {{item.bannerTag === '新品' ? 'hero-card--new tone-' + item.tone : ''}}">
+          <view class="hero-glow hero-glow-one"></view>
+          <view class="hero-glow hero-glow-two"></view>
+          <view class="hero-copy">
+            <view class="hero-kicker"><text class="hero-dot {{item.bannerTag === '新品' ? 'hero-dot--new' : ''}}"></text> {{item.bannerTag === '新品' ? '新品上新' : '今晚推荐'}}</view>
+            <text class="hero-title">{{item.name}}</text>
+            <text class="hero-subtitle">{{item.description}}</text>
+            <button class="hero-button" data-category="recommend" bindtap="exploreMenu" hover-class="button-pressed">去看看 <text>→</text></button>
+          </view>
+          <view class="hero-art">
+            <view wx:if="{{item.image}}" class="hero-mist">
+              <view class="mist mist-one"></view>
+              <view class="mist mist-two"></view>
+              <view class="mist mist-three"></view>
+            </view>
+            <view class="hero-plate {{item.image ? 'has-image' : ''}}">
+              <image wx:if="{{item.image}}" class="hero-plate-image" src="{{item.image}}" mode="aspectFit"></image>
+              <text wx:else>{{item.emoji || '🍲'}}</text>
+            </view>
+          </view>
         </view>
-        <view class="hero-plate {{recommendedItems[0].image ? 'has-image' : ''}}">
-          <image wx:if="{{recommendedItems[0].image}}" class="hero-plate-image" src="{{recommendedItems[0].image}}" mode="aspectFit"></image>
-          <text wx:else>{{recommendedItems[0].emoji || '🍲'}}</text>
-        </view>
-      </view>
-    </view>
+      </swiper-item>
+    </swiper>
 
     <view class="quick-grid">
       <view class="quick-item" data-target="menu" bindtap="navigateFromCard" hover-class="quick-item--pressed">

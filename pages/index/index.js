@@ -189,6 +189,24 @@ function getRecommendedMenuItems(items) {
   return items.filter((item) => item.recommended).slice(0, 4)
 }
 
+// 轮播 banner：仅 2 张——「今晚推荐」取第一道推荐菜，「新品」取最近添加的一道（与推荐去重）
+function getBannerItems(items) {
+  const banner = []
+  const firstRecommended = items.find((item) => item.recommended)
+  if (firstRecommended) {
+    banner.push(Object.assign({}, firstRecommended, { bannerTag: '推荐' }))
+  }
+  const recommendedId = firstRecommended && firstRecommended.id
+  for (let i = items.length - 1; i >= 0; i -= 1) {
+    const item = items[i]
+    if (item && item.id !== recommendedId) {
+      banner.push(Object.assign({}, item, { bannerTag: '新品' }))
+      break
+    }
+  }
+  return banner
+}
+
 function getFilteredMenuItems(items, category, keyword) {
   const normalizedKeyword = String(keyword || '').toLowerCase()
   // viewKey 带上当前分类与搜索词，切换筛选时让卡片视为新节点重建，从而重新触发入场动画
@@ -322,6 +340,7 @@ Page({
     menuCategories: MENU_CATEGORIES,
     customMenuItems: [],
     recommendedItems: getRecommendedMenuItems(menuItems),
+    bannerItems: getBannerItems(menuItems),
     filteredItems: getRecommendedMenuItems(menuItems),
     currentCategory: 'recommend',
     searchKeyword: '',
@@ -401,6 +420,7 @@ Page({
       greeting: dateUtil.greeting(),
       customMenuItems,
       recommendedItems: getRecommendedMenuItems(allMenuItems),
+      bannerItems: getBannerItems(allMenuItems),
       filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
       todos: todoView.todos,
       visibleTodos: todoView.visibleTodos,
@@ -472,6 +492,8 @@ Page({
     const update = {}
     const recommendedItems = applyImageCache(this.data.recommendedItems, cache)
     if (recommendedItems !== this.data.recommendedItems) update.recommendedItems = recommendedItems
+    const bannerItems = applyImageCache(this.data.bannerItems, cache)
+    if (bannerItems !== this.data.bannerItems) update.bannerItems = bannerItems
     const filteredItems = applyImageCache(this.data.filteredItems, cache)
     if (filteredItems !== this.data.filteredItems) update.filteredItems = filteredItems
     const cartItems = applyImageCache(this.data.cartItems, cache)
@@ -633,6 +655,7 @@ Page({
       Object.assign(update, {
         customMenuItems,
         recommendedItems: getRecommendedMenuItems(menuItemsForView),
+        bannerItems: getBannerItems(menuItemsForView),
         filteredItems: getFilteredMenuItems(menuItemsForView, this.data.currentCategory, this.data.searchKeyword)
       })
     }
@@ -698,6 +721,7 @@ Page({
     const update = Object.assign({
       customMenuItems: normalizedMenuItems,
       recommendedItems: getRecommendedMenuItems(allMenuItems),
+      bannerItems: getBannerItems(allMenuItems),
       filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
       cartItems: cartView.cartItems,
       cartCount: cartView.cartCount
@@ -1674,6 +1698,7 @@ Page({
           activeTab: 'home',
           customMenuItems,
           recommendedItems: getRecommendedMenuItems(allMenuItems),
+          bannerItems: getBannerItems(allMenuItems),
           filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
           cart,
           cartItems: cartView.cartItems,
