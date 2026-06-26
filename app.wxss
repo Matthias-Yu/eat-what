@@ -2,6 +2,9 @@ page {
   color: #382d29;
   background: #fffaf5;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 button { box-sizing: border-box; }
