@@ -447,10 +447,10 @@ page {
   flex: 0 0 244rpx;
   overflow: hidden;
   padding-bottom: 20rpx;
-  border: 1rpx solid rgba(255, 255, 255, 0.9);
+  border: 1rpx solid rgba(120, 80, 50, 0.1);
   border-radius: 30rpx;
   box-sizing: border-box;
-  background: linear-gradient(170deg, #ffffff, #fffaf6);
+  background: #ffffff;
   box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.9);
   transition: transform 0.22s ease;
 }
@@ -472,7 +472,6 @@ page {
   z-index: 1;
   width: 142rpx;
   height: 142rpx;
-  filter: drop-shadow(0 12rpx 12rpx rgba(106, 64, 37, 0.13));
 }
 .food-tag {
   position: absolute;
