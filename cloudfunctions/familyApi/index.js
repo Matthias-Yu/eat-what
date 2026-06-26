@@ -358,7 +358,13 @@ async function updateResource(openid, event) {
     updatedBy: openid
   }
   update[resource] = value
-  await db.collection('family_data').doc(household._id).update({ data: update })
+  try {
+    await db.collection('family_data').doc(household._id).update({ data: update })
+  } catch (error) {
+    // 文档不存在或更新失败时，确保有基础文档后重试，避免数据写丢
+    const base = emptySharedData(household._id)
+    await db.collection('family_data').doc(household._id).set({ data: Object.assign(base, update) })
+  }
   return success({ resource, updated: true })
 }
 

@@ -643,7 +643,10 @@ Page({
     if (this.data.familyStatus !== 'active') return Promise.resolve()
     this.cloudWritePending = (this.cloudWritePending || 0) + 1
     return cloudService.call('updateResource', { resource, value })
-      .catch((error) => console.warn(`同步 ${resource} 失败`, error))
+      .catch((error) => {
+        console.warn(`同步 ${resource} 失败`, error)
+        wx.showToast({ title: `云端同步失败：${error.message || resource}`, icon: 'none' })
+      })
       .finally(() => {
         this.cloudWritePending = Math.max(0, (this.cloudWritePending || 1) - 1)
       })
@@ -1231,7 +1234,7 @@ Page({
     this.setData({ 'anniversaryDraft.date': event.detail.value })
   },
 
-  saveAnniversary() {
+  async saveAnniversary() {
     const draft = this.data.anniversaryDraft
     const title = textSlice(draft.title, 12) || '在一起'
     const date = textSlice(draft.date, 10)
@@ -1245,23 +1248,24 @@ Page({
     }
     const anniversary = { title, date }
     storage.write('anniversary', anniversary)
-    this.syncCloudResource('anniversary', anniversary)
     this.setData({
       anniversary,
       anniversaryDays: getAnniversaryDays(date),
       showAnniversarySheet: false
     })
+    await this.writeCloudResource('anniversary', anniversary)
+    await this.pullCloudData()
     wx.showToast({ title: '已记下这个日子', icon: 'success' })
   },
 
-  clearAnniversary() {
+  async clearAnniversary() {
     storage.write('anniversary', null)
-    this.syncCloudResource('anniversary', null)
     this.setData({
       anniversary: null,
       anniversaryDays: 0,
       showAnniversarySheet: false
     })
+    await this.writeCloudResource('anniversary', null)
     wx.showToast({ title: '已清除纪念日', icon: 'success' })
   },
 
