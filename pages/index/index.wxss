@@ -152,6 +152,9 @@ page {
   position: relative;
   z-index: 2;
   width: 56%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .hero-kicker {
@@ -186,13 +189,17 @@ page {
 }
 
 .hero-button {
-  width: 166rpx;
+  align-self: flex-start;
+  width: auto;
+  min-width: 150rpx;
+  max-width: 100%;
   height: 62rpx;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   margin: 22rpx 0 0;
-  padding: 0;
+  padding: 0 34rpx;
+  box-sizing: border-box;
   border-radius: 31rpx;
   background: #fff;
   color: #e45b45;
