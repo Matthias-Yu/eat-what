@@ -2463,6 +2463,60 @@ page {
   border-radius: 22rpx;
   box-sizing: border-box;
   background: #fff;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+.managed-menu-item.is-editing {
+  border-color: #ef795e;
+  background: #fff6f1;
+}
+.managed-menu-actions {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-left: 8rpx;
+}
+.managed-menu-action {
+  padding: 8rpx 16rpx;
+  border-radius: 14rpx;
+  background: #f4ece7;
+  color: #8a6f63;
+  font-size: 19rpx;
+  font-weight: 600;
+}
+.managed-menu-action.remove {
+  background: #fdece8;
+  color: #e35f48;
+}
+.menu-form-divider {
+  margin: 22rpx 0 6rpx;
+  color: #b6a59d;
+  font-size: 20rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+}
+.menu-manager-footer {
+  display: flex;
+  gap: 16rpx;
+}
+.cancel-menu-button {
+  flex: 0 0 200rpx;
+  height: 82rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 30rpx 0 0;
+  padding: 0;
+  border-radius: 27rpx;
+  background: #f3e7e0;
+  color: #8a6f63;
+  font-size: 24rpx;
+  line-height: 1;
+  font-weight: 700;
+}
+.menu-manager-footer .save-menu-button {
+  flex: 1;
 }
 .managed-menu-art {
   width: 62rpx;

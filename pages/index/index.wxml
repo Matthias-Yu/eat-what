@@ -512,19 +512,24 @@
 <view wx:if="{{showMenuManager}}" class="overlay" bindtap="closeMenuManager">
   <view class="bottom-sheet menu-manager-sheet" catchtap="noop">
     <view class="sheet-handle"></view>
-    <view class="sheet-header"><view><text class="sheet-title">菜单管理</text><text class="sheet-subtitle">新增一道小家常吃的菜</text></view><view class="sheet-close" bindtap="closeMenuManager">×</view></view>
+    <view class="sheet-header"><view><text class="sheet-title">菜单管理</text><text class="sheet-subtitle">{{editingMenuId ? '修改这道菜的信息' : '新增、编辑或删除小家的菜'}}</text></view><view class="sheet-close" bindtap="closeMenuManager">×</view></view>
     <scroll-view class="menu-manager-scroll" scroll-y show-scrollbar="{{false}}">
       <view wx:if="{{customMenuItems.length}}" class="managed-menu-list">
-        <view wx:for="{{customMenuItems}}" wx:key="id" class="managed-menu-item" data-id="{{item.id}}" bindlongpress="deleteCustomMenuItem">
+        <view wx:for="{{customMenuItems}}" wx:key="id" class="managed-menu-item {{editingMenuId === item.id ? 'is-editing' : ''}}" data-id="{{item.id}}">
           <view class="managed-menu-art tone-{{item.tone}}">
             <image wx:if="{{item.image}}" class="managed-food-image" src="{{item.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
             <text wx:else>{{item.emoji}}</text>
           </view>
           <view class="managed-menu-copy"><text>{{item.name}}</text><text>{{item.tags[0]}} · {{item.tags[1]}}</text></view>
           <text wx:if="{{item.recommended}}" class="managed-menu-mark">推荐</text>
+          <view class="managed-menu-actions">
+            <text class="managed-menu-action" data-id="{{item.id}}" catchtap="editMenuItem">编辑</text>
+            <text class="managed-menu-action remove" data-id="{{item.id}}" catchtap="deleteCustomMenuItem">删除</text>
+          </view>
         </view>
       </view>
-      <view class="form-group"><text class="form-label">菜名</text><input class="form-input form-input-main" value="{{menuDraft.name}}" data-field="name" bindinput="onMenuDraftInput" maxlength="18" focus="{{showMenuManager}}" placeholder="例如：椒盐鸡翅" placeholder-class="input-placeholder" /></view>
+      <view class="menu-form-divider">{{editingMenuId ? '编辑菜品' : '新增菜品'}}</view>
+      <view class="form-group"><text class="form-label">菜名</text><input class="form-input form-input-main" value="{{menuDraft.name}}" data-field="name" bindinput="onMenuDraftInput" maxlength="18" placeholder="例如：椒盐鸡翅" placeholder-class="input-placeholder" /></view>
       <view class="form-group"><text class="form-label">描述 <text>选填</text></text><input class="form-input" value="{{menuDraft.description}}" data-field="description" bindinput="onMenuDraftInput" maxlength="28" placeholder="一句话写下它的味道" placeholder-class="input-placeholder" /></view>
       <view class="menu-form-row">
         <view class="form-group menu-emoji-field"><text class="form-label">图标</text><input class="form-input" value="{{menuDraft.emoji}}" data-field="emoji" bindinput="onMenuDraftInput" maxlength="4" placeholder="🍗" placeholder-class="input-placeholder" /></view>
@@ -533,7 +538,10 @@
       <view class="form-group"><text class="form-label">分类</text><view class="option-row"><text wx:for="{{menuCategories}}" wx:key="id" class="option-chip {{menuDraft.category === item.id ? 'is-active' : ''}}" data-value="{{item.id}}" bindtap="selectMenuCategory">{{item.icon}} {{item.name}}</text></view></view>
       <view class="form-group"><text class="form-label">推荐</text><view class="option-row"><text class="option-chip {{menuDraft.recommended ? 'is-active' : ''}}" bindtap="toggleMenuRecommended">加入今日好味</text></view></view>
     </scroll-view>
-    <button class="save-menu-button" bindtap="saveMenuItem" hover-class="button-pressed">加入菜单</button>
+    <view class="menu-manager-footer">
+      <button wx:if="{{editingMenuId}}" class="cancel-menu-button" bindtap="cancelEditMenuItem" hover-class="button-pressed">取消</button>
+      <button class="save-menu-button" bindtap="saveMenuItem" hover-class="button-pressed">{{editingMenuId ? '保存修改' : '加入菜单'}}</button>
+    </view>
   </view>
 </view>
 

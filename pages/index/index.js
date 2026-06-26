@@ -326,6 +326,7 @@ Page({
     profileStats: { orders: 0, todos: 0, pending: 0 },
     showMenuManager: false,
     menuDraft: createMenuDraft(),
+    editingMenuId: null,
     showRandomDish: false,
     randomDish: {},
     randomRolling: false,
@@ -1127,11 +1128,28 @@ Page({
   },
 
   openMenuManager() {
-    this.setData({ showMenuManager: true, menuDraft: createMenuDraft() })
+    this.setData({ showMenuManager: true, menuDraft: createMenuDraft(), editingMenuId: null })
   },
 
   closeMenuManager() {
-    this.setData({ showMenuManager: false })
+    this.setData({ showMenuManager: false, editingMenuId: null, menuDraft: createMenuDraft() })
+  },
+
+  editMenuItem(event) {
+    const id = String(event.currentTarget.dataset.id || '')
+    const menuItem = this.data.customMenuItems.find((item) => item.id === id)
+    if (!menuItem) return
+    this.setData({
+      editingMenuId: id,
+      menuDraft: {
+        name: menuItem.name,
+        description: menuItem.description,
+        emoji: menuItem.emoji,
+        tags: (menuItem.tags || []).join('、'),
+        category: menuItem.category,
+        recommended: !!menuItem.recommended
+      }
+    })
   },
 
   pickRandomDish() {
@@ -1330,12 +1348,38 @@ Page({
       wx.showToast({ title: '写下菜名吧', icon: 'none' })
       return
     }
-    if (this.allMenuItems.some((item) => item.name === name)) {
+    const editingId = this.data.editingMenuId
+    // 重名校验：排除正在编辑的这道菜本身
+    if (this.allMenuItems.some((item) => item.name === name && item.id !== editingId)) {
       wx.showToast({ title: '菜单里已经有这道啦', icon: 'none' })
       return
     }
     const category = MENU_CATEGORY_MAP[draft.category] ? draft.category : 'dish'
     const tags = parseMenuTags(draft.tags, category)
+
+    if (editingId) {
+      // 更新已有菜品（保留原 id 与 image）
+      const existing = this.data.customMenuItems.find((item) => item.id === editingId)
+      const menuItem = normalizeCustomMenuItem({
+        id: editingId,
+        name,
+        description: textSlice(draft.description, 28) || `${tags[0]} · 小家新增`,
+        highlight: tags[0],
+        category,
+        emoji: textSlice(draft.emoji, 2) || CATEGORY_EMOJI[category],
+        image: existing && existing.image,
+        tags,
+        recommended: draft.recommended
+      })
+      const customMenuItems = this.data.customMenuItems.map((item) => (item.id === editingId ? menuItem : item))
+      this.commitCustomMenuItems(customMenuItems, {
+        sync: true,
+        extraData: { menuDraft: createMenuDraft(), editingMenuId: null }
+      })
+      wx.showToast({ title: '已更新', icon: 'success' })
+      return
+    }
+
     const menuItem = normalizeCustomMenuItem({
       id: `custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       name,
@@ -1351,6 +1395,10 @@ Page({
       extraData: { menuDraft: createMenuDraft() }
     })
     wx.showToast({ title: '已加入菜单', icon: 'success' })
+  },
+
+  cancelEditMenuItem() {
+    this.setData({ editingMenuId: null, menuDraft: createMenuDraft() })
   },
 
   deleteCustomMenuItem(event) {
