@@ -470,8 +470,8 @@ page {
 .mini-food-image {
   position: relative;
   z-index: 1;
-  width: 142rpx;
-  height: 142rpx;
+  width: 160rpx;
+  height: 160rpx;
 }
 .food-tag {
   position: absolute;
