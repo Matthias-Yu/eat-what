@@ -21,6 +21,7 @@ const TODO_CATEGORY_CLASS = {
 
 const CUSTOM_MENU_LIMIT = 100
 const MESSAGES_LIMIT = 200
+const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
 // 云存储临时链接约 2 小时过期，留出裕量按 90 分钟刷新
 const IMAGE_URL_TTL_MS = 90 * 60 * 1000
 const MENU_CATEGORIES = categories.filter((item) => item.id !== 'recommend')
@@ -93,23 +94,51 @@ function formatRelativeTime(ts) {
   return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
+function normalizeMessageReactions(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const result = {}
+  MESSAGE_REACTION_EMOJIS.forEach((emoji) => {
+    const users = value[emoji]
+    if (Array.isArray(users) && users.length) {
+      result[emoji] = users.filter(Boolean)
+    }
+  })
+  return result
+}
+
 function normalizeMessages(messages) {
   return (Array.isArray(messages) ? messages : [])
     .map((item) => ({
       id: item && item.id ? item.id : Date.now(),
       text: textSlice(item && item.text, 80),
       authorOpenid: (item && item.authorOpenid) || '',
-      authorName: textSlice(item && item.authorName, 12) || '我',
-      createdAt: Number(item && item.createdAt) || Date.now()
+      authorName: textSlice(item && item.authorName, 12) || '小家成员',
+      createdAt: Number(item && item.createdAt) || Date.now(),
+      reactions: normalizeMessageReactions(item && item.reactions)
     }))
     .filter((item) => item.text)
     .slice(0, MESSAGES_LIMIT)
 }
 
-function getMessagesView(messages) {
+// 基于 reactions 与自身 openid 生成每条消息的表情展示列表：全部固定表情都展示，count 为 0 不显数字，mine 高亮
+function buildReactionList(reactions, myOpenid) {
+  const source = reactions || {}
+  return MESSAGE_REACTION_EMOJIS.map((emoji) => {
+    const users = Array.isArray(source[emoji]) ? source[emoji] : []
+    return {
+      emoji,
+      count: users.length,
+      mine: !!myOpenid && users.indexOf(myOpenid) !== -1
+    }
+  })
+}
+
+function getMessagesView(messages, myOpenid) {
   const normalized = normalizeMessages(messages)
   const messagesDisplay = normalized.map((item) => Object.assign({}, item, {
-    timeText: formatRelativeTime(item.createdAt)
+    timeText: formatRelativeTime(item.createdAt),
+    reactionList: buildReactionList(item.reactions, myOpenid),
+    isMine: !!myOpenid && item.authorOpenid === myOpenid
   }))
   return {
     messages: normalized,
@@ -405,7 +434,10 @@ Page({
     recentMessages: [],
     messagesDisplay: [],
     showMessages: false,
-    messageDraft: ''
+    messageDraft: '',
+    reactionEmojis: MESSAGE_REACTION_EMOJIS,
+    myOpenid: '',
+    myNickname: ''
   },
 
   onLoad() {
@@ -423,7 +455,7 @@ Page({
     const cartView = getCartView(cart, allMenuItems)
     const ordersViews = getOrdersViews(orders)
     const anniversary = normalizeAnniversary(storage.read('anniversary', null))
-    const messagesView = getMessagesView(storage.read('messages', []))
+    const messagesView = getMessagesView(storage.read('messages', []), this.data.myOpenid)
     this.allMenuItems = allMenuItems
     this.menuItemMap = getMenuItemMap(allMenuItems)
     this.setData({
@@ -547,7 +579,9 @@ Page({
     cloudService.call('getSession')
       .then((session) => {
         if (session.active) {
-          this.setData({ family: session.household })
+          const update = { family: session.household }
+          if (session.nickname && this.data.myNickname !== session.nickname) update.myNickname = session.nickname
+          this.setData(update)
         } else {
           this.stopCloudPolling()
           this.setData({ familyStatus: 'none', family: null, familyMode: 'choose' })
@@ -590,6 +624,12 @@ Page({
     try {
       cloudService.init()
       const session = await cloudService.call('getSession')
+      if (session.openid && this.data.myOpenid !== session.openid) {
+        this.setData({ myOpenid: session.openid })
+      }
+      if (session.nickname && this.data.myNickname !== session.nickname) {
+        this.setData({ myNickname: session.nickname })
+      }
       if (!session.active) {
         this.setData({
           familyStatus: 'none',
@@ -712,7 +752,7 @@ Page({
       update.anniversary = anniversary
       update.anniversaryDays = anniversary ? getAnniversaryDays(anniversary.date) : 0
     }
-    const messagesView = getMessagesView(data.messages)
+    const messagesView = getMessagesView(data.messages, data.openid || this.data.myOpenid)
     if (!isSameList(this.data.messages, messagesView.messages)) {
       storage.write('messages', messagesView.messages)
       update.messages = messagesView.messages
@@ -1448,7 +1488,7 @@ Page({
   },
 
   commitMessages(messages, options = {}) {
-    const messagesView = getMessagesView(messages)
+    const messagesView = getMessagesView(messages, this.data.myOpenid)
     this.setData(Object.assign({
       messages: messagesView.messages,
       recentMessages: messagesView.recentMessages,
@@ -1480,8 +1520,8 @@ Page({
     const message = {
       id: Date.now(),
       text,
-      authorOpenid: '',
-      authorName: '我',
+      authorOpenid: this.data.myOpenid || '',
+      authorName: this.data.myNickname || '我',
       createdAt: Date.now()
     }
     this.commitMessages([message].concat(this.data.messages), {
@@ -1505,6 +1545,43 @@ Page({
         this.commitMessages(this.data.messages.filter((item) => String(item.id) !== id), { sync: true })
       }
     })
+  },
+
+  async toggleReaction(event) {
+    const { id, emoji } = event.currentTarget.dataset
+    if (!id || MESSAGE_REACTION_EMOJIS.indexOf(emoji) === -1) return
+    const messageId = String(id)
+
+    // 云空间模式：交给云函数用服务端 openid 增删，避免多成员并发覆盖
+    if (this.data.familyStatus === 'active') {
+      try {
+        const result = await cloudService.call('toggleMessageReaction', { messageId, emoji })
+        this.commitMessages(result.messages || this.data.messages)
+      } catch (error) {
+        wx.showToast({ title: error.message || '操作失败', icon: 'none' })
+      }
+      if (wx.vibrateShort) wx.vibrateShort({ type: 'light' })
+      return
+    }
+
+    // 本地模式：用固定本地标识切换自己的回应
+    const me = this.data.myOpenid || 'local-self'
+    const messages = this.data.messages.map((item) => {
+      if (String(item.id) !== messageId) return item
+      const reactions = Object.assign({}, item.reactions)
+      const users = Array.isArray(reactions[emoji]) ? reactions[emoji].slice() : []
+      const index = users.indexOf(me)
+      if (index !== -1) {
+        users.splice(index, 1)
+        if (users.length) reactions[emoji] = users
+        else delete reactions[emoji]
+      } else {
+        reactions[emoji] = users.concat(me)
+      }
+      return Object.assign({}, item, { reactions })
+    })
+    this.commitMessages(messages)
+    if (wx.vibrateShort) wx.vibrateShort({ type: 'light' })
   },
 
   onMenuDraftInput(event) {

@@ -26,7 +26,7 @@ page {
 
 .page {
   min-height: 100%;
-  padding: 18rpx 30rpx calc(178rpx + env(safe-area-inset-bottom));
+  padding: 18rpx 30rpx calc(250rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 
@@ -3071,6 +3071,10 @@ page {
   font-size: 20rpx;
   font-weight: 700;
 }
+.message-author-me {
+  color: #b6a59d;
+  font-weight: 500;
+}
 .message-time {
   color: #b6a59d;
   font-size: 18rpx;
@@ -3081,6 +3085,42 @@ page {
   font-size: 24rpx;
   line-height: 1.5;
   word-break: break-all;
+}
+.message-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+.reaction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  height: 44rpx;
+  padding: 0 16rpx;
+  border: 1rpx solid #ecdfd8;
+  border-radius: 22rpx;
+  background: #fbf5f1;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+.reaction-chip:active {
+  transform: scale(0.9);
+}
+.reaction-chip.is-mine {
+  border-color: #f3b3a4;
+  background: #ffe9e2;
+}
+.reaction-emoji {
+  font-size: 26rpx;
+  line-height: 1;
+}
+.reaction-count {
+  color: #9a8278;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+.reaction-chip.is-mine .reaction-count {
+  color: #e2613f;
 }
 .messages-empty {
   display: flex;

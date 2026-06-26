@@ -130,7 +130,7 @@
     </view>
     <view class="section-heading messages-heading">
       <view><text class="section-title">悄悄话</text><text class="section-subtitle">把想说的话，轻轻留在这里</text></view>
-      <text class="section-more" bindtap="openMessages">全部 ›</text>
+      <text class="section-more" bindtap="openMessages">全部 →</text>
     </view>
     <view class="messages-card">
       <block wx:if="{{recentMessages.length}}">
@@ -638,13 +638,24 @@
     <scroll-view wx:if="{{messagesDisplay.length}}" class="messages-list" scroll-y show-scrollbar="{{false}}">
       <view wx:for="{{messagesDisplay}}" wx:key="id" class="message-item">
         <view class="message-item-top">
-          <text class="message-author">{{item.authorName}}</text>
+          <text class="message-author">{{item.authorName}}<text wx:if="{{item.isMine}}" class="message-author-me"> · 我</text></text>
           <view class="message-item-side">
             <text class="message-time">{{item.timeText}}</text>
             <text class="message-delete" data-id="{{item.id}}" catchtap="deleteMessage">删除</text>
           </view>
         </view>
         <text class="message-text">{{item.text}}</text>
+        <view class="message-reactions">
+          <view
+            wx:for="{{item.reactionList}}"
+            wx:for-item="r"
+            wx:key="emoji"
+            class="reaction-chip {{r.mine ? 'is-mine' : ''}}"
+            data-id="{{item.id}}"
+            data-emoji="{{r.emoji}}"
+            catchtap="toggleReaction"
+          ><text class="reaction-emoji">{{r.emoji}}</text><text wx:if="{{r.count}}" class="reaction-count">{{r.count}}</text></view>
+        </view>
       </view>
     </scroll-view>
     <view wx:else class="messages-sheet-empty"><text>✎</text><text>还没有悄悄话，写下第一句吧</text></view>

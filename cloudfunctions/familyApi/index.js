@@ -15,6 +15,8 @@ const RESOURCE_LIMITS = {
   messages: 200
 }
 const MENU_CATEGORIES = ['main', 'dish', 'light', 'drink']
+const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
+const MESSAGE_REACTION_USER_LIMIT = 50
 const CATEGORY_TONE = {
   main: 'honey',
   dish: 'sunset',
@@ -129,10 +131,12 @@ function publicHousehold(household, openid) {
 
 async function getSession(openid) {
   const user = await getUser(openid)
-  if (!user || !user.householdId) return success({ active: false })
+  if (!user || !user.householdId) return success({ active: false, openid })
   const household = await getHousehold(user.householdId)
-  if (!household || !household.members.includes(openid)) return success({ active: false })
-  return success({ active: true, household: publicHousehold(household, openid) })
+  if (!household || !household.members.includes(openid)) return success({ active: false, openid })
+  const isPrimaryAdmin = openid === getPrimaryAdminOpenid(household)
+  const nickname = textSlice(user.nickname, 12) || (isPrimaryAdmin ? '管理员' : '成员')
+  return success({ active: true, openid, nickname, household: publicHousehold(household, openid) })
 }
 
 async function createHousehold(openid, event) {
@@ -217,6 +221,7 @@ async function getSharedData(openid) {
     await db.collection('family_data').doc(household._id).set({ data })
   }
   return success({
+    openid,
     cart: data.cart || {},
     todos: Array.isArray(data.todos) ? data.todos : [],
     orders: Array.isArray(data.orders) ? data.orders : [],
@@ -316,6 +321,18 @@ function sanitizeAnniversary(value) {
   }
 }
 
+function sanitizeMessageReactions(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const result = {}
+  MESSAGE_REACTION_EMOJIS.forEach((emoji) => {
+    const users = value[emoji]
+    if (!Array.isArray(users)) return
+    const cleaned = [...new Set(users.map((u) => textSlice(u, 60)).filter(Boolean))].slice(0, MESSAGE_REACTION_USER_LIMIT)
+    if (cleaned.length) result[emoji] = cleaned
+  })
+  return result
+}
+
 function sanitizeMessageItem(item, index) {
   const source = item && typeof item === 'object' && !Array.isArray(item) ? item : {}
   const createdAt = Number(source.createdAt) || Date.now()
@@ -324,7 +341,8 @@ function sanitizeMessageItem(item, index) {
     text: textSlice(source.text, 80),
     authorOpenid: textSlice(source.authorOpenid, 60),
     authorName: textSlice(source.authorName, 12) || '小家成员',
-    createdAt
+    createdAt,
+    reactions: sanitizeMessageReactions(source.reactions)
   }
 }
 
@@ -445,6 +463,37 @@ async function markOrderNoticesRead(openid) {
     }
   })
   return success({ updated: true })
+}
+
+async function toggleMessageReaction(openid, event) {
+  const { household } = await requireMembership(openid)
+  const messageId = textSlice(event.messageId, 40)
+  const emoji = String(event.emoji || '')
+  if (!messageId) throw new Error('缺少消息标识')
+  if (!MESSAGE_REACTION_EMOJIS.includes(emoji)) throw new Error('不支持的表情')
+  const response = await db.collection('family_data').doc(household._id).get()
+  const data = response.data || emptySharedData(household._id)
+  const messages = Array.isArray(data.messages) ? data.messages.map(sanitizeMessageItem) : []
+  const target = messages.find((item) => item.id === messageId)
+  if (!target) throw new Error('这条悄悄话不存在了')
+  const reactions = target.reactions || {}
+  const users = Array.isArray(reactions[emoji]) ? reactions[emoji] : []
+  if (users.includes(openid)) {
+    const next = users.filter((u) => u !== openid)
+    if (next.length) reactions[emoji] = next
+    else delete reactions[emoji]
+  } else {
+    reactions[emoji] = users.concat(openid).slice(0, MESSAGE_REACTION_USER_LIMIT)
+  }
+  target.reactions = reactions
+  await db.collection('family_data').doc(household._id).update({
+    data: {
+      messages: command.set(messages),
+      updatedAt: db.serverDate(),
+      updatedBy: openid
+    }
+  })
+  return success({ messages })
 }
 
 async function listMembers(openid) {
@@ -581,6 +630,7 @@ exports.main = async (event) => {
       case 'migrateLocal': return migrateLocal(OPENID, event)
       case 'notifyOrderAdmin': return notifyOrderAdmin(OPENID, event)
       case 'markOrderNoticesRead': return markOrderNoticesRead(OPENID)
+      case 'toggleMessageReaction': return toggleMessageReaction(OPENID, event)
       case 'listMembers': return listMembers(OPENID)
       case 'setMemberNickname': return setMemberNickname(OPENID, event)
       case 'removeMember': return removeMember(OPENID, event)
