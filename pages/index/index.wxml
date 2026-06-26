@@ -14,6 +14,22 @@
       </view>
     </view>
 
+    <view class="anniversary-card" bindtap="openAnniversarySheet" hover-class="tap-scale--active">
+      <view class="anniversary-glow"></view>
+      <block wx:if="{{anniversary}}">
+        <view class="anniversary-copy">
+          <text class="anniversary-title">{{anniversary.title}}</text>
+          <view class="anniversary-count"><text class="anniversary-prefix">第</text><text class="anniversary-days">{{anniversaryDays}}</text><text class="anniversary-suffix">天</text></view>
+          <text class="anniversary-since">从 {{anniversary.date}} 开始</text>
+        </view>
+        <view class="anniversary-heart">♥</view>
+      </block>
+      <view wx:else class="anniversary-empty">
+        <text class="anniversary-empty-text">记录属于你们的日子</text>
+        <text class="anniversary-empty-arrow">›</text>
+      </view>
+    </view>
+
     <view class="hero-card">
       <view class="hero-glow hero-glow-one"></view>
       <view class="hero-glow hero-glow-two"></view>
@@ -98,6 +114,23 @@
         <text>今天的事情都完成啦</text>
       </view>
     </view>
+    <view class="section-heading messages-heading">
+      <view><text class="section-title">悄悄话</text><text class="section-subtitle">把想说的话，轻轻留在这里</text></view>
+      <text class="section-more" bindtap="openMessages">全部 ›</text>
+    </view>
+    <view class="messages-card">
+      <block wx:if="{{recentMessages.length}}">
+        <view wx:for="{{recentMessages}}" wx:key="id" class="message-mini">
+          <view class="message-mini-top"><text class="message-author">{{item.authorName}}</text><text class="message-time">{{item.timeText}}</text></view>
+          <text class="message-text">{{item.text}}</text>
+        </view>
+      </block>
+      <view wx:else class="messages-empty">
+        <text class="messages-empty-icon">✎</text>
+        <text>还没有悄悄话，写下第一句吧</text>
+      </view>
+      <button class="write-message-button" bindtap="openMessages" hover-class="button-pressed"><text>＋</text> 写一句</button>
+    </view>
     <view class="love-note">♡ 好好吃饭，好好生活，也好好爱你</view>
   </view>
 
@@ -110,10 +143,13 @@
       </view>
     </view>
 
-    <view class="search-box">
-      <text class="search-icon">⌕</text>
-      <input class="search-input" value="{{searchKeyword}}" bindinput="onSearch" placeholder="搜一搜想吃的菜" placeholder-class="input-placeholder" />
-      <text wx:if="{{searchKeyword}}" class="search-clear" bindtap="clearSearch">×</text>
+    <view class="search-row">
+      <view class="search-box">
+        <text class="search-icon">⌕</text>
+        <input class="search-input" value="{{searchKeyword}}" bindinput="onSearch" placeholder="搜一搜想吃的菜" placeholder-class="input-placeholder" />
+        <text wx:if="{{searchKeyword}}" class="search-clear" bindtap="clearSearch">×</text>
+      </view>
+      <view class="dice-button" bindtap="openRandomDish" hover-class="tap-scale--active" aria-label="今天吃什么">🎲</view>
     </view>
 
     <scroll-view class="category-scroll" scroll-x enhanced show-scrollbar="{{false}}">
@@ -509,5 +545,68 @@
     <text class="success-title">收到啦，准备开饭！</text>
     <text class="success-copy">{{orderSuccessCopy}}</text>
     <button bindtap="finishOrder" hover-class="button-pressed">好呀</button>
+  </view>
+</view>
+
+<!-- 随机选菜 -->
+<view wx:if="{{showRandomDish}}" class="overlay random-overlay" bindtap="closeRandomDish">
+  <view class="random-card" catchtap="noop">
+    <view class="random-card-close" bindtap="closeRandomDish">×</view>
+    <text class="random-kicker">今天吃什么</text>
+    <view class="random-dish {{randomRolling ? 'is-rolling' : ''}}">
+      <view class="random-dish-art tone-{{randomDish.tone}}">
+        <image wx:if="{{randomDish.image}}" class="random-dish-image" src="{{randomDish.image}}" mode="aspectFit"></image>
+        <text wx:else class="random-dish-emoji">{{randomDish.emoji}}</text>
+      </view>
+      <text class="random-dish-name">{{randomDish.name}}</text>
+      <text class="random-dish-desc">{{randomDish.description}}</text>
+    </view>
+    <view class="random-actions">
+      <view class="random-btn ghost" bindtap="rollRandomDish" hover-class="tap-scale--active">换一个</view>
+      <view class="random-btn solid" data-id="{{randomDish.id}}" bindtap="addRandomToCart" hover-class="tap-scale--active">加入购物车</view>
+    </view>
+  </view>
+</view>
+
+<!-- 纪念日设置 -->
+<view wx:if="{{showAnniversarySheet}}" class="overlay anniversary-overlay" bindtap="closeAnniversarySheet">
+  <view class="random-card anniversary-card-sheet" catchtap="noop">
+    <view class="random-card-close" bindtap="closeAnniversarySheet">×</view>
+    <text class="random-kicker">记录我们的纪念日</text>
+    <view class="anniversary-form">
+      <text class="form-label">标题</text>
+      <input class="anniversary-input" value="{{anniversaryDraft.title}}" bindinput="onAnniversaryTitleInput" maxlength="12" placeholder="例如：在一起" placeholder-class="input-placeholder" />
+      <text class="form-label">开始的日子</text>
+      <picker class="anniversary-picker" mode="date" value="{{anniversaryDraft.date}}" end="{{todayDate}}" bindchange="onAnniversaryDateChange">
+        <view class="anniversary-picker-value"><text>{{anniversaryDraft.date || '选择日期'}}</text><text class="anniversary-picker-arrow">›</text></view>
+      </picker>
+      <button class="save-anniversary-button" bindtap="saveAnniversary" hover-class="button-pressed">保存</button>
+      <text wx:if="{{anniversary}}" class="anniversary-clear" bindtap="clearAnniversary">清除纪念日</text>
+    </view>
+  </view>
+</view>
+
+<!-- 悄悄话留言板 -->
+<view wx:if="{{showMessages}}" class="overlay messages-overlay" bindtap="closeMessages">
+  <view class="bottom-sheet messages-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="sheet-header"><view><text class="sheet-title">悄悄话</text><text class="sheet-subtitle">把想说的话，轻轻留在这里</text></view><view class="sheet-close" bindtap="closeMessages">×</view></view>
+    <scroll-view wx:if="{{messagesDisplay.length}}" class="messages-list" scroll-y show-scrollbar="{{false}}">
+      <view wx:for="{{messagesDisplay}}" wx:key="id" class="message-item">
+        <view class="message-item-top">
+          <text class="message-author">{{item.authorName}}</text>
+          <view class="message-item-side">
+            <text class="message-time">{{item.timeText}}</text>
+            <text class="message-delete" data-id="{{item.id}}" catchtap="deleteMessage">删除</text>
+          </view>
+        </view>
+        <text class="message-text">{{item.text}}</text>
+      </view>
+    </scroll-view>
+    <view wx:else class="messages-sheet-empty"><text>✎</text><text>还没有悄悄话，写下第一句吧</text></view>
+    <view class="message-compose">
+      <input class="message-input" value="{{messageDraft}}" bindinput="onMessageDraftInput" maxlength="80" placeholder="写一句悄悄话…" placeholder-class="input-placeholder" confirm-type="send" bindconfirm="sendMessage" />
+      <view class="message-send" bindtap="sendMessage" hover-class="tap-scale--active">发送</view>
+    </view>
   </view>
 </view>

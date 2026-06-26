@@ -655,17 +655,38 @@ page {
   font-size: 17rpx;
   line-height: 27rpx;
 }
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 22rpx;
+}
 .search-box {
+  flex: 1;
   height: 82rpx;
   display: flex;
   align-items: center;
-  margin-bottom: 22rpx;
   padding: 0 22rpx;
   border: 1rpx solid #f1e6df;
   border-radius: 25rpx;
   box-sizing: border-box;
   background: #fff;
   box-shadow: 0 7rpx 23rpx rgba(82, 50, 38, 0.045);
+}
+.dice-button {
+  width: 82rpx;
+  height: 82rpx;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 25rpx;
+  font-size: 40rpx;
+  background: linear-gradient(150deg, #fff2e9, #ffd9c9);
+  box-shadow:
+    0 8rpx 20rpx rgba(225, 91, 67, 0.18),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.8);
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .search-icon {
   margin-right: 14rpx;
@@ -2629,6 +2650,432 @@ page {
   color: #ec7f8d;
   font-size: 26rpx;
   transform: rotate(14deg);
+}
+
+/* 随机选菜弹层 */
+.random-overlay {
+  z-index: 120;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+  box-sizing: border-box;
+}
+.random-card {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 50rpx 38rpx 38rpx;
+  border-radius: 40rpx;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #fffaf6, #fff3ea);
+  box-shadow: 0 25rpx 70rpx rgba(50, 32, 25, 0.25);
+  animation: pop-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.random-card-close {
+  position: absolute;
+  right: 24rpx;
+  top: 24rpx;
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  background: #f1e8e3;
+  color: #8e7f78;
+  font-size: 36rpx;
+  line-height: 49rpx;
+  text-align: center;
+}
+.random-kicker {
+  color: #c08a73;
+  font-size: 22rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+}
+.random-dish {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 18rpx;
+  transition: transform 0.18s ease;
+}
+.random-dish.is-rolling {
+  animation: dish-shake 0.3s ease-in-out infinite;
+}
+@keyframes dish-shake {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  25% {
+    transform: translateY(-6rpx) rotate(-3deg);
+  }
+  75% {
+    transform: translateY(6rpx) rotate(3deg);
+  }
+}
+.random-dish-art {
+  width: 220rpx;
+  height: 220rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 36rpx;
+  font-size: 120rpx;
+}
+.random-dish-image {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 12rpx 18rpx rgba(122, 34, 25, 0.2));
+}
+.random-dish-name {
+  margin-top: 22rpx;
+  color: #3f312c;
+  font-size: 38rpx;
+  font-weight: 800;
+  letter-spacing: -0.5rpx;
+}
+.random-dish-desc {
+  margin-top: 8rpx;
+  color: #98867e;
+  font-size: 22rpx;
+}
+.random-actions {
+  display: flex;
+  width: 100%;
+  gap: 18rpx;
+  margin-top: 38rpx;
+}
+.random-btn {
+  flex: 1;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 27rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+.random-btn.ghost {
+  background: #f3e7e0;
+  color: #8a6f63;
+}
+.random-btn.solid {
+  background: linear-gradient(135deg, #f17a5c, #e95c47);
+  color: #fff;
+  box-shadow: 0 11rpx 26rpx rgba(216, 83, 58, 0.2);
+}
+
+/* 纪念日小卡片 */
+.anniversary-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28rpx;
+  padding: 30rpx 34rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.9);
+  border-radius: 32rpx;
+  background: linear-gradient(135deg, #fff3ec, #ffe1d4);
+  box-shadow:
+    0 14rpx 34rpx rgba(216, 83, 58, 0.12),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.9);
+  transition: transform 0.22s ease;
+}
+.anniversary-card:active {
+  transform: translateY(2rpx);
+}
+.anniversary-glow {
+  position: absolute;
+  right: -40rpx;
+  top: -50rpx;
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 173, 142, 0.55),
+    rgba(255, 173, 142, 0)
+  );
+}
+.anniversary-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+}
+.anniversary-title {
+  color: #b46a52;
+  font-size: 22rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+}
+.anniversary-count {
+  display: flex;
+  align-items: baseline;
+  gap: 6rpx;
+  margin-top: 6rpx;
+  color: #e95c47;
+}
+.anniversary-prefix,
+.anniversary-suffix {
+  font-size: 26rpx;
+  font-weight: 700;
+}
+.anniversary-days {
+  font-size: 64rpx;
+  font-weight: 800;
+  letter-spacing: -1rpx;
+  line-height: 1;
+}
+.anniversary-since {
+  margin-top: 8rpx;
+  color: #b79086;
+  font-size: 19rpx;
+}
+.anniversary-heart {
+  position: relative;
+  z-index: 1;
+  color: #ef654d;
+  font-size: 64rpx;
+  opacity: 0.85;
+}
+.anniversary-empty {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.anniversary-empty-text {
+  color: #c2705a;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+.anniversary-empty-arrow {
+  color: #e4674f;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+/* 纪念日设置弹层 */
+.anniversary-card-sheet {
+  background: linear-gradient(180deg, #fffaf6, #fff3ea);
+}
+.anniversary-form {
+  width: 100%;
+  margin-top: 26rpx;
+}
+.anniversary-form .form-label {
+  display: block;
+  margin: 18rpx 4rpx 12rpx;
+  color: #8f7a72;
+  font-size: 21rpx;
+  font-weight: 600;
+}
+.anniversary-form .form-label:first-child {
+  margin-top: 0;
+}
+.anniversary-input {
+  width: 100%;
+  height: 84rpx;
+  padding: 0 24rpx;
+  border: 1rpx solid #ecdfd8;
+  border-radius: 24rpx;
+  box-sizing: border-box;
+  background: #fff;
+  color: #493831;
+  font-size: 26rpx;
+}
+.anniversary-picker {
+  width: 100%;
+}
+.anniversary-picker-value {
+  height: 84rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24rpx;
+  border: 1rpx solid #ecdfd8;
+  border-radius: 24rpx;
+  box-sizing: border-box;
+  background: #fff;
+  color: #493831;
+  font-size: 26rpx;
+}
+.anniversary-picker-arrow {
+  color: #c6b8b1;
+  font-size: 34rpx;
+}
+.save-anniversary-button {
+  width: 100%;
+  height: 84rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 30rpx 0 0;
+  padding: 0;
+  border-radius: 27rpx;
+  background: linear-gradient(135deg, #f17a5c, #e95c47);
+  color: #fff;
+  font-size: 24rpx;
+  line-height: 1;
+  font-weight: 700;
+  box-shadow: 0 11rpx 26rpx rgba(216, 83, 58, 0.18);
+}
+.anniversary-clear {
+  display: block;
+  margin-top: 22rpx;
+  color: #c98a73;
+  font-size: 21rpx;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* 悄悄话首页模块 */
+.messages-heading {
+  margin-top: 42rpx;
+}
+.messages-card {
+  overflow: hidden;
+  padding: 8rpx 24rpx 24rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.9);
+  border-radius: 30rpx;
+  background: linear-gradient(170deg, #ffffff, #fffaf6);
+  box-shadow:
+    0 12rpx 30rpx rgba(80, 50, 36, 0.06),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.9);
+}
+.message-mini {
+  padding: 22rpx 2rpx;
+  border-bottom: 1rpx solid #f6eee9;
+}
+.message-mini:last-of-type {
+  border-bottom: 0;
+}
+.message-mini-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8rpx;
+}
+.message-author {
+  color: #d2674f;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+.message-time {
+  color: #b6a59d;
+  font-size: 18rpx;
+}
+.message-text {
+  display: block;
+  color: #4a3b35;
+  font-size: 24rpx;
+  line-height: 1.5;
+  word-break: break-all;
+}
+.messages-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  padding: 36rpx 0 30rpx;
+  color: #9c8b83;
+  font-size: 22rpx;
+}
+.messages-empty-icon {
+  color: #ee876f;
+  font-size: 40rpx;
+}
+.write-message-button {
+  width: 100%;
+  height: 78rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  margin: 18rpx 0 0;
+  padding: 0;
+  border-radius: 24rpx;
+  background: #fff0ea;
+  color: #e4674f;
+  font-size: 23rpx;
+  line-height: 1;
+  font-weight: 700;
+}
+
+/* 悄悄话留言弹层 */
+.messages-list {
+  max-height: 620rpx;
+}
+.message-item {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid #f0e6e1;
+}
+.message-item:last-child {
+  border-bottom: 0;
+}
+.message-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10rpx;
+}
+.message-item-side {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+}
+.message-delete {
+  color: #cf8b7c;
+  font-size: 19rpx;
+  font-weight: 600;
+}
+.messages-sheet-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+  padding: 80rpx 0;
+  color: #9c8b83;
+  font-size: 23rpx;
+}
+.messages-sheet-empty text:first-child {
+  color: #ee876f;
+  font-size: 60rpx;
+}
+.message-compose {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 18rpx;
+}
+.message-input {
+  flex: 1;
+  height: 80rpx;
+  padding: 0 24rpx;
+  border: 1rpx solid #ecdfd8;
+  border-radius: 24rpx;
+  box-sizing: border-box;
+  background: #fff;
+  font-size: 23rpx;
+}
+.message-send {
+  flex-shrink: 0;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 36rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #f17a5c, #e95c47);
+  color: #fff;
+  font-size: 23rpx;
+  font-weight: 700;
+  box-shadow: 0 11rpx 26rpx rgba(216, 83, 58, 0.18);
 }
 
 @media (max-width: 340px) {

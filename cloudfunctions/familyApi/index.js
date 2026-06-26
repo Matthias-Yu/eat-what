@@ -11,7 +11,8 @@ const RESOURCE_LIMITS = {
   orders: 100,
   wishes: 300,
   menus: 100,
-  places: 500
+  places: 500,
+  messages: 200
 }
 const MENU_CATEGORIES = ['main', 'dish', 'light', 'drink']
 const CATEGORY_TONE = {
@@ -98,6 +99,8 @@ function emptySharedData(householdId) {
     menus: [],
     places: [],
     orderNotices: [],
+    anniversary: null,
+    messages: [],
     updatedAt: db.serverDate()
   }
 }
@@ -221,6 +224,8 @@ async function getSharedData(openid) {
     menus: Array.isArray(data.menus) ? data.menus : [],
     places: Array.isArray(data.places) ? data.places : [],
     orderNotices: getVisibleOrderNotices(data, openid),
+    anniversary: data.anniversary || null,
+    messages: Array.isArray(data.messages) ? data.messages : [],
     updatedAt: data.updatedAt || null
   })
 }
@@ -300,15 +305,47 @@ async function trySendOrderSubscribeMessage(openid, notice) {
   }
 }
 
+function sanitizeAnniversary(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const date = textSlice(value.date, 10)
+  // 期望 YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
+  return {
+    title: textSlice(value.title, 12) || '在一起',
+    date
+  }
+}
+
+function sanitizeMessageItem(item, index) {
+  const source = item && typeof item === 'object' && !Array.isArray(item) ? item : {}
+  const createdAt = Number(source.createdAt) || Date.now()
+  return {
+    id: textSlice(source.id, 40) || `msg-${createdAt}-${index}`,
+    text: textSlice(source.text, 80),
+    authorOpenid: textSlice(source.authorOpenid, 60),
+    authorName: textSlice(source.authorName, 12) || '小家成员',
+    createdAt
+  }
+}
+
 function sanitizeResource(resource, value) {
   if (resource === 'cart') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
     return value
   }
+  if (resource === 'anniversary') {
+    return sanitizeAnniversary(value)
+  }
   if (!Object.prototype.hasOwnProperty.call(RESOURCE_LIMITS, resource)) throw new Error('不支持的数据类型')
   if (!Array.isArray(value)) throw new Error('数据格式不正确')
   if (resource === 'wishes') return value.slice(0, RESOURCE_LIMITS.wishes).map(sanitizeWishItem)
   if (resource === 'menus') return value.slice(0, RESOURCE_LIMITS.menus).map(sanitizeMenuItem)
+  if (resource === 'messages') {
+    return value
+      .slice(0, RESOURCE_LIMITS.messages)
+      .map(sanitizeMessageItem)
+      .filter((item) => item.text)
+  }
   return value.slice(0, RESOURCE_LIMITS[resource])
 }
 

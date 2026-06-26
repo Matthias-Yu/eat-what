@@ -4,7 +4,9 @@ const KEYS = {
   orders: 'home_menu_orders_v1',
   customMenuItems: 'home_menu_custom_items_v1',
   wishes: 'home_menu_wishes_v1',
-  orderNotices: 'home_menu_order_notices_v1'
+  orderNotices: 'home_menu_order_notices_v1',
+  anniversary: 'home_menu_anniversary_v1',
+  messages: 'home_menu_messages_v1'
 }
 
 function read(key, fallback) {

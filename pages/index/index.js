@@ -49,6 +49,71 @@ function textSlice(value, length) {
   return Array.from(String(value || '').trim()).slice(0, length).join('')
 }
 
+function todayDateString() {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
+function getAnniversaryDays(date) {
+  if (!date) return 0
+  const parts = String(date).split('-').map(Number)
+  if (parts.length !== 3 || parts.some((part) => !part && part !== 0)) return 0
+  const start = new Date(parts[0], parts[1] - 1, parts[2])
+  if (isNaN(start.getTime())) return 0
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const diff = Math.floor((today.getTime() - start.getTime()) / 86400000)
+  return diff >= 0 ? diff + 1 : 0
+}
+
+function normalizeAnniversary(value) {
+  if (!value || typeof value !== 'object') return null
+  const date = textSlice(value.date, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
+  return {
+    title: textSlice(value.title, 12) || '在一起',
+    date
+  }
+}
+
+function formatRelativeTime(ts) {
+  const time = Number(ts)
+  if (!time) return ''
+  const diff = Date.now() - time
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
+  if (diff < 7 * 86400000) return `${Math.floor(diff / 86400000)} 天前`
+  const date = new Date(time)
+  return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function normalizeMessages(messages) {
+  return (Array.isArray(messages) ? messages : [])
+    .map((item) => ({
+      id: item && item.id ? item.id : Date.now(),
+      text: textSlice(item && item.text, 80),
+      authorOpenid: (item && item.authorOpenid) || '',
+      authorName: textSlice(item && item.authorName, 12) || '我',
+      createdAt: Number(item && item.createdAt) || Date.now()
+    }))
+    .filter((item) => item.text)
+}
+
+function getMessagesView(messages) {
+  const normalized = normalizeMessages(messages)
+  const messagesDisplay = normalized.map((item) => Object.assign({}, item, {
+    timeText: formatRelativeTime(item.createdAt)
+  }))
+  return {
+    messages: normalized,
+    messagesDisplay,
+    recentMessages: messagesDisplay.slice(0, 2)
+  }
+}
+
 function parseMenuTags(value, category) {
   const tags = String(value || '')
     .split(/[,\s，、]+/)
@@ -259,7 +324,20 @@ Page({
     dueOptions: ['今天', '明天', '本周'],
     profileStats: { orders: 0, todos: 0, pending: 0 },
     showMenuManager: false,
-    menuDraft: createMenuDraft()
+    menuDraft: createMenuDraft(),
+    showRandomDish: false,
+    randomDish: {},
+    randomRolling: false,
+    anniversary: null,
+    anniversaryDays: 0,
+    showAnniversarySheet: false,
+    anniversaryDraft: { title: '', date: '' },
+    todayDate: '',
+    messages: [],
+    recentMessages: [],
+    messagesDisplay: [],
+    showMessages: false,
+    messageDraft: ''
   },
 
   onLoad() {
@@ -275,6 +353,8 @@ Page({
     const todoView = getTodoView(savedTodos || DEFAULT_TODOS, this.data.todoFilter)
     const wishView = getWishView(Array.isArray(savedWishes) ? savedWishes : [])
     const cartView = getCartView(cart, allMenuItems)
+    const anniversary = normalizeAnniversary(storage.read('anniversary', null))
+    const messagesView = getMessagesView(storage.read('messages', []))
     this.allMenuItems = allMenuItems
     this.menuItemMap = getMenuItemMap(allMenuItems)
     this.setData({
@@ -293,7 +373,13 @@ Page({
       cartItems: cartView.cartItems,
       cartCount: cartView.cartCount,
       orders,
-      profileStats: getProfileStats(todoView.todos, orders)
+      profileStats: getProfileStats(todoView.todos, orders),
+      todayDate: todayDateString(),
+      anniversary,
+      anniversaryDays: anniversary ? getAnniversaryDays(anniversary.date) : 0,
+      messages: messagesView.messages,
+      recentMessages: messagesView.recentMessages,
+      messagesDisplay: messagesView.messagesDisplay
     })
     this.initializeCloud()
     this.resolveMenuImages()
@@ -498,6 +584,21 @@ Page({
     if (todosChanged || ordersChanged) {
       update.profileStats = getProfileStats(todosChanged ? todoView.todos : this.data.todos, ordersChanged ? orders : this.data.orders)
     }
+
+    const anniversary = normalizeAnniversary(data.anniversary)
+    if (!isSameList(this.data.anniversary, anniversary)) {
+      storage.write('anniversary', anniversary)
+      update.anniversary = anniversary
+      update.anniversaryDays = anniversary ? getAnniversaryDays(anniversary.date) : 0
+    }
+    const messagesView = getMessagesView(data.messages)
+    if (!isSameList(this.data.messages, messagesView.messages)) {
+      storage.write('messages', messagesView.messages)
+      update.messages = messagesView.messages
+      update.recentMessages = messagesView.recentMessages
+      update.messagesDisplay = messagesView.messagesDisplay
+    }
+
     if (Object.keys(update).length) this.setData(update)
     if (menusChanged) this.resolveMenuImages()
     this.cloudDataReady = true
@@ -1018,6 +1119,179 @@ Page({
 
   closeMenuManager() {
     this.setData({ showMenuManager: false })
+  },
+
+  pickRandomDish() {
+    const pool = (this.allMenuItems && this.allMenuItems.length) ? this.allMenuItems : []
+    if (!pool.length) return null
+    const current = this.data.randomDish && this.data.randomDish.id
+    let next = pool[Math.floor(Math.random() * pool.length)]
+    // 尽量不连续抽到同一道
+    if (pool.length > 1 && next.id === current) {
+      next = pool[(pool.indexOf(next) + 1) % pool.length]
+    }
+    return next
+  },
+
+  openRandomDish() {
+    const dish = this.pickRandomDish()
+    if (!dish) {
+      wx.showToast({ title: '还没有可选的菜', icon: 'none' })
+      return
+    }
+    this.setData({ showRandomDish: true, randomDish: dish })
+    this.rollRandomDish()
+  },
+
+  rollRandomDish() {
+    if (this.data.randomRolling) return
+    if (wx.vibrateShort) wx.vibrateShort({ type: 'light' })
+    this.setData({ randomRolling: true })
+    let count = 0
+    const timer = setInterval(() => {
+      const dish = this.pickRandomDish()
+      if (dish) this.setData({ randomDish: dish })
+      count += 1
+      if (count >= 7) {
+        clearInterval(timer)
+        this.setData({ randomRolling: false })
+        if (wx.vibrateShort) wx.vibrateShort({ type: 'medium' })
+      }
+    }, 75)
+  },
+
+  closeRandomDish() {
+    this.setData({ showRandomDish: false, randomRolling: false })
+  },
+
+  addRandomToCart(event) {
+    const id = event.currentTarget.dataset.id
+    if (!id) return
+    const cart = Object.assign({}, this.data.cart)
+    cart[id] = (cart[id] || 0) + 1
+    storage.write('cart', cart)
+    this.updateCart(cart)
+    this.syncCloudResource('cart', cart, { debounce: true })
+    if (wx.vibrateShort) wx.vibrateShort({ type: 'light' })
+    this.setData({ showRandomDish: false })
+    wx.showToast({ title: '已加入购物车', icon: 'success' })
+  },
+
+  openAnniversarySheet() {
+    const anniversary = this.data.anniversary
+    this.setData({
+      showAnniversarySheet: true,
+      anniversaryDraft: {
+        title: anniversary ? anniversary.title : '在一起',
+        date: anniversary ? anniversary.date : this.data.todayDate
+      }
+    })
+  },
+
+  closeAnniversarySheet() {
+    this.setData({ showAnniversarySheet: false })
+  },
+
+  onAnniversaryTitleInput(event) {
+    this.setData({ 'anniversaryDraft.title': event.detail.value })
+  },
+
+  onAnniversaryDateChange(event) {
+    this.setData({ 'anniversaryDraft.date': event.detail.value })
+  },
+
+  saveAnniversary() {
+    const draft = this.data.anniversaryDraft
+    const title = textSlice(draft.title, 12) || '在一起'
+    const date = textSlice(draft.date, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      wx.showToast({ title: '选一个开始的日子吧', icon: 'none' })
+      return
+    }
+    if (date > this.data.todayDate) {
+      wx.showToast({ title: '日期不能晚于今天', icon: 'none' })
+      return
+    }
+    const anniversary = { title, date }
+    storage.write('anniversary', anniversary)
+    this.syncCloudResource('anniversary', anniversary)
+    this.setData({
+      anniversary,
+      anniversaryDays: getAnniversaryDays(date),
+      showAnniversarySheet: false
+    })
+    wx.showToast({ title: '已记下这个日子', icon: 'success' })
+  },
+
+  clearAnniversary() {
+    storage.write('anniversary', null)
+    this.syncCloudResource('anniversary', null)
+    this.setData({
+      anniversary: null,
+      anniversaryDays: 0,
+      showAnniversarySheet: false
+    })
+    wx.showToast({ title: '已清除纪念日', icon: 'success' })
+  },
+
+  commitMessages(messages, options = {}) {
+    const messagesView = getMessagesView(messages)
+    this.setData(Object.assign({
+      messages: messagesView.messages,
+      recentMessages: messagesView.recentMessages,
+      messagesDisplay: messagesView.messagesDisplay
+    }, options.extraData || {}))
+    if (options.persist !== false) storage.write('messages', messagesView.messages)
+    if (options.sync) this.syncCloudResource('messages', messagesView.messages)
+    return messagesView
+  },
+
+  openMessages() {
+    this.setData({ showMessages: true })
+  },
+
+  closeMessages() {
+    this.setData({ showMessages: false })
+  },
+
+  onMessageDraftInput(event) {
+    this.setData({ messageDraft: event.detail.value })
+  },
+
+  sendMessage() {
+    const text = textSlice(this.data.messageDraft, 80)
+    if (!text) {
+      wx.showToast({ title: '写一句悄悄话吧', icon: 'none' })
+      return
+    }
+    const message = {
+      id: Date.now(),
+      text,
+      authorOpenid: '',
+      authorName: '我',
+      createdAt: Date.now()
+    }
+    this.commitMessages([message].concat(this.data.messages), {
+      sync: true,
+      extraData: { messageDraft: '' }
+    })
+    wx.showToast({ title: '已留下悄悄话', icon: 'success' })
+  },
+
+  deleteMessage(event) {
+    const id = String(event.currentTarget.dataset.id)
+    const message = this.data.messages.find((item) => String(item.id) === id)
+    if (!message) return
+    wx.showModal({
+      title: '删除这句悄悄话？',
+      content: '删除后就找不回来啦',
+      confirmText: '删除',
+      confirmColor: '#e75c48',
+      success: (result) => {
+        if (!result.confirm) return
+        this.commitMessages(this.data.messages.filter((item) => String(item.id) !== id), { sync: true })
+      }
+    })
   },
 
   onMenuDraftInput(event) {
