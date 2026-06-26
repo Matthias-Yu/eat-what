@@ -11,7 +11,7 @@
       aria-label="{{item.label}}"
     >
       <view class="nav-icon-wrap">
-        <text class="nav-icon">{{item.icon}}</text>
+        <image class="nav-icon" src="{{active === item.id ? item.iconActive : item.icon}}" mode="aspectFit"></image>
         <text wx:if="{{item.id === 'menu' && badge > 0}}" class="nav-badge">{{badge > 99 ? '99+' : badge}}</text>
         <text wx:if="{{item.id === 'wishlist' && wishBadge > 0}}" class="nav-badge">{{wishBadge > 99 ? '99+' : wishBadge}}</text>
       </view>

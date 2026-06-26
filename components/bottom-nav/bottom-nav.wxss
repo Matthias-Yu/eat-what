@@ -9,69 +9,86 @@
 }
 
 .nav-bar {
-  height: 108rpx;
+  height: 112rpx;
   display: flex;
   align-items: center;
-  padding: 0 16rpx;
+  padding: 0 12rpx;
   border: 1rpx solid rgba(255, 255, 255, .9);
-  border-radius: 34rpx;
-  background: rgba(255, 255, 255, .94);
-  box-shadow: 0 14rpx 50rpx rgba(87, 50, 36, .14);
+  border-radius: 36rpx;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 16rpx 48rpx rgba(87, 50, 36, .16), inset 0 1rpx 0 rgba(255, 255, 255, .8);
   pointer-events: auto;
+  backdrop-filter: blur(20rpx);
 }
 
 .nav-item {
   flex: 1;
-  height: 94rpx;
+  height: 100rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: #b2a49d;
-  transition: transform .2s ease, color .2s ease;
+  transition: color .2s ease;
 }
 
-.nav-item--pressed { transform: scale(.92); }
+.nav-item--pressed .nav-icon-wrap { transform: scale(.9); }
 
 .nav-icon-wrap {
   position: relative;
-  width: 68rpx;
-  height: 46rpx;
+  width: 60rpx;
+  height: 60rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 22rpx;
-  transition: background .2s ease;
+  transition: background .26s ease, transform .26s cubic-bezier(.34, 1.56, .64, 1);
 }
 
 .nav-icon {
-  font-size: 38rpx;
-  line-height: 1;
-  font-weight: 700;
+  width: 42rpx;
+  height: 42rpx;
+  opacity: .85;
+  transition: transform .26s ease, opacity .2s ease;
 }
 
 .nav-label {
-  margin-top: 2rpx;
+  margin-top: 6rpx;
   font-size: 20rpx;
   font-weight: 600;
+  letter-spacing: 1rpx;
+  line-height: 1;
+  transition: color .2s ease, font-weight .2s ease;
 }
 
+/* 选中态：高亮药丸底 + 彩色（不位移，五个键严格对齐） */
 .nav-item.is-active { color: #f06449; }
-.nav-item.is-active .nav-icon-wrap { background: #fff0e8; }
+.nav-item.is-active .nav-icon-wrap {
+  background: linear-gradient(135deg, #ffe9df, #ffd9c9);
+  box-shadow: 0 6rpx 16rpx rgba(240, 100, 73, .2);
+}
+.nav-item.is-active .nav-icon {
+  opacity: 1;
+}
+.nav-item.is-active .nav-label {
+  font-weight: 800;
+}
 
 .nav-badge {
   position: absolute;
-  top: -8rpx;
-  right: -6rpx;
-  min-width: 26rpx;
-  height: 26rpx;
-  padding: 0 5rpx;
+  top: -6rpx;
+  right: -8rpx;
+  min-width: 28rpx;
+  height: 28rpx;
+  padding: 0 6rpx;
   box-sizing: border-box;
   border: 3rpx solid #fff;
-  border-radius: 15rpx;
-  background: #f05a45;
+  border-radius: 16rpx;
+  background: linear-gradient(135deg, #ff7a5c, #f0492f);
   color: #fff;
   font-size: 16rpx;
-  line-height: 23rpx;
+  font-weight: 700;
+  line-height: 22rpx;
   text-align: center;
+  box-shadow: 0 4rpx 10rpx rgba(240, 73, 47, .35);
 }
