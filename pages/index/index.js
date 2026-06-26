@@ -585,6 +585,8 @@ Page({
     if (this.data.familyStatus !== 'active' || this.cloudWritePending > 0 || this.hasQueuedCloudSync()) return
     try {
       const data = await cloudService.call('getData')
+      // 拉取期间若又产生了本地写入/排队同步，丢弃这次结果，避免用旧云端数据覆盖更新的本地操作
+      if (this.cloudWritePending > 0 || this.hasQueuedCloudSync()) return
       this.applyCloudData(data)
     } catch (error) {
       console.warn('拉取家庭数据失败', error)
