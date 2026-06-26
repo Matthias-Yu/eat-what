@@ -279,6 +279,7 @@ function isSameList(currentList, nextList) {
 Page({
   data: {
     activeTab: 'home',
+    scrollTop: 0,
     dateLabel: '',
     greeting: { text: '你好', icon: '☀️' },
     categories,
@@ -827,12 +828,21 @@ Page({
 
   noop() {},
 
+  // 切换 tab 后把内容滚回顶部（先置非 0 再置 0，强制 scroll-top 变化生效）
+  resetScroll() {
+    this.setData({ scrollTop: 1 })
+    wx.nextTick(() => this.setData({ scrollTop: 0 }))
+  },
+
   setTab(event) {
     const activeTab = event.detail.id
     const update = {}
     if (this.data.activeTab !== activeTab) update.activeTab = activeTab
     if (this.data.showCart) update.showCart = false
-    if (Object.keys(update).length) this.setData(update)
+    if (Object.keys(update).length) {
+      this.setData(update)
+      if (update.activeTab) this.resetScroll()
+    }
   },
 
   navigateFromCard(event) {
@@ -843,11 +853,13 @@ Page({
     }
     if (target === this.data.activeTab) return
     this.setData({ activeTab: target })
+    this.resetScroll()
   },
 
   exploreMenu(event) {
     const category = event.currentTarget.dataset.category || 'recommend'
     this.applyMenuFilter(category, '', { activeTab: 'menu' })
+    this.resetScroll()
   },
 
   selectCategory(event) {
@@ -1029,6 +1041,7 @@ Page({
 
   finishOrder() {
     this.setData({ showOrderSuccess: false, activeTab: 'home' })
+    this.resetScroll()
   },
 
   openOrderDetail(event) {
@@ -1530,6 +1543,7 @@ Page({
           profileStats: getProfileStats(todoView.todos, orders)
         })
         this.resolveMenuImages()
+        this.resetScroll()
         this.syncCloudResource('cart', cart)
         this.syncCloudResource('orders', orders)
         this.syncCloudResource('todos', todoView.todos)
