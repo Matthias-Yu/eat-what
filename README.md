@@ -19,6 +19,7 @@
 - `family_users`：微信用户与家庭关系
 - `family_households`：家庭成员和邀请码
 - `family_data`：共享购物车、订单与待办
+- `family_visits`：家庭成员进入小程序的时间记录
 
 ## 项目结构
 

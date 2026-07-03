@@ -4,13 +4,46 @@ function textSlice(value, length) {
   return Array.from(String(value || '').trim()).slice(0, length).join('')
 }
 
+function pad(value) {
+  return String(value).padStart(2, '0')
+}
+
+function formatVisitTime(value) {
+  const timestamp = Number(value)
+  if (!timestamp) return '时间未知'
+  const date = new Date(timestamp)
+  const today = new Date()
+  const isToday = date.getFullYear() === today.getFullYear()
+    && date.getMonth() === today.getMonth()
+    && date.getDate() === today.getDate()
+  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`
+  if (isToday) return `今天 ${time}`
+  return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${time}`
+}
+
+function normalizeVisitRecords(records) {
+  return (Array.isArray(records) ? records : []).map((item) => ({
+    id: item.id,
+    openid: item.openid,
+    nickname: item.nickname || '小家成员',
+    roleLabel: item.roleLabel || '成员',
+    isAdmin: !!item.isAdmin,
+    isSelf: !!item.isSelf,
+    scene: item.scene || '',
+    path: item.path || '',
+    timeText: formatVisitTime(item.enteredAtMs)
+  }))
+}
+
 Page({
   data: {
     members: [],
+    visitRecords: [],
     isAdmin: false,
     inviteCode: '',
     familyName: '',
     loading: true,
+    visitsLoading: false,
     busy: false,
     editingOpenid: '',
     nicknameDraft: ''
@@ -33,12 +66,26 @@ Page({
         members: members.members || [],
         isAdmin: !!members.isAdmin,
         inviteCode: household && household.isAdmin ? household.inviteCode || '' : '',
-        familyName: household ? household.name : ''
+        familyName: household ? household.name : '',
+        visitRecords: members.isAdmin ? this.data.visitRecords : []
       })
+      if (members.isAdmin) this.loadVisitRecords()
     } catch (error) {
       wx.showToast({ title: error.message || '加载成员失败', icon: 'none' })
     } finally {
       this.setData({ loading: false })
+    }
+  },
+
+  async loadVisitRecords() {
+    this.setData({ visitsLoading: true })
+    try {
+      const result = await cloudService.call('listVisitRecords')
+      this.setData({ visitRecords: normalizeVisitRecords(result.records) })
+    } catch (error) {
+      wx.showToast({ title: error.message || '加载进入记录失败', icon: 'none' })
+    } finally {
+      this.setData({ visitsLoading: false })
     }
   },
 
