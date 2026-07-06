@@ -1,0 +1,27 @@
+cloudfunctions/familyApi/index.js
+  s_38441994321845::t_0617e20840f4a7 537,542-544,552-560,576-581,702
+pages/members/members.js
+  s_38441994321845::t_8b4c934d67956e 24-30,41-42,46-57,67-72,106-108,111-116,124-156
+pages/members/members.wxml
+  s_38441994321845::t_2de910ab3ed36e 47,53,56,60-64
+pages/members/members.wxss
+  s_38441994321845::t_35f3cbc65a6ca0 42,48-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "8fb86be8502f90d9784f18f96756f9e26939cb30",
+  "prompts": {},
+  "sessions": {
+    "s_38441994321845": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f35ae-c4d2-77b1-8cd5-6982dbee2ec3",
+        "model": "unknown"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
