@@ -39,8 +39,13 @@ page { background:
 .visit-list { padding-top: 6rpx; }
 .visit-row { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; padding: 22rpx 0; border-bottom: 1rpx solid #f4ebe4; }
 .visit-row:last-child { border-bottom: none; padding-bottom: 0; }
+.visit-row:active { opacity: .72; }
 .visit-member { display: flex; flex-direction: column; min-width: 0; }
 .visit-name { color: #493831; font-size: 28rpx; font-weight: 700; }
 .visit-role { margin-top: 8rpx; color: #a8978f; font-size: 21rpx; }
 .visit-role.is-admin { color: #e0894f; }
 .visit-time { flex-shrink: 0; color: #c98a73; font-size: 24rpx; font-weight: 700; }
+.visit-pager { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-top: 20rpx; padding-top: 20rpx; border-top: 1rpx solid #f4ebe4; }
+.visit-page-button { flex-shrink: 0; min-width: 104rpx; padding: 12rpx 18rpx; border-radius: 999rpx; background: #fff1ea; color: #e95c47; font-size: 22rpx; font-weight: 700; text-align: center; }
+.visit-page-button.is-disabled { background: #f7eee9; color: #c9bab2; }
+.visit-page-info { min-width: 0; color: #a8978f; font-size: 21rpx; text-align: center; line-height: 1.4; }

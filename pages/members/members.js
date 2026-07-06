@@ -21,6 +21,13 @@ function formatVisitTime(value) {
   return `${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${time}`
 }
 
+function formatVisitFullTime(value) {
+  const timestamp = Number(value)
+  if (!timestamp) return '时间未知'
+  const date = new Date(timestamp)
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
 function normalizeVisitRecords(records) {
   return (Array.isArray(records) ? records : []).map((item) => ({
     id: item.id,
@@ -31,8 +38,21 @@ function normalizeVisitRecords(records) {
     isSelf: !!item.isSelf,
     scene: item.scene || '',
     path: item.path || '',
-    timeText: formatVisitTime(item.enteredAtMs)
+    timeText: formatVisitTime(item.enteredAtMs),
+    fullTimeText: formatVisitFullTime(item.enteredAtMs)
   }))
+}
+
+function getVisitPager(page, pageSize, total) {
+  const totalPages = Math.max(Math.ceil(total / pageSize), 1)
+  const currentPage = Math.min(page, totalPages)
+  return {
+    visitPage: currentPage,
+    visitTotal: total,
+    visitTotalPages: totalPages,
+    visitHasPrev: currentPage > 1,
+    visitHasNext: currentPage < totalPages
+  }
 }
 
 Page({
@@ -44,6 +64,12 @@ Page({
     familyName: '',
     loading: true,
     visitsLoading: false,
+    visitPage: 1,
+    visitPageSize: 5,
+    visitTotal: 0,
+    visitTotalPages: 1,
+    visitHasPrev: false,
+    visitHasNext: false,
     busy: false,
     editingOpenid: '',
     nicknameDraft: ''
@@ -77,16 +103,55 @@ Page({
     }
   },
 
-  async loadVisitRecords() {
+  async loadVisitRecords(options = {}) {
+    const page = Math.max(Number(options.page) || 1, 1)
+    const pageSize = this.data.visitPageSize
     this.setData({ visitsLoading: true })
     try {
-      const result = await cloudService.call('listVisitRecords')
-      this.setData({ visitRecords: normalizeVisitRecords(result.records) })
+      const result = await cloudService.call('listVisitRecords', { page, pageSize })
+      const total = Number(result.total) || 0
+      const resultPage = Math.max(Number(result.page) || page, 1)
+      this.setData(Object.assign({
+        visitRecords: normalizeVisitRecords(result.records)
+      }, getVisitPager(resultPage, pageSize, total)))
     } catch (error) {
       wx.showToast({ title: error.message || '加载进入记录失败', icon: 'none' })
     } finally {
       this.setData({ visitsLoading: false })
     }
+  },
+
+  refreshVisitRecords() {
+    this.loadVisitRecords({ page: 1 })
+  },
+
+  prevVisitPage() {
+    if (!this.data.visitHasPrev || this.data.visitsLoading) return
+    this.loadVisitRecords({ page: this.data.visitPage - 1 })
+  },
+
+  nextVisitPage() {
+    if (!this.data.visitHasNext || this.data.visitsLoading) return
+    this.loadVisitRecords({ page: this.data.visitPage + 1 })
+  },
+
+  showVisitDetail(event) {
+    const record = this.data.visitRecords.find((item) => item.id === event.currentTarget.dataset.id)
+    if (!record) return
+    const detail = [
+      `成员：${record.nickname}${record.isSelf ? '（我）' : ''}`,
+      `身份：${record.roleLabel}`,
+      `时间：${record.fullTimeText}`,
+      `入口场景：${record.scene || '未记录'}`,
+      `页面路径：${record.path || '未记录'}`,
+      `OpenID：${record.openid || '未记录'}`
+    ].join('\n')
+    wx.showModal({
+      title: '详细操作记录',
+      content: detail,
+      showCancel: false,
+      confirmText: '知道了'
+    })
   },
 
   copyInviteCode() {

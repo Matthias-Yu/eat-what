@@ -534,11 +534,14 @@ async function recordVisit(openid, event) {
   return success({ recorded: true })
 }
 
-async function listVisitRecords(openid) {
+async function listVisitRecords(openid, event = {}) {
   const { household } = await requireMembership(openid)
   const members = Array.isArray(household.members) ? household.members : []
   const primaryAdminOpenid = getPrimaryAdminOpenid(household)
   if (openid !== primaryAdminOpenid) throw new Error('只有管理员可以查看进入记录')
+  const pageSize = Math.min(Math.max(Number(event.pageSize) || 5, 1), 20)
+  const page = Math.max(Number(event.page) || 1, 1)
+  const skip = (page - 1) * pageSize
   const users = await Promise.all(members.map((memberOpenid) => getUser(memberOpenid)))
   const nicknameMap = members.reduce((map, memberOpenid, index) => {
     const user = users[index] || {}
@@ -546,11 +549,15 @@ async function listVisitRecords(openid) {
     map[memberOpenid] = textSlice(user.nickname, 12) || (isAdmin ? '管理员' : `成员${index + 1}`)
     return map
   }, {})
-  const response = await db.collection('family_visits')
-    .where({ householdId: household._id })
-    .orderBy('enteredAtMs', 'desc')
-    .limit(50)
-    .get()
+  const [countResponse, response] = await Promise.all([
+    db.collection('family_visits').where({ householdId: household._id }).count(),
+    db.collection('family_visits')
+      .where({ householdId: household._id })
+      .orderBy('enteredAtMs', 'desc')
+      .skip(skip)
+      .limit(pageSize)
+      .get()
+  ])
   const records = (response.data || []).map((record) => {
     const actorOpenid = record.openid || ''
     const isAdmin = actorOpenid === primaryAdminOpenid
@@ -566,7 +573,12 @@ async function listVisitRecords(openid) {
       enteredAtMs: Number(record.enteredAtMs) || 0
     }
   })
-  return success({ records })
+  return success({
+    records,
+    page,
+    pageSize,
+    total: Number(countResponse.total) || 0
+  })
 }
 
 async function setMemberNickname(openid, event) {
@@ -687,7 +699,7 @@ exports.main = async (event) => {
       case 'toggleMessageReaction': return toggleMessageReaction(OPENID, event)
       case 'listMembers': return listMembers(OPENID)
       case 'recordVisit': return recordVisit(OPENID, event)
-      case 'listVisitRecords': return listVisitRecords(OPENID)
+      case 'listVisitRecords': return listVisitRecords(OPENID, event)
       case 'setMemberNickname': return setMemberNickname(OPENID, event)
       case 'removeMember': return removeMember(OPENID, event)
       case 'leaveHousehold': return leaveHousehold(OPENID)
