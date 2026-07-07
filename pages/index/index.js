@@ -25,6 +25,8 @@ const FARM_PLOT_COUNT = 6
 const FARM_DAILY_BONUS = 12
 const FARM_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/farm/'
 const FARM_IMAGES = {
+  pageBg: FARM_IMG_BASE + 'farm-page-bg.jpg',
+  panelBg: FARM_IMG_BASE + 'farm-panel-bg.jpg',
   entry: FARM_IMG_BASE + 'farm-basket-empty.png',
   basketEmpty: FARM_IMG_BASE + 'farm-basket-empty.png',
   hero: FARM_IMG_BASE + 'farm-hero.png',

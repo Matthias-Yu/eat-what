@@ -262,6 +262,7 @@
 
   <!-- 农场 -->
   <view wx:elif="{{activeTab === 'farm'}}" class="page farm-page stagger">
+    <image class="farm-page-bg" src="{{farmImages.pageBg}}" mode="aspectFill"></image>
     <view class="page-header farm-header">
       <view><text class="page-kicker">LITTLE FARM</text><text class="page-title">我们的小农场</text></view>
       <view class="farm-wallet"><text>☀</text><text>{{farmStats.coins}}</text></view>
@@ -277,16 +278,26 @@
       <button class="farm-bonus-button {{farmStats.dailyAvailable ? '' : 'is-disabled'}}" bindtap="claimFarmDailyBonus" hover-class="button-pressed">{{farmStats.dailyAvailable ? '领每日阳光' : '今日已领取'}}</button>
     </view>
 
-    <view class="farm-stats">
-      <view><text>{{farmStats.planted}}</text><text>已种下</text></view>
-      <view><text>{{farmStats.ready}}</text><text>可收获</text></view>
-      <view><text>{{farmStats.harvests}}</text><text>仓库作物</text></view>
+    <view class="farm-mood-strip">
+      <view><text>☀</text><text>阳光 {{farmStats.coins}}</text></view>
+      <view><text>♧</text><text>菜园 {{farmStats.planted}}/6</text></view>
+      <view><text>⌑</text><text>{{farmStats.ready ? '有收成' : '慢慢长'}}</text></view>
+    </view>
+
+    <view class="farm-panel farm-stats-shell">
+      <image class="farm-panel-bg" src="{{farmImages.panelBg}}" mode="aspectFill"></image>
+      <view class="farm-stats">
+        <view><text>{{farmStats.planted}}</text><text>已种下</text></view>
+        <view><text>{{farmStats.ready}}</text><text>可收获</text></view>
+        <view><text>{{farmStats.harvests}}</text><text>仓库作物</text></view>
+      </view>
     </view>
 
     <view class="section-heading farm-section-heading">
       <view><text class="section-title">选择种子</text><text class="section-subtitle">点空地播种，点作物浇水或收获</text></view>
     </view>
-    <view class="farm-seed-tray">
+    <view class="farm-panel farm-seed-tray">
+      <image class="farm-panel-bg" src="{{farmImages.panelBg}}" mode="aspectFill"></image>
       <view class="farm-crop-grid">
         <view
           wx:for="{{farmCrops}}"
@@ -340,9 +351,20 @@
         <view><text>{{item.name}}</text><text>× {{item.count}}</text></view>
       </view>
     </view>
-    <view wx:else class="farm-empty-store">
-      <image class="farm-empty-image" src="{{farmImages.basketEmpty}}" mode="aspectFit"></image>
-      <text>仓库还空着，先种下一颗种子吧</text>
+    <view wx:else class="farm-panel farm-empty-store">
+      <image class="farm-panel-bg" src="{{farmImages.panelBg}}" mode="aspectFill"></image>
+      <view class="farm-empty-visual">
+        <image class="farm-empty-image" src="{{farmImages.basketEmpty}}" mode="aspectFit"></image>
+      </view>
+      <view class="farm-empty-copy">
+        <text class="farm-empty-title">等第一份收成</text>
+        <text class="farm-empty-subtitle">成熟后会自动收进这里</text>
+        <view class="farm-empty-slots">
+          <text>＋</text>
+          <text>＋</text>
+          <text>＋</text>
+        </view>
+      </view>
     </view>
   </view>
 
