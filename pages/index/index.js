@@ -5,6 +5,8 @@ const cloudService = require('../../utils/cloud')
 
 const SEARCH_DEBOUNCE_MS = 120
 const CLOUD_SYNC_DEBOUNCE_MS = 800
+const ANNIVERSARY_FLIP_INTERVAL_MS = 90
+const ANNIVERSARY_FLIP_MAX_STEPS = 24
 
 const DEFAULT_TODOS = [
   { id: 1, title: '记得给绿植浇水', note: '客厅和阳台', category: '家务', due: '今天', completed: false },
@@ -70,6 +72,15 @@ function getAnniversaryDays(date) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const diff = Math.floor((today.getTime() - start.getTime()) / 86400000)
   return diff >= 0 ? diff + 1 : 0
+}
+
+function getAnniversaryDisplayStart(anniversary, currentDays) {
+  if (!anniversary || !currentDays) return currentDays
+  const lastOpen = storage.read('anniversaryLastOpen', null)
+  if (!lastOpen || lastOpen.date !== anniversary.date) return currentDays
+  const lastDays = Number(lastOpen.days) || 0
+  if (lastDays <= 0 || lastDays === currentDays) return currentDays
+  return lastDays
 }
 
 function normalizeAnniversary(value) {
@@ -427,6 +438,9 @@ Page({
     randomRolling: false,
     anniversary: null,
     anniversaryDays: 0,
+    anniversaryDisplayDays: 0,
+    anniversaryFlipActive: false,
+    anniversaryFlipFrame: 0,
     showAnniversarySheet: false,
     anniversaryDraft: { title: '', date: '' },
     todayDate: '',
@@ -455,6 +469,8 @@ Page({
     const cartView = getCartView(cart, allMenuItems)
     const ordersViews = getOrdersViews(orders)
     const anniversary = normalizeAnniversary(storage.read('anniversary', null))
+    const anniversaryDays = anniversary ? getAnniversaryDays(anniversary.date) : 0
+    const anniversaryDisplayDays = getAnniversaryDisplayStart(anniversary, anniversaryDays)
     const messagesView = getMessagesView(storage.read('messages', []), this.data.myOpenid)
     this.allMenuItems = allMenuItems
     this.menuItemMap = getMenuItemMap(allMenuItems)
@@ -480,11 +496,13 @@ Page({
       profileStats: getProfileStats(todoView.todos, orders),
       todayDate: todayDateString(),
       anniversary,
-      anniversaryDays: anniversary ? getAnniversaryDays(anniversary.date) : 0,
+      anniversaryDays,
+      anniversaryDisplayDays,
       messages: messagesView.messages,
       recentMessages: messagesView.recentMessages,
       messagesDisplay: messagesView.messagesDisplay
     })
+    this.startAnniversaryFlip(anniversaryDisplayDays, anniversaryDays, anniversary)
     this.initializeCloud()
     this.resolveMenuImages()
   },
@@ -569,7 +587,16 @@ Page({
     const update = {}
     if (this.data.dateLabel !== dateLabel) update.dateLabel = dateLabel
     if (this.data.greeting.text !== greeting.text || this.data.greeting.icon !== greeting.icon) update.greeting = greeting
+    if (this.data.anniversary) {
+      const anniversaryDays = getAnniversaryDays(this.data.anniversary.date)
+      if (anniversaryDays !== this.data.anniversaryDays) {
+        update.anniversaryDays = anniversaryDays
+      }
+    }
     if (Object.keys(update).length) this.setData(update)
+    if (Object.prototype.hasOwnProperty.call(update, 'anniversaryDays')) {
+      this.startAnniversaryFlip(this.data.anniversaryDisplayDays, update.anniversaryDays, this.data.anniversary)
+    }
     this.refreshFamilySession()
     this.startCloudPolling()
   },
@@ -594,6 +621,7 @@ Page({
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
+    this.clearAnniversaryFlipTimer()
     this.flushCloudSyncs()
     this.stopCloudPolling()
   },
@@ -602,6 +630,7 @@ Page({
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
+    this.clearAnniversaryFlipTimer()
     this.flushCloudSyncs()
     this.stopCloudPolling()
   },
@@ -748,9 +777,12 @@ Page({
 
     const anniversary = normalizeAnniversary(data.anniversary)
     if (!isSameList(this.data.anniversary, anniversary)) {
+      const anniversaryDays = anniversary ? getAnniversaryDays(anniversary.date) : 0
+      const anniversaryDisplayDays = getAnniversaryDisplayStart(anniversary, anniversaryDays)
       storage.write('anniversary', anniversary)
       update.anniversary = anniversary
-      update.anniversaryDays = anniversary ? getAnniversaryDays(anniversary.date) : 0
+      update.anniversaryDays = anniversaryDays
+      update.anniversaryDisplayDays = anniversaryDisplayDays
     }
     const messagesView = getMessagesView(data.messages, data.openid || this.data.myOpenid)
     if (!isSameList(this.data.messages, messagesView.messages)) {
@@ -761,6 +793,9 @@ Page({
     }
 
     if (Object.keys(update).length) this.setData(update)
+    if (Object.prototype.hasOwnProperty.call(update, 'anniversaryDays')) {
+      this.startAnniversaryFlip(update.anniversaryDisplayDays, update.anniversaryDays, update.anniversary)
+    }
     if (menusChanged) this.resolveMenuImages()
     this.cloudDataReady = true
   },
@@ -1429,6 +1464,58 @@ Page({
     wx.showToast({ title: '已加入购物车', icon: 'success' })
   },
 
+  startAnniversaryFlip(fromDays, toDays, anniversary = this.data.anniversary) {
+    const start = Number(fromDays) || 0
+    const end = Number(toDays) || 0
+    this.clearAnniversaryFlipTimer()
+    if (!anniversary || !end) {
+      this.setData({ anniversaryDisplayDays: end, anniversaryFlipActive: false })
+      return
+    }
+    if (start === end) {
+      this.setData({ anniversaryDisplayDays: end, anniversaryFlipActive: false })
+      this.recordAnniversaryOpen(anniversary, end)
+      return
+    }
+
+    let current = start
+    const direction = end > start ? 1 : -1
+    const step = Math.max(1, Math.ceil(Math.abs(end - start) / ANNIVERSARY_FLIP_MAX_STEPS))
+    let frame = this.data.anniversaryFlipFrame || 0
+    this.setData({ anniversaryDisplayDays: current, anniversaryFlipActive: true, anniversaryFlipFrame: frame })
+    this.anniversaryFlipTimer = setInterval(() => {
+      current += direction * step
+      frame = frame ? 0 : 1
+      if ((direction > 0 && current >= end) || (direction < 0 && current <= end)) {
+        current = end
+      }
+      this.setData({
+        anniversaryDisplayDays: current,
+        anniversaryFlipActive: current !== end,
+        anniversaryFlipFrame: frame
+      })
+      if (current === end) {
+        this.clearAnniversaryFlipTimer()
+        this.recordAnniversaryOpen(anniversary, end)
+      }
+    }, ANNIVERSARY_FLIP_INTERVAL_MS)
+  },
+
+  clearAnniversaryFlipTimer() {
+    if (!this.anniversaryFlipTimer) return
+    clearInterval(this.anniversaryFlipTimer)
+    this.anniversaryFlipTimer = null
+  },
+
+  recordAnniversaryOpen(anniversary, days) {
+    if (!anniversary || !anniversary.date || !days) return
+    storage.write('anniversaryLastOpen', {
+      date: anniversary.date,
+      days,
+      openedAt: Date.now()
+    })
+  },
+
   openAnniversarySheet() {
     const anniversary = this.data.anniversary
     this.setData({
@@ -1465,12 +1552,15 @@ Page({
       return
     }
     const anniversary = { title, date }
+    const anniversaryDays = getAnniversaryDays(date)
     storage.write('anniversary', anniversary)
     this.setData({
       anniversary,
-      anniversaryDays: getAnniversaryDays(date),
+      anniversaryDays,
+      anniversaryDisplayDays: this.data.anniversaryDisplayDays || anniversaryDays,
       showAnniversarySheet: false
     })
+    this.startAnniversaryFlip(this.data.anniversaryDisplayDays || anniversaryDays, anniversaryDays, anniversary)
     await this.writeCloudResource('anniversary', anniversary)
     await this.pullCloudData()
     wx.showToast({ title: '已记下这个日子', icon: 'success' })
@@ -1478,9 +1568,14 @@ Page({
 
   async clearAnniversary() {
     storage.write('anniversary', null)
+    storage.write('anniversaryLastOpen', null)
+    this.clearAnniversaryFlipTimer()
     this.setData({
       anniversary: null,
       anniversaryDays: 0,
+      anniversaryDisplayDays: 0,
+      anniversaryFlipActive: false,
+      anniversaryFlipFrame: 0,
       showAnniversarySheet: false
     })
     await this.writeCloudResource('anniversary', null)

@@ -19,7 +19,7 @@
       <block wx:if="{{anniversary}}">
         <view class="anniversary-copy">
           <text class="anniversary-title">{{anniversary.title}}</text>
-          <view class="anniversary-count"><text class="anniversary-prefix">第</text><text class="anniversary-days">{{anniversaryDays}}</text><text class="anniversary-suffix">天</text></view>
+          <view class="anniversary-count {{anniversaryFlipActive ? 'is-flipping' : ''}} flip-frame-{{anniversaryFlipFrame}}"><text class="anniversary-prefix">第</text><text class="anniversary-days">{{anniversaryDisplayDays}}</text><text class="anniversary-suffix">天</text></view>
           <text class="anniversary-since">从 {{anniversary.date}} 开始</text>
         </view>
         <view class="anniversary-heart">♥</view>

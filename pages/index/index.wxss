@@ -2922,6 +2922,14 @@ page {
   gap: 6rpx;
   margin-top: 6rpx;
   color: #e95c47;
+  transform-origin: center;
+  transform-style: preserve-3d;
+}
+.anniversary-count.is-flipping.flip-frame-0 .anniversary-days {
+  animation: anniversary-page-flip 0.18s ease-in-out;
+}
+.anniversary-count.is-flipping.flip-frame-1 .anniversary-days {
+  animation: anniversary-page-flip-alt 0.18s ease-in-out;
 }
 .anniversary-prefix,
 .anniversary-suffix {
@@ -2929,10 +2937,12 @@ page {
   font-weight: 700;
 }
 .anniversary-days {
+  display: inline-block;
   font-size: 64rpx;
   font-weight: 800;
   letter-spacing: -1rpx;
   line-height: 1;
+  transform-origin: center;
 }
 .anniversary-since {
   margin-top: 8rpx;
@@ -2945,6 +2955,35 @@ page {
   color: #ef654d;
   font-size: 64rpx;
   opacity: 0.85;
+}
+
+@keyframes anniversary-page-flip {
+  0% {
+    opacity: 0.58;
+    transform: perspective(460rpx) rotateX(72deg) translateY(-8rpx);
+  }
+  52% {
+    opacity: 1;
+    transform: perspective(460rpx) rotateX(-12deg) translateY(2rpx);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(460rpx) rotateX(0deg) translateY(0);
+  }
+}
+@keyframes anniversary-page-flip-alt {
+  0% {
+    opacity: 0.58;
+    transform: perspective(460rpx) rotateX(72deg) translateY(-8rpx);
+  }
+  52% {
+    opacity: 1;
+    transform: perspective(460rpx) rotateX(-12deg) translateY(2rpx);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(460rpx) rotateX(0deg) translateY(0);
+  }
 }
 .anniversary-empty {
   position: relative;

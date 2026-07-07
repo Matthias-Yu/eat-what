@@ -6,6 +6,7 @@ const KEYS = {
   wishes: 'home_menu_wishes_v1',
   orderNotices: 'home_menu_order_notices_v1',
   anniversary: 'home_menu_anniversary_v1',
+  anniversaryLastOpen: 'home_menu_anniversary_last_open_v1',
   messages: 'home_menu_messages_v1'
 }
 
