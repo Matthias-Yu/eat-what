@@ -669,7 +669,7 @@ Page({
     this.resolveMenuImages()
   },
 
-  // 将云端图片的 cloud:// fileID 换成 https 临时链接，避免 <image> 直接加载 cloud:// 时报 500。
+  // 将菜品图片的 cloud:// fileID 换成 https 临时链接，避免 <image> 直接加载 cloud:// 时报 500。
   // 借助 this.imageUrlCache 仅解析缺失/过期项，并用在途标志避免轮询与多入口并发重复请求。
   async resolveMenuImages() {
     if (!wx.cloud) return
@@ -689,18 +689,7 @@ Page({
         }
       })
     }
-    const collectImageObject = (images) => {
-      Object.keys(images || {}).forEach((key) => {
-        const fileID = images[key]
-        if (typeof fileID === 'string' && fileID.indexOf('cloud://') === 0) {
-          const entry = cache[fileID]
-          if (!entry || entry.expireAt <= now) pending.add(fileID)
-        }
-      })
-    }
     collect(this.allMenuItems)
-    collect(this.data.farmCrops)
-    collectImageObject(this.data.farmImages)
     if (!pending.size || this.imageResolving) return
 
     this.imageResolving = true
@@ -733,10 +722,6 @@ Page({
     if (filteredItems !== this.data.filteredItems) update.filteredItems = filteredItems
     const cartItems = applyImageCache(this.data.cartItems, cache)
     if (cartItems !== this.data.cartItems) update.cartItems = cartItems
-    const farmCrops = applyImageCache(this.data.farmCrops, cache)
-    if (farmCrops !== this.data.farmCrops) update.farmCrops = farmCrops
-    const farmImages = applyImageObjectCache(this.data.farmImages, cache)
-    if (farmImages !== this.data.farmImages) update.farmImages = farmImages
     if (Object.keys(update).length) this.setData(update)
     this.prefetchMenuImages()
   },
