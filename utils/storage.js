@@ -7,7 +7,8 @@ const KEYS = {
   orderNotices: 'home_menu_order_notices_v1',
   anniversary: 'home_menu_anniversary_v1',
   anniversaryLastOpen: 'home_menu_anniversary_last_open_v1',
-  messages: 'home_menu_messages_v1'
+  messages: 'home_menu_messages_v1',
+  farm: 'home_menu_farm_v1'
 }
 
 function read(key, fallback) {

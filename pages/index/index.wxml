@@ -8,9 +8,17 @@
         <view class="eyebrow"><text>{{greeting.icon}}</text><text>{{greeting.text}}，宝贝</text></view>
         <text class="date-label">{{dateLabel}}</text>
       </view>
-      <view class="avatar" bindtap="navigateFromCard" data-target="profile" hover-class="tap-scale--active">
-        <view class="avatar-face">☺</view>
-        <view class="avatar-heart">♥</view>
+      <view class="home-actions">
+        <view class="farm-entry-orb" data-target="farm" bindtap="navigateFromCard" hover-class="farm-entry-orb--pressed">
+          <view class="farm-entry-face">
+            <image class="farm-entry-image" src="/assets/farm/farm-basket-empty.png" mode="aspectFill"></image>
+          </view>
+          <text wx:if="{{farmStats.ready}}" class="farm-entry-badge">{{farmStats.ready > 99 ? '99+' : farmStats.ready}}</text>
+        </view>
+        <view class="avatar" bindtap="navigateFromCard" data-target="profile" hover-class="tap-scale--active">
+          <view class="avatar-face">☺</view>
+          <view class="avatar-heart">♥</view>
+        </view>
       </view>
     </view>
 
@@ -249,6 +257,85 @@
       <view>☆</view>
       <text>还没有心愿卡片</text>
       <button bindtap="openWishComposer" hover-class="button-pressed">写下第一个</button>
+    </view>
+  </view>
+
+  <!-- 农场 -->
+  <view wx:elif="{{activeTab === 'farm'}}" class="page farm-page stagger">
+    <view class="page-header farm-header">
+      <view><text class="page-kicker">LITTLE FARM</text><text class="page-title">我们的小农场</text></view>
+      <view class="farm-wallet"><text>☀</text><text>{{farmStats.coins}}</text></view>
+    </view>
+
+    <view class="farm-hero">
+      <image class="farm-hero-image" src="/assets/farm/farm-hero.png" mode="aspectFill"></image>
+      <view class="farm-hero-shade"></view>
+      <view class="farm-hero-copy">
+        <text class="farm-hero-title">种一点今天的期待</text>
+        <text class="farm-hero-subtitle">成熟后收进仓库，也会返还阳光金币</text>
+      </view>
+      <button class="farm-bonus-button {{farmStats.dailyAvailable ? '' : 'is-disabled'}}" bindtap="claimFarmDailyBonus" hover-class="button-pressed">{{farmStats.dailyAvailable ? '领每日阳光' : '今日已领取'}}</button>
+    </view>
+
+    <view class="farm-stats">
+      <view><text>{{farmStats.planted}}</text><text>已种下</text></view>
+      <view><text>{{farmStats.ready}}</text><text>可收获</text></view>
+      <view><text>{{farmStats.harvests}}</text><text>仓库作物</text></view>
+    </view>
+
+    <view class="section-heading farm-section-heading">
+      <view><text class="section-title">选择种子</text><text class="section-subtitle">点空地播种，点作物浇水或收获</text></view>
+    </view>
+    <scroll-view class="farm-crop-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+      <view class="farm-crop-row">
+        <view
+          wx:for="{{farmCrops}}"
+          wx:key="id"
+          class="farm-crop-chip tone-{{item.tone}} {{selectedFarmCrop === item.id ? 'is-active' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="selectFarmCrop"
+          hover-class="tap-scale--active"
+        >
+          <text class="farm-crop-emoji">{{item.emoji}}</text>
+          <view><text>{{item.name}}</text><text>☀ {{item.seedCost}} · {{item.growMinutes}} 分钟</text></view>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="farm-field-shell">
+      <image class="farm-field-image" src="/assets/farm/farm-field.png" mode="aspectFill"></image>
+      <view class="farm-field">
+        <view
+          wx:for="{{farmPlots}}"
+          wx:key="id"
+          class="farm-plot farm-plot-{{item.id}} {{item.empty ? 'is-empty' : ''}} {{item.ready ? 'is-ready' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="tapFarmPlot"
+          hover-class="farm-plot--pressed"
+        >
+          <view wx:if="{{!item.empty}}" class="farm-crop-pin">
+            <text class="farm-plant">{{item.cropEmoji}}</text>
+            <view class="farm-crop-tag">
+              <text>{{item.ready ? '收获' : item.stageText}}</text>
+              <view class="farm-progress"><view style="width: {{item.progress}}%"></view></view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-heading farm-section-heading">
+      <view><text class="section-title">小仓库</text><text class="section-subtitle">收获会留在这里</text></view>
+    </view>
+    <view wx:if="{{farmInventoryList.length}}" class="farm-inventory">
+      <view wx:for="{{farmInventoryList}}" wx:key="id" class="farm-inventory-item">
+        <text>{{item.emoji}}</text>
+        <view><text>{{item.name}}</text><text>× {{item.count}}</text></view>
+      </view>
+    </view>
+    <view wx:else class="farm-empty-store">
+      <image class="farm-empty-image" src="/assets/farm/farm-basket-empty.png" mode="aspectFit"></image>
+      <text>仓库还空着，先种下一颗种子吧</text>
     </view>
   </view>
 

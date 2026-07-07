@@ -21,6 +21,19 @@ const TODO_CATEGORY_CLASS = {
   '工作': 'work'
 }
 
+const FARM_PLOT_COUNT = 6
+const FARM_DAILY_BONUS = 12
+const FARM_CROPS = [
+  { id: 'tomato', name: '番茄', emoji: '🍅', seedCost: 5, growMinutes: 20, harvest: 2, reward: 9, tone: 'sunset' },
+  { id: 'corn', name: '玉米', emoji: '🌽', seedCost: 8, growMinutes: 35, harvest: 3, reward: 14, tone: 'honey' },
+  { id: 'carrot', name: '胡萝卜', emoji: '🥕', seedCost: 10, growMinutes: 45, harvest: 3, reward: 18, tone: 'cream' },
+  { id: 'berry', name: '莓果', emoji: '🍓', seedCost: 14, growMinutes: 60, harvest: 4, reward: 24, tone: 'blush' }
+]
+const FARM_CROP_MAP = FARM_CROPS.reduce((map, item) => {
+  map[item.id] = item
+  return map
+}, {})
+
 const CUSTOM_MENU_LIMIT = 100
 const MESSAGES_LIMIT = 200
 const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
@@ -60,6 +73,24 @@ function todayDateString() {
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const day = String(now.getDate()).padStart(2, '0')
   return `${now.getFullYear()}-${month}-${day}`
+}
+
+function createFarmPlots() {
+  return Array.from({ length: FARM_PLOT_COUNT }).map((_, index) => ({
+    id: index + 1,
+    cropId: '',
+    plantedAt: 0,
+    wateredAt: 0
+  }))
+}
+
+function createDefaultFarmState() {
+  return {
+    coins: 30,
+    lastBonusDate: '',
+    inventory: {},
+    plots: createFarmPlots()
+  }
 }
 
 function getAnniversaryDays(date) {
@@ -325,6 +356,97 @@ function getWishView(wishes) {
   }
 }
 
+function normalizeFarmState(value) {
+  const fallback = createDefaultFarmState()
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  const inventory = {}
+  if (source.inventory && typeof source.inventory === 'object' && !Array.isArray(source.inventory)) {
+    Object.keys(source.inventory).forEach((id) => {
+      if (FARM_CROP_MAP[id]) inventory[id] = Math.max(0, Number(source.inventory[id]) || 0)
+    })
+  }
+  const rawPlots = Array.isArray(source.plots) ? source.plots : []
+  const plots = fallback.plots.map((plot, index) => {
+    const raw = rawPlots[index] || {}
+    const cropId = FARM_CROP_MAP[raw.cropId] ? raw.cropId : ''
+    return {
+      id: plot.id,
+      cropId,
+      plantedAt: cropId ? Number(raw.plantedAt) || Date.now() : 0,
+      wateredAt: cropId ? Number(raw.wateredAt) || 0 : 0
+    }
+  })
+  return {
+    coins: Object.prototype.hasOwnProperty.call(source, 'coins') ? Math.max(0, Number(source.coins) || 0) : fallback.coins,
+    lastBonusDate: textSlice(source.lastBonusDate, 10),
+    inventory,
+    plots
+  }
+}
+
+function formatFarmRemaining(ms) {
+  const minutes = Math.max(1, Math.ceil(ms / 60000))
+  if (minutes < 60) return `${minutes} 分钟`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest ? `${hours} 小时 ${rest} 分钟` : `${hours} 小时`
+}
+
+function getFarmPlotView(plot, now) {
+  const crop = FARM_CROP_MAP[plot.cropId]
+  if (!crop) {
+    return Object.assign({}, plot, {
+      empty: true,
+      ready: false,
+      progress: 0,
+      stageText: '空地',
+      actionText: '播种',
+      cropName: '',
+      cropEmoji: '＋',
+      tone: 'mint'
+    })
+  }
+  const growMs = crop.growMinutes * 60000
+  const wateredBoost = plot.wateredAt ? 0.18 : 0
+  const elapsed = Math.max(0, now - Number(plot.plantedAt || now))
+  const boostedElapsed = elapsed * (1 + wateredBoost)
+  const progress = Math.min(100, Math.floor(boostedElapsed / growMs * 100))
+  const ready = progress >= 100
+  return Object.assign({}, plot, {
+    empty: false,
+    ready,
+    progress,
+    cropName: crop.name,
+    cropEmoji: crop.emoji,
+    tone: crop.tone,
+    stageText: ready ? '可以收获' : `${formatFarmRemaining(growMs - boostedElapsed)}后成熟`,
+    actionText: ready ? '收获' : (plot.wateredAt ? '已浇水' : '浇水')
+  })
+}
+
+function getFarmView(farmState, selectedCropId) {
+  const state = normalizeFarmState(farmState)
+  const now = Date.now()
+  const plots = state.plots.map((plot) => getFarmPlotView(plot, now))
+  const inventoryList = FARM_CROPS
+    .map((crop) => Object.assign({}, crop, { count: Number(state.inventory[crop.id]) || 0 }))
+    .filter((item) => item.count > 0)
+  const selectedCrop = FARM_CROP_MAP[selectedCropId] || FARM_CROPS[0]
+  return {
+    farmState: state,
+    farmPlots: plots,
+    farmInventoryList: inventoryList,
+    selectedFarmCrop: selectedCrop.id,
+    farmStats: {
+      coins: state.coins,
+      planted: plots.filter((item) => !item.empty).length,
+      ready: plots.filter((item) => item.ready).length,
+      harvests: inventoryList.reduce((sum, item) => sum + item.count, 0),
+      dailyAvailable: state.lastBonusDate !== todayDateString()
+    }
+  }
+}
+
 function getProfileStats(todos, orders) {
   const completedTodos = todos.filter((item) => item.completed).length
   return {
@@ -419,6 +541,12 @@ Page({
     wishStats: { total: 0, completed: 0, pending: 0 },
     showWishComposer: false,
     wishDraft: createWishDraft(),
+    farmCrops: FARM_CROPS,
+    selectedFarmCrop: FARM_CROPS[0].id,
+    farmState: createDefaultFarmState(),
+    farmPlots: [],
+    farmInventoryList: [],
+    farmStats: { coins: 0, planted: 0, ready: 0, harvests: 0, dailyAvailable: false },
     todos: [],
     visibleTodos: [],
     homeTodos: [],
@@ -459,6 +587,7 @@ Page({
     const cart = storage.read('cart', {})
     const orders = storage.read('orders', [])
     const savedWishes = storage.read('wishes', [])
+    const farmView = getFarmView(storage.read('farm', null), this.data.selectedFarmCrop)
     const savedCustomMenuItems = storage.read('customMenuItems', [])
     const customMenuItems = (Array.isArray(savedCustomMenuItems) ? savedCustomMenuItems : [])
       .map(normalizeCustomMenuItem)
@@ -487,6 +616,11 @@ Page({
       todoStats: todoView.todoStats,
       wishes: wishView.wishes,
       wishStats: wishView.wishStats,
+      farmState: farmView.farmState,
+      farmPlots: farmView.farmPlots,
+      farmInventoryList: farmView.farmInventoryList,
+      selectedFarmCrop: farmView.selectedFarmCrop,
+      farmStats: farmView.farmStats,
       cart,
       cartItems: cartView.cartItems,
       cartCount: cartView.cartCount,
@@ -503,6 +637,7 @@ Page({
       messagesDisplay: messagesView.messagesDisplay
     })
     this.startAnniversaryFlip(anniversaryDisplayDays, anniversaryDays, anniversary)
+    this.startFarmTimer()
     this.initializeCloud()
     this.resolveMenuImages()
   },
@@ -597,6 +732,8 @@ Page({
     if (Object.prototype.hasOwnProperty.call(update, 'anniversaryDays')) {
       this.startAnniversaryFlip(this.data.anniversaryDisplayDays, update.anniversaryDays, this.data.anniversary)
     }
+    this.refreshFarmView()
+    this.startFarmTimer()
     this.refreshFamilySession()
     this.startCloudPolling()
   },
@@ -622,6 +759,7 @@ Page({
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
     this.clearAnniversaryFlipTimer()
+    this.stopFarmTimer()
     this.flushCloudSyncs()
     this.stopCloudPolling()
   },
@@ -631,6 +769,7 @@ Page({
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
     this.clearAnniversaryFlipTimer()
+    this.stopFarmTimer()
     this.flushCloudSyncs()
     this.stopCloudPolling()
   },
@@ -717,6 +856,7 @@ Page({
     const todos = Array.isArray(data.todos) ? data.todos : []
     const orders = Array.isArray(data.orders) ? data.orders : []
     const wishes = Array.isArray(data.wishes) ? data.wishes : []
+    const farmView = getFarmView(data.farm, this.data.selectedFarmCrop)
     const customMenuItems = Array.isArray(data.menus) ? data.menus.map(normalizeCustomMenuItem).slice(0, CUSTOM_MENU_LIMIT) : []
     const menuItemsForView = getAllMenuItems(customMenuItems)
     const cartView = getCartView(cart, menuItemsForView)
@@ -726,6 +866,7 @@ Page({
     const todosChanged = !isSameTodos(this.data.todos, todoView.todos)
     const ordersChanged = !isSameList(this.data.orders, orders)
     const wishesChanged = !isSameList(this.data.wishes, wishView.wishes)
+    const farmChanged = !isSameList(this.data.farmState, farmView.farmState)
     const menusChanged = !isSameList(this.data.customMenuItems, customMenuItems)
     const update = {}
 
@@ -769,6 +910,16 @@ Page({
       Object.assign(update, {
         wishes: wishView.wishes,
         wishStats: wishView.wishStats
+      })
+    }
+    if (farmChanged) {
+      storage.write('farm', farmView.farmState)
+      Object.assign(update, {
+        farmState: farmView.farmState,
+        farmPlots: farmView.farmPlots,
+        farmInventoryList: farmView.farmInventoryList,
+        selectedFarmCrop: farmView.selectedFarmCrop,
+        farmStats: farmView.farmStats
       })
     }
     if (todosChanged || ordersChanged) {
@@ -929,7 +1080,7 @@ Page({
         familyNickname: ''
       })
       const data = await cloudService.call('migrateLocal', {
-        data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, wishes: this.data.wishes, menus: this.data.customMenuItems, places: [] }
+        data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, wishes: this.data.wishes, menus: this.data.customMenuItems, farm: this.data.farmState, places: [] }
       })
       this.applyCloudData(data)
       this.startCloudPolling()
@@ -1040,6 +1191,7 @@ Page({
     if (this.data.showCart) update.showCart = false
     if (Object.keys(update).length) {
       this.setData(update)
+      if (activeTab === 'farm') this.refreshFarmView()
       if (update.activeTab) this.resetScroll()
     }
   },
@@ -1052,6 +1204,7 @@ Page({
     }
     if (target === this.data.activeTab) return
     this.setData({ activeTab: target })
+    if (target === 'farm') this.refreshFarmView()
     this.resetScroll()
   },
 
@@ -1371,6 +1524,132 @@ Page({
         this.commitWishes(this.data.wishes.filter((item) => String(item.id) !== id), { sync: true })
       }
     })
+  },
+
+  refreshFarmView() {
+    const farmView = getFarmView(this.data.farmState, this.data.selectedFarmCrop)
+    this.setData({
+      farmState: farmView.farmState,
+      farmPlots: farmView.farmPlots,
+      farmInventoryList: farmView.farmInventoryList,
+      selectedFarmCrop: farmView.selectedFarmCrop,
+      farmStats: farmView.farmStats
+    })
+    return farmView
+  },
+
+  startFarmTimer() {
+    if (this.farmTimer) return
+    this.farmTimer = setInterval(() => {
+      if (this.data.activeTab === 'farm') this.refreshFarmView()
+    }, 60000)
+  },
+
+  stopFarmTimer() {
+    if (!this.farmTimer) return
+    clearInterval(this.farmTimer)
+    this.farmTimer = null
+  },
+
+  commitFarmState(farmState, options = {}) {
+    const farmView = getFarmView(farmState, options.selectedCropId || this.data.selectedFarmCrop)
+    this.setData(Object.assign({
+      farmState: farmView.farmState,
+      farmPlots: farmView.farmPlots,
+      farmInventoryList: farmView.farmInventoryList,
+      selectedFarmCrop: farmView.selectedFarmCrop,
+      farmStats: farmView.farmStats
+    }, options.extraData || {}))
+    if (options.persist !== false) storage.write('farm', farmView.farmState)
+    if (options.sync) this.syncCloudResource('farm', farmView.farmState, { debounce: true })
+    return farmView
+  },
+
+  selectFarmCrop(event) {
+    const id = event.currentTarget.dataset.id
+    if (!FARM_CROP_MAP[id]) return
+    this.commitFarmState(this.data.farmState, { selectedCropId: id, persist: false })
+  },
+
+  tapFarmPlot(event) {
+    const id = Number(event.currentTarget.dataset.id)
+    const plot = this.data.farmPlots.find((item) => Number(item.id) === id)
+    if (!plot) return
+    if (plot.empty) {
+      this.plantFarmCrop(id)
+      return
+    }
+    if (plot.ready) {
+      this.harvestFarmPlot(id)
+      return
+    }
+    this.waterFarmPlot(id)
+  },
+
+  plantFarmCrop(plotId) {
+    const crop = FARM_CROP_MAP[this.data.selectedFarmCrop] || FARM_CROPS[0]
+    const farmState = normalizeFarmState(this.data.farmState)
+    if (farmState.coins < crop.seedCost) {
+      wx.showToast({ title: '金币不够，先领每日阳光吧', icon: 'none' })
+      return
+    }
+    const plots = farmState.plots.map((plot) => {
+      if (Number(plot.id) !== Number(plotId) || plot.cropId) return plot
+      return { id: plot.id, cropId: crop.id, plantedAt: Date.now(), wateredAt: 0 }
+    })
+    farmState.coins -= crop.seedCost
+    farmState.plots = plots
+    this.commitFarmState(farmState, { sync: true })
+    wx.showToast({ title: `种下${crop.name}`, icon: 'success' })
+  },
+
+  waterFarmPlot(plotId) {
+    const farmState = normalizeFarmState(this.data.farmState)
+    let watered = false
+    farmState.plots = farmState.plots.map((plot) => {
+      if (Number(plot.id) !== Number(plotId) || !plot.cropId || plot.wateredAt) return plot
+      watered = true
+      return Object.assign({}, plot, { wateredAt: Date.now() })
+    })
+    if (!watered) {
+      wx.showToast({ title: '这块地已经浇过水啦', icon: 'none' })
+      return
+    }
+    this.commitFarmState(farmState, { sync: true })
+    wx.showToast({ title: '浇水完成', icon: 'success' })
+  },
+
+  harvestFarmPlot(plotId) {
+    const farmState = normalizeFarmState(this.data.farmState)
+    const plotView = this.data.farmPlots.find((item) => Number(item.id) === Number(plotId))
+    if (!plotView || !plotView.ready) {
+      wx.showToast({ title: '还没成熟，再等等', icon: 'none' })
+      return
+    }
+    const crop = FARM_CROP_MAP[plotView.cropId]
+    if (!crop) return
+    farmState.inventory[crop.id] = (Number(farmState.inventory[crop.id]) || 0) + crop.harvest
+    farmState.coins += crop.reward
+    farmState.plots = farmState.plots.map((plot) => (
+      Number(plot.id) === Number(plotId)
+        ? { id: plot.id, cropId: '', plantedAt: 0, wateredAt: 0 }
+        : plot
+    ))
+    this.commitFarmState(farmState, { sync: true })
+    wx.showToast({ title: `收获 ${crop.name} ×${crop.harvest}`, icon: 'success' })
+  },
+
+  claimFarmDailyBonus() {
+    const today = todayDateString()
+    const farmState = normalizeFarmState(this.data.farmState)
+    if (farmState.lastBonusDate === today) {
+      wx.showToast({ title: '今天已经领过啦', icon: 'none' })
+      return
+    }
+    farmState.coins += FARM_DAILY_BONUS
+    farmState.lastBonusDate = today
+    this.commitFarmState(farmState, { sync: true })
+    wx.showToast({ title: `阳光金币 +${FARM_DAILY_BONUS}`, icon: 'success' })
   },
 
   openMenuManager() {
@@ -1912,7 +2191,7 @@ Page({
     const cloudActive = this.data.familyStatus === 'active'
     wx.showModal({
       title: cloudActive ? '清空家庭数据？' : '清空本地数据？',
-      content: cloudActive ? '两个人的购物车、订单和待办都会被清空。' : '购物车、订单和待办都会恢复到初始状态。',
+      content: cloudActive ? '两个人的购物车、订单、待办和农场都会被清空。' : '购物车、订单、待办和农场都会恢复到初始状态。',
       confirmText: '清空',
       confirmColor: '#e75c48',
       success: (result) => {
@@ -1924,6 +2203,7 @@ Page({
         const cartView = getCartView(cart, allMenuItems)
         const todoView = getTodoView(DEFAULT_TODOS, this.data.todoFilter)
         const wishView = getWishView([])
+        const farmView = getFarmView(createDefaultFarmState(), FARM_CROPS[0].id)
         this.allMenuItems = allMenuItems
         this.menuItemMap = getMenuItemMap(allMenuItems)
         storage.clear()
@@ -1945,6 +2225,11 @@ Page({
           todoStats: todoView.todoStats,
           wishes: wishView.wishes,
           wishStats: wishView.wishStats,
+          farmState: farmView.farmState,
+          farmPlots: farmView.farmPlots,
+          farmInventoryList: farmView.farmInventoryList,
+          selectedFarmCrop: farmView.selectedFarmCrop,
+          farmStats: farmView.farmStats,
           profileStats: getProfileStats(todoView.todos, orders)
         })
         this.resolveMenuImages()
@@ -1954,6 +2239,7 @@ Page({
         this.syncCloudResource('todos', todoView.todos)
         this.syncCloudResource('wishes', wishView.wishes)
         this.syncCloudResource('menus', customMenuItems)
+        this.syncCloudResource('farm', farmView.farmState)
         wx.showToast({ title: '已清空', icon: 'success' })
       }
     })
