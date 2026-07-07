@@ -1,0 +1,27 @@
+pages/index/index.js
+  s_87b9b6b8bfbc22::t_0d7d14a4cdd625 8-9,77-85,441-443,472-473,499-500,505,590-595,597-599,624,633,780-781,784-785,796-798,1467-1518,1555,1559-1560,1563,1571-1572,1576-1578
+pages/index/index.wxml
+  s_87b9b6b8bfbc22::t_44a9022669d344 22
+pages/index/index.wxss
+  s_87b9b6b8bfbc22::t_d0ae1303cec11f 2925-2932,2940,2945,2959-2987
+utils/storage.js
+  s_87b9b6b8bfbc22::t_a5e286289013e7 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "8ba8b1b0fc3c79a54a5650032a9e50c55a95812d",
+  "prompts": {},
+  "sessions": {
+    "s_87b9b6b8bfbc22": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3b2c-4319-7651-b0bf-f9dbff016cbe",
+        "model": "unknown"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
