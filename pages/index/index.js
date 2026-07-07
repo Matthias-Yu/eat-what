@@ -24,10 +24,10 @@ const TODO_CATEGORY_CLASS = {
 const FARM_PLOT_COUNT = 6
 const FARM_DAILY_BONUS = 12
 const FARM_CROPS = [
-  { id: 'tomato', name: '番茄', emoji: '🍅', seedCost: 5, growMinutes: 20, harvest: 2, reward: 9, tone: 'sunset' },
-  { id: 'corn', name: '玉米', emoji: '🌽', seedCost: 8, growMinutes: 35, harvest: 3, reward: 14, tone: 'honey' },
-  { id: 'carrot', name: '胡萝卜', emoji: '🥕', seedCost: 10, growMinutes: 45, harvest: 3, reward: 18, tone: 'cream' },
-  { id: 'berry', name: '莓果', emoji: '🍓', seedCost: 14, growMinutes: 60, harvest: 4, reward: 24, tone: 'blush' }
+  { id: 'tomato', name: '番茄', emoji: '🍅', image: '/assets/farm/seed-tomato.jpg', seedCost: 5, growMinutes: 20, harvest: 2, reward: 9, tone: 'sunset' },
+  { id: 'corn', name: '玉米', emoji: '🌽', image: '/assets/farm/seed-corn.jpg', seedCost: 8, growMinutes: 35, harvest: 3, reward: 14, tone: 'honey' },
+  { id: 'carrot', name: '胡萝卜', emoji: '🥕', image: '/assets/farm/seed-carrot.jpg', seedCost: 10, growMinutes: 45, harvest: 3, reward: 18, tone: 'cream' },
+  { id: 'berry', name: '莓果', emoji: '🍓', image: '/assets/farm/seed-berry.jpg', seedCost: 14, growMinutes: 60, harvest: 4, reward: 24, tone: 'blush' }
 ]
 const FARM_CROP_MAP = FARM_CROPS.reduce((map, item) => {
   map[item.id] = item
