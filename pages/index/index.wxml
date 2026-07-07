@@ -11,7 +11,7 @@
       <view class="home-actions">
         <view class="farm-entry-orb" data-target="farm" bindtap="navigateFromCard" hover-class="farm-entry-orb--pressed">
           <view class="farm-entry-face">
-            <image class="farm-entry-image" src="/assets/farm/farm-basket-empty.png" mode="aspectFill"></image>
+            <image class="farm-entry-image" src="{{farmImages.entry}}" mode="aspectFill"></image>
           </view>
           <text wx:if="{{farmStats.ready}}" class="farm-entry-badge">{{farmStats.ready > 99 ? '99+' : farmStats.ready}}</text>
         </view>
@@ -268,7 +268,7 @@
     </view>
 
     <view class="farm-hero">
-      <image class="farm-hero-image" src="/assets/farm/farm-hero.png" mode="aspectFill"></image>
+      <image class="farm-hero-image" src="{{farmImages.hero}}" mode="aspectFill"></image>
       <view class="farm-hero-shade"></view>
       <view class="farm-hero-copy">
         <text class="farm-hero-title">种一点今天的期待</text>
@@ -310,7 +310,7 @@
     </view>
 
     <view class="farm-field-shell">
-      <image class="farm-field-image" src="/assets/farm/farm-field.png" mode="aspectFill"></image>
+      <image class="farm-field-image" src="{{farmImages.field}}" mode="aspectFill"></image>
       <view class="farm-field">
         <view
           wx:for="{{farmPlots}}"
@@ -341,7 +341,7 @@
       </view>
     </view>
     <view wx:else class="farm-empty-store">
-      <image class="farm-empty-image" src="/assets/farm/farm-basket-empty.png" mode="aspectFit"></image>
+      <image class="farm-empty-image" src="{{farmImages.basketEmpty}}" mode="aspectFit"></image>
       <text>仓库还空着，先种下一颗种子吧</text>
     </view>
   </view>

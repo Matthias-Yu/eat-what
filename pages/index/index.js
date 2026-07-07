@@ -23,11 +23,18 @@ const TODO_CATEGORY_CLASS = {
 
 const FARM_PLOT_COUNT = 6
 const FARM_DAILY_BONUS = 12
+const FARM_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/farm/'
+const FARM_IMAGES = {
+  entry: FARM_IMG_BASE + 'farm-basket-empty.png',
+  basketEmpty: FARM_IMG_BASE + 'farm-basket-empty.png',
+  hero: FARM_IMG_BASE + 'farm-hero.png',
+  field: FARM_IMG_BASE + 'farm-field.png'
+}
 const FARM_CROPS = [
-  { id: 'tomato', name: '番茄', emoji: '🍅', image: '/assets/farm/seed-tomato.jpg', seedCost: 5, growMinutes: 20, harvest: 2, reward: 9, tone: 'sunset' },
-  { id: 'corn', name: '玉米', emoji: '🌽', image: '/assets/farm/seed-corn.jpg', seedCost: 8, growMinutes: 35, harvest: 3, reward: 14, tone: 'honey' },
-  { id: 'carrot', name: '胡萝卜', emoji: '🥕', image: '/assets/farm/seed-carrot.jpg', seedCost: 10, growMinutes: 45, harvest: 3, reward: 18, tone: 'cream' },
-  { id: 'berry', name: '莓果', emoji: '🍓', image: '/assets/farm/seed-berry.jpg', seedCost: 14, growMinutes: 60, harvest: 4, reward: 24, tone: 'blush' }
+  { id: 'tomato', name: '番茄', emoji: '🍅', image: FARM_IMG_BASE + 'seed-tomato.jpg', seedCost: 5, growMinutes: 20, harvest: 2, reward: 9, tone: 'sunset' },
+  { id: 'corn', name: '玉米', emoji: '🌽', image: FARM_IMG_BASE + 'seed-corn.jpg', seedCost: 8, growMinutes: 35, harvest: 3, reward: 14, tone: 'honey' },
+  { id: 'carrot', name: '胡萝卜', emoji: '🥕', image: FARM_IMG_BASE + 'seed-carrot.jpg', seedCost: 10, growMinutes: 45, harvest: 3, reward: 18, tone: 'cream' },
+  { id: 'berry', name: '莓果', emoji: '🍓', image: FARM_IMG_BASE + 'seed-berry.jpg', seedCost: 14, growMinutes: 60, harvest: 4, reward: 24, tone: 'blush' }
 ]
 const FARM_CROP_MAP = FARM_CROPS.reduce((map, item) => {
   map[item.id] = item
@@ -254,6 +261,25 @@ function applyImageCache(items, cache) {
     return item
   })
   return changed ? mapped : items
+}
+
+function applyImageObjectCache(images, cache) {
+  if (!cache || !images) return images
+  let changed = false
+  const mapped = Object.keys(images).reduce((result, key) => {
+    const value = images[key]
+    if (typeof value === 'string' && value.indexOf('cloud://') === 0) {
+      const entry = cache[value]
+      if (entry && entry.url) {
+        changed = true
+        result[key] = entry.url
+        return result
+      }
+    }
+    result[key] = value
+    return result
+  }, {})
+  return changed ? mapped : images
 }
 
 function getRecommendedMenuItems(items) {
@@ -541,6 +567,7 @@ Page({
     wishStats: { total: 0, completed: 0, pending: 0 },
     showWishComposer: false,
     wishDraft: createWishDraft(),
+    farmImages: FARM_IMAGES,
     farmCrops: FARM_CROPS,
     selectedFarmCrop: FARM_CROPS[0].id,
     farmState: createDefaultFarmState(),
@@ -642,7 +669,7 @@ Page({
     this.resolveMenuImages()
   },
 
-  // 将菜品图片的 cloud:// fileID 换成 https 临时链接，避免 <image> 直接加载 cloud:// 时报 500。
+  // 将云端图片的 cloud:// fileID 换成 https 临时链接，避免 <image> 直接加载 cloud:// 时报 500。
   // 借助 this.imageUrlCache 仅解析缺失/过期项，并用在途标志避免轮询与多入口并发重复请求。
   async resolveMenuImages() {
     if (!wx.cloud) return
@@ -662,7 +689,18 @@ Page({
         }
       })
     }
+    const collectImageObject = (images) => {
+      Object.keys(images || {}).forEach((key) => {
+        const fileID = images[key]
+        if (typeof fileID === 'string' && fileID.indexOf('cloud://') === 0) {
+          const entry = cache[fileID]
+          if (!entry || entry.expireAt <= now) pending.add(fileID)
+        }
+      })
+    }
     collect(this.allMenuItems)
+    collect(this.data.farmCrops)
+    collectImageObject(this.data.farmImages)
     if (!pending.size || this.imageResolving) return
 
     this.imageResolving = true
@@ -695,6 +733,10 @@ Page({
     if (filteredItems !== this.data.filteredItems) update.filteredItems = filteredItems
     const cartItems = applyImageCache(this.data.cartItems, cache)
     if (cartItems !== this.data.cartItems) update.cartItems = cartItems
+    const farmCrops = applyImageCache(this.data.farmCrops, cache)
+    if (farmCrops !== this.data.farmCrops) update.farmCrops = farmCrops
+    const farmImages = applyImageObjectCache(this.data.farmImages, cache)
+    if (farmImages !== this.data.farmImages) update.farmImages = farmImages
     if (Object.keys(update).length) this.setData(update)
     this.prefetchMenuImages()
   },
