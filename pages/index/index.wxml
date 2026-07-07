@@ -287,18 +287,18 @@
       <view><text class="section-title">选择种子</text><text class="section-subtitle">点空地播种，点作物浇水或收获</text></view>
     </view>
     <view class="farm-seed-tray">
-      <scroll-view class="farm-crop-scroll" scroll-x enhanced show-scrollbar="{{false}}">
-        <view class="farm-crop-row">
-          <view
-            wx:for="{{farmCrops}}"
-            wx:key="id"
-            class="farm-crop-chip tone-{{item.tone}} {{selectedFarmCrop === item.id ? 'is-active' : ''}}"
-            data-id="{{item.id}}"
-            bindtap="selectFarmCrop"
-            hover-class="tap-scale--active"
-          >
-            <text class="farm-crop-check">✓</text>
-            <image class="farm-crop-image" src="{{item.image}}" mode="aspectFill"></image>
+      <view class="farm-crop-grid">
+        <view
+          wx:for="{{farmCrops}}"
+          wx:key="id"
+          class="farm-crop-chip tone-{{item.tone}} {{selectedFarmCrop === item.id ? 'is-active' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="selectFarmCrop"
+          hover-class="tap-scale--active"
+        >
+          <text class="farm-crop-check">✓</text>
+          <image class="farm-crop-image" src="{{item.image}}" mode="aspectFill"></image>
+          <view class="farm-crop-info">
             <text class="farm-crop-name">{{item.name}}</text>
             <view class="farm-crop-meta">
               <text>☀ {{item.seedCost}}</text>
@@ -306,7 +306,7 @@
             </view>
           </view>
         </view>
-      </scroll-view>
+      </view>
     </view>
 
     <view class="farm-field-shell">
