@@ -1,0 +1,25 @@
+pages/index/index.js
+  s_05b2ea00d55dba::t_1f54de4bd0c423 27-30
+pages/index/index.wxml
+  s_05b2ea00d55dba::t_5401fec282514e 289-307,309-310
+pages/index/index.wxss
+  s_05b2ea00d55dba::t_c651b7e63f960b 3476-3486,3488,3492-3493,3497-3498,3500,3502-3503,3505-3506,3509,3511-3512,3515-3516,3519-3542,3544,3547-3548,3550-3556,3558,3561,3563,3565,3567-3582
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "dac8720ab02321e3e2b353eb4e64606c18debfd3",
+  "prompts": {},
+  "sessions": {
+    "s_05b2ea00d55dba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3b51-e165-7042-8729-d39e3dc1c7bd",
+        "model": "unknown"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
