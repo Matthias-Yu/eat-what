@@ -1,0 +1,60 @@
+pages/index/index.wxml
+  s_64dcbb9f97ed75::t_f83cb3163c5577 1 gitai:{"mixed_line_ranges":[],"operations":[{"operation_id":"6a4e0d9db291b46afad8fb8a","tool_type":"agent","tool_id":"Edit","line_ranges":[{"Single":1}]}]}
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c2071890abf8f963a2465b0ceafaeee50bdb5d71",
+  "prompts": {},
+  "sessions": {
+    "s_64dcbb9f97ed75": {
+      "agent_id": {
+        "tool": "trae",
+        "id": "6a492e52a7d1455e2aba69df",
+        "model": "openrouter-3o__max"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {
+    "pages/index/index.wxml": [
+      {
+        "hash": "s_64dcbb9f97ed75::t_f83cb3163c5577",
+        "line_ranges": [
+          {
+            "Single": 1
+          }
+        ],
+        "mixed_line_ranges": [],
+        "operations": [
+          {
+            "operation_id": "6a4e0d9db291b46afad8fb8a",
+            "tool_type": "agent",
+            "tool_id": "Edit",
+            "line_ranges": [
+              {
+                "Single": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "remote_transcripts": {
+    "s_64dcbb9f97ed75": {
+      "tool": "trae",
+      "conversation_id": "6a492e52a7d1455e2aba69df",
+      "session_id": "6a492e52a7d1455e2aba69df",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    },
+    "s_64dcbb9f97ed75::t_f83cb3163c5577": {
+      "tool": "trae",
+      "conversation_id": "6a492e52a7d1455e2aba69df",
+      "session_id": "6a492e52a7d1455e2aba69df",
+      "status": "remote_only",
+      "message": "Remote transcript resolution is not implemented yet for TRAE prompts."
+    }
+  }
+}
