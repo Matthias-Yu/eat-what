@@ -509,7 +509,7 @@
 <!-- AI 家庭助手悬浮入口 -->
 <view wx:if="{{!showAiPanel}}" class="ai-fab" bindtap="openAiPanel" hover-class="tap-scale--active">
   <text class="ai-fab-icon">✦</text>
-  <text class="ai-fab-text">饭团</text>
+  <text class="ai-fab-text">问问饭团</text>
 </view>
 
 <!-- AI 家庭助手对话 -->
