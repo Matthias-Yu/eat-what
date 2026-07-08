@@ -17,6 +17,8 @@ const RESOURCE_LIMITS = {
 const MENU_CATEGORIES = ['main', 'dish', 'light', 'drink']
 const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
 const MESSAGE_REACTION_USER_LIMIT = 50
+const FARM_CROP_IDS = ['tomato', 'corn', 'carrot', 'berry']
+const FARM_PLOT_COUNT = 6
 const CATEGORY_TONE = {
   main: 'honey',
   dish: 'sunset',
@@ -99,11 +101,30 @@ function emptySharedData(householdId) {
     orders: [],
     wishes: [],
     menus: [],
+    farm: createDefaultFarmState(),
     places: [],
     orderNotices: [],
     anniversary: null,
     messages: [],
     updatedAt: db.serverDate()
+  }
+}
+
+function createDefaultFarmPlots() {
+  return Array.from({ length: FARM_PLOT_COUNT }).map((_, index) => ({
+    id: index + 1,
+    cropId: '',
+    plantedAt: 0,
+    wateredAt: 0
+  }))
+}
+
+function createDefaultFarmState() {
+  return {
+    coins: 30,
+    lastBonusDate: '',
+    inventory: {},
+    plots: createDefaultFarmPlots()
   }
 }
 
@@ -227,6 +248,7 @@ async function getSharedData(openid) {
     orders: Array.isArray(data.orders) ? data.orders : [],
     wishes: Array.isArray(data.wishes) ? data.wishes : [],
     menus: Array.isArray(data.menus) ? data.menus : [],
+    farm: sanitizeFarmState(data.farm),
     places: Array.isArray(data.places) ? data.places : [],
     orderNotices: getVisibleOrderNotices(data, openid),
     anniversary: data.anniversary || null,
@@ -346,6 +368,36 @@ function sanitizeMessageItem(item, index) {
   }
 }
 
+function sanitizeFarmState(value) {
+  const fallback = createDefaultFarmState()
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  const inventory = {}
+  if (source.inventory && typeof source.inventory === 'object' && !Array.isArray(source.inventory)) {
+    Object.keys(source.inventory).forEach((id) => {
+      if (FARM_CROP_IDS.includes(id)) inventory[id] = Math.max(0, Number(source.inventory[id]) || 0)
+    })
+  }
+  const rawPlots = Array.isArray(source.plots) ? source.plots : []
+  const plots = fallback.plots.map((plot, index) => {
+    const raw = rawPlots[index] && typeof rawPlots[index] === 'object' && !Array.isArray(rawPlots[index])
+      ? rawPlots[index]
+      : {}
+    const cropId = FARM_CROP_IDS.includes(raw.cropId) ? raw.cropId : ''
+    return {
+      id: plot.id,
+      cropId,
+      plantedAt: cropId ? Number(raw.plantedAt) || Date.now() : 0,
+      wateredAt: cropId ? Number(raw.wateredAt) || 0 : 0
+    }
+  })
+  return {
+    coins: Object.prototype.hasOwnProperty.call(source, 'coins') ? Math.max(0, Number(source.coins) || 0) : fallback.coins,
+    lastBonusDate: textSlice(source.lastBonusDate, 10),
+    inventory,
+    plots
+  }
+}
+
 function sanitizeResource(resource, value) {
   if (resource === 'cart') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
@@ -353,6 +405,9 @@ function sanitizeResource(resource, value) {
   }
   if (resource === 'anniversary') {
     return sanitizeAnniversary(value)
+  }
+  if (resource === 'farm') {
+    return sanitizeFarmState(value)
   }
   if (!Object.prototype.hasOwnProperty.call(RESOURCE_LIMITS, resource)) throw new Error('不支持的数据类型')
   if (!Array.isArray(value)) throw new Error('数据格式不正确')
@@ -398,6 +453,7 @@ async function migrateLocal(openid, event) {
   if (!(current.orders || []).length) update.orders = sanitizeResource('orders', local.orders || [])
   if (!(current.wishes || []).length) update.wishes = sanitizeResource('wishes', local.wishes || [])
   if (!(current.menus || []).length) update.menus = sanitizeResource('menus', local.menus || [])
+  if (!current.farm) update.farm = sanitizeResource('farm', local.farm || null)
   if (!(current.places || []).length) update.places = sanitizeResource('places', local.places || [])
   await db.collection('family_data').doc(household._id).update({ data: update })
   return getSharedData(openid)
