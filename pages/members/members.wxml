@@ -37,31 +37,4 @@
       </block>
     </view>
   </view>
-
-  <view wx:if="{{isAdmin}}" class="visit-card">
-    <view class="visit-header">
-      <view>
-        <text class="visit-title">最近进入记录</text>
-        <text class="visit-subtitle">查看家庭空间里谁在什么时候进入过小程序</text>
-      </view>
-      <text class="visit-refresh" bindtap="refreshVisitRecords">刷新</text>
-    </view>
-
-    <view wx:if="{{visitsLoading}}" class="visit-empty">加载中…</view>
-    <view wx:elif="{{!visitRecords.length}}" class="visit-empty">暂无进入记录</view>
-    <view wx:else class="visit-list">
-      <view wx:for="{{visitRecords}}" wx:key="id" class="visit-row" data-id="{{item.id}}" bindtap="showVisitDetail">
-        <view class="visit-member">
-          <text class="visit-name">{{item.nickname}}{{item.isSelf ? ' · 我' : ''}}</text>
-          <text class="visit-role {{item.isAdmin ? 'is-admin' : ''}}">{{item.roleLabel}} · 查看详情</text>
-        </view>
-        <text class="visit-time">{{item.timeText}}</text>
-      </view>
-      <view class="visit-pager">
-        <text class="visit-page-button {{!visitHasPrev || visitsLoading ? 'is-disabled' : ''}}" bindtap="prevVisitPage">上一页</text>
-        <text class="visit-page-info">第 {{visitPage}} / {{visitTotalPages}} 页 · 共 {{visitTotal}} 条</text>
-        <text class="visit-page-button {{!visitHasNext || visitsLoading ? 'is-disabled' : ''}}" bindtap="nextVisitPage">下一页</text>
-      </view>
-    </view>
-  </view>
 </scroll-view>

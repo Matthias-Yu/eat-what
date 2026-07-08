@@ -337,8 +337,7 @@
             <image wx:elif="{{item.growthStage === 'growing'}}" class="farm-growth-image farm-growth-image--growing" src="{{farmImages.growthGrowing}}" mode="aspectFit"></image>
             <image wx:else class="farm-growth-image farm-growth-image--ready" src="{{farmImages.growthReady}}" mode="aspectFit"></image>
             <view class="farm-crop-tag">
-              <text>{{item.ready ? '收获' : item.stageText}}</text>
-              <view class="farm-progress"><view style="width: {{item.progress}}%"></view></view>
+              <text>{{item.ready ? '可收获' : item.progress + '%'}}</text>
             </view>
           </view>
         </view>

@@ -29,23 +29,3 @@ page { background:
 .member-nickname-input { flex: 1; height: 72rpx; margin-right: 20rpx; padding: 0 22rpx; border: 2rpx solid #efc6b7; border-radius: 18rpx; box-sizing: border-box; background: #fff; color: #493831; font-size: 26rpx; }
 .member-edit-actions { display: flex; align-items: center; gap: 24rpx; }
 .input-placeholder { color: #c9bab2; }
-
-.visit-card { margin-top: 28rpx; padding: 28rpx; border-radius: 30rpx; border: 1rpx solid rgba(255, 255, 255, .9); background: linear-gradient(170deg, #ffffff, #fffaf6); box-shadow: 0 14rpx 40rpx rgba(49, 31, 24, .07), inset 0 1rpx 0 rgba(255, 255, 255, .9); }
-.visit-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24rpx; padding-bottom: 18rpx; border-bottom: 1rpx solid #f4ebe4; }
-.visit-title { display: block; color: #493831; font-size: 30rpx; font-weight: 800; }
-.visit-subtitle { display: block; margin-top: 8rpx; color: #a8978f; font-size: 21rpx; line-height: 1.5; }
-.visit-refresh { flex-shrink: 0; color: #e95c47; font-size: 24rpx; font-weight: 700; }
-.visit-empty { padding: 42rpx 0 16rpx; color: #b09f97; font-size: 24rpx; text-align: center; }
-.visit-list { padding-top: 6rpx; }
-.visit-row { display: flex; align-items: center; justify-content: space-between; gap: 24rpx; padding: 22rpx 0; border-bottom: 1rpx solid #f4ebe4; }
-.visit-row:last-child { border-bottom: none; padding-bottom: 0; }
-.visit-row:active { opacity: .72; }
-.visit-member { display: flex; flex-direction: column; min-width: 0; }
-.visit-name { color: #493831; font-size: 28rpx; font-weight: 700; }
-.visit-role { margin-top: 8rpx; color: #a8978f; font-size: 21rpx; }
-.visit-role.is-admin { color: #e0894f; }
-.visit-time { flex-shrink: 0; color: #c98a73; font-size: 24rpx; font-weight: 700; }
-.visit-pager { display: flex; align-items: center; justify-content: space-between; gap: 18rpx; margin-top: 20rpx; padding-top: 20rpx; border-top: 1rpx solid #f4ebe4; }
-.visit-page-button { flex-shrink: 0; min-width: 104rpx; padding: 12rpx 18rpx; border-radius: 999rpx; background: #fff1ea; color: #e95c47; font-size: 22rpx; font-weight: 700; text-align: center; }
-.visit-page-button.is-disabled { background: #f7eee9; color: #c9bab2; }
-.visit-page-info { min-width: 0; color: #a8978f; font-size: 21rpx; text-align: center; line-height: 1.4; }

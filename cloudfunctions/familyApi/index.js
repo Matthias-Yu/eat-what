@@ -4,7 +4,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 const db = cloud.database()
 const command = db.command
-const COLLECTIONS = ['family_users', 'family_households', 'family_data', 'family_visits']
+const COLLECTIONS = ['family_users', 'family_households', 'family_data']
 let collectionsReady = false
 const RESOURCE_LIMITS = {
   todos: 500,
@@ -17,8 +17,6 @@ const RESOURCE_LIMITS = {
 const MENU_CATEGORIES = ['main', 'dish', 'light', 'drink']
 const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
 const MESSAGE_REACTION_USER_LIMIT = 50
-const FARM_CROP_IDS = ['tomato', 'corn', 'carrot', 'berry']
-const FARM_PLOT_COUNT = 6
 const CATEGORY_TONE = {
   main: 'honey',
   dish: 'sunset',
@@ -104,7 +102,6 @@ function emptySharedData(householdId) {
     places: [],
     orderNotices: [],
     anniversary: null,
-    farm: null,
     messages: [],
     updatedAt: db.serverDate()
   }
@@ -233,7 +230,6 @@ async function getSharedData(openid) {
     places: Array.isArray(data.places) ? data.places : [],
     orderNotices: getVisibleOrderNotices(data, openid),
     anniversary: data.anniversary || null,
-    farm: data.farm || null,
     messages: Array.isArray(data.messages) ? data.messages : [],
     updatedAt: data.updatedAt || null
   })
@@ -350,34 +346,6 @@ function sanitizeMessageItem(item, index) {
   }
 }
 
-function sanitizeFarm(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
-  const inventory = {}
-  if (value.inventory && typeof value.inventory === 'object' && !Array.isArray(value.inventory)) {
-    FARM_CROP_IDS.forEach((id) => {
-      const count = Math.max(0, Number(value.inventory[id]) || 0)
-      if (count) inventory[id] = count
-    })
-  }
-  const sourcePlots = Array.isArray(value.plots) ? value.plots : []
-  const plots = Array.from({ length: FARM_PLOT_COUNT }).map((_, index) => {
-    const source = sourcePlots[index] || {}
-    const cropId = FARM_CROP_IDS.includes(source.cropId) ? source.cropId : ''
-    return {
-      id: index + 1,
-      cropId,
-      plantedAt: cropId ? Number(source.plantedAt) || Date.now() : 0,
-      wateredAt: cropId ? Number(source.wateredAt) || 0 : 0
-    }
-  })
-  return {
-    coins: Math.max(0, Number(value.coins) || 0),
-    lastBonusDate: textSlice(value.lastBonusDate, 10),
-    inventory,
-    plots
-  }
-}
-
 function sanitizeResource(resource, value) {
   if (resource === 'cart') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
@@ -385,9 +353,6 @@ function sanitizeResource(resource, value) {
   }
   if (resource === 'anniversary') {
     return sanitizeAnniversary(value)
-  }
-  if (resource === 'farm') {
-    return sanitizeFarm(value)
   }
   if (!Object.prototype.hasOwnProperty.call(RESOURCE_LIMITS, resource)) throw new Error('不支持的数据类型')
   if (!Array.isArray(value)) throw new Error('数据格式不正确')
@@ -434,7 +399,6 @@ async function migrateLocal(openid, event) {
   if (!(current.wishes || []).length) update.wishes = sanitizeResource('wishes', local.wishes || [])
   if (!(current.menus || []).length) update.menus = sanitizeResource('menus', local.menus || [])
   if (!(current.places || []).length) update.places = sanitizeResource('places', local.places || [])
-  if (!current.farm) update.farm = sanitizeResource('farm', local.farm || null)
   await db.collection('family_data').doc(household._id).update({ data: update })
   return getSharedData(openid)
 }
@@ -549,72 +513,6 @@ async function listMembers(openid) {
     }
   })
   return success({ members: list, isAdmin: openid === primaryAdminOpenid })
-}
-
-async function recordVisit(openid, event) {
-  const user = await getUser(openid)
-  if (!user || !user.householdId) return success({ recorded: false })
-  const household = await getHousehold(user.householdId)
-  const members = household && Array.isArray(household.members) ? household.members : []
-  if (!household || !members.includes(openid)) return success({ recorded: false })
-  await db.collection('family_visits').add({
-    data: {
-      householdId: household._id,
-      openid,
-      scene: textSlice(event.scene, 20),
-      path: textSlice(event.path, 80),
-      enteredAtMs: Date.now(),
-      enteredAt: db.serverDate()
-    }
-  })
-  return success({ recorded: true })
-}
-
-async function listVisitRecords(openid, event = {}) {
-  const { household } = await requireMembership(openid)
-  const members = Array.isArray(household.members) ? household.members : []
-  const primaryAdminOpenid = getPrimaryAdminOpenid(household)
-  if (openid !== primaryAdminOpenid) throw new Error('只有管理员可以查看进入记录')
-  const pageSize = Math.min(Math.max(Number(event.pageSize) || 5, 1), 20)
-  const page = Math.max(Number(event.page) || 1, 1)
-  const skip = (page - 1) * pageSize
-  const users = await Promise.all(members.map((memberOpenid) => getUser(memberOpenid)))
-  const nicknameMap = members.reduce((map, memberOpenid, index) => {
-    const user = users[index] || {}
-    const isAdmin = memberOpenid === primaryAdminOpenid
-    map[memberOpenid] = textSlice(user.nickname, 12) || (isAdmin ? '管理员' : `成员${index + 1}`)
-    return map
-  }, {})
-  const [countResponse, response] = await Promise.all([
-    db.collection('family_visits').where({ householdId: household._id }).count(),
-    db.collection('family_visits')
-      .where({ householdId: household._id })
-      .orderBy('enteredAtMs', 'desc')
-      .skip(skip)
-      .limit(pageSize)
-      .get()
-  ])
-  const records = (response.data || []).map((record) => {
-    const actorOpenid = record.openid || ''
-    const isAdmin = actorOpenid === primaryAdminOpenid
-    return {
-      id: record._id,
-      openid: actorOpenid,
-      nickname: nicknameMap[actorOpenid] || '已退出成员',
-      isAdmin,
-      isSelf: actorOpenid === openid,
-      roleLabel: isAdmin ? '管理员' : '成员',
-      scene: record.scene || '',
-      path: record.path || '',
-      enteredAtMs: Number(record.enteredAtMs) || 0
-    }
-  })
-  return success({
-    records,
-    page,
-    pageSize,
-    total: Number(countResponse.total) || 0
-  })
 }
 
 async function setMemberNickname(openid, event) {
@@ -734,8 +632,6 @@ exports.main = async (event) => {
       case 'markOrderNoticesRead': return markOrderNoticesRead(OPENID)
       case 'toggleMessageReaction': return toggleMessageReaction(OPENID, event)
       case 'listMembers': return listMembers(OPENID)
-      case 'recordVisit': return recordVisit(OPENID, event)
-      case 'listVisitRecords': return listVisitRecords(OPENID, event)
       case 'setMemberNickname': return setMemberNickname(OPENID, event)
       case 'removeMember': return removeMember(OPENID, event)
       case 'leaveHousehold': return leaveHousehold(OPENID)
