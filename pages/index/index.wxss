@@ -3753,12 +3753,67 @@ page {
   align-items: center;
   justify-content: flex-end;
 }
-.farm-plant {
+.farm-growth-image {
   position: relative;
   z-index: 1;
-  font-size: 92rpx;
-  line-height: 1;
-  filter: drop-shadow(0 12rpx 10rpx rgba(48, 34, 22, 0.2));
+  display: block;
+  width: 152rpx;
+  height: 152rpx;
+  transform-origin: 50% 92%;
+  filter: drop-shadow(0 12rpx 10rpx rgba(48, 34, 22, 0.18));
+  animation: farm-grow-in 0.48s ease both, farm-plant-sway 3.6s ease-in-out 0.5s infinite;
+}
+.farm-growth-image--sprout {
+  width: 112rpx;
+  height: 112rpx;
+}
+.farm-growth-image--seedling {
+  width: 132rpx;
+  height: 132rpx;
+}
+.farm-growth-image--growing {
+  width: 158rpx;
+  height: 158rpx;
+}
+.farm-growth-image--ready {
+  width: 184rpx;
+  height: 184rpx;
+  filter:
+    drop-shadow(0 12rpx 10rpx rgba(48, 34, 22, 0.18))
+    drop-shadow(0 0 12rpx rgba(255, 215, 98, 0.38));
+  animation: farm-grow-in 0.48s ease both, farm-ready-breathe 2.6s ease-in-out 0.5s infinite;
+}
+@keyframes farm-grow-in {
+  0% {
+    opacity: 0;
+    transform: translateY(16rpx) scale(0.72);
+  }
+  72% {
+    opacity: 1;
+    transform: translateY(-3rpx) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes farm-plant-sway {
+  0%,
+  100% {
+    transform: rotate(-1.2deg) scale(1);
+  }
+  50% {
+    transform: rotate(1.4deg) scale(1.02);
+  }
+}
+@keyframes farm-ready-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3rpx) scale(1.04);
+  }
 }
 .farm-crop-tag {
   min-width: 150rpx;

@@ -15,6 +15,10 @@ Required files:
 - `farm-hero.png`
 - `farm-field.png`
 - `farm-basket-empty.png`
+- `growth-sprout.png`
+- `growth-seedling.png`
+- `growth-growing.png`
+- `growth-ready.png`
 - `seed-tomato.jpg`
 - `seed-corn.jpg`
 - `seed-carrot.jpg`

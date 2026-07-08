@@ -30,7 +30,11 @@ const FARM_IMAGES = {
   entry: FARM_IMG_BASE + 'farm-basket-empty.png',
   basketEmpty: FARM_IMG_BASE + 'farm-basket-empty.png',
   hero: FARM_IMG_BASE + 'farm-hero.png',
-  field: FARM_IMG_BASE + 'farm-field.png'
+  field: FARM_IMG_BASE + 'farm-field.png',
+  growthSprout: FARM_IMG_BASE + 'growth-sprout.png',
+  growthSeedling: FARM_IMG_BASE + 'growth-seedling.png',
+  growthGrowing: FARM_IMG_BASE + 'growth-growing.png',
+  growthReady: FARM_IMG_BASE + 'growth-ready.png'
 }
 const FARM_CROPS = [
   { id: 'tomato', name: '番茄', emoji: '🍅', image: FARM_IMG_BASE + 'seed-tomato.jpg', seedCost: 5, growMinutes: 20, harvest: 2, reward: 9, tone: 'sunset' },
@@ -420,6 +424,13 @@ function formatFarmRemaining(ms) {
   return rest ? `${hours} 小时 ${rest} 分钟` : `${hours} 小时`
 }
 
+function getFarmGrowthStage(progress, ready) {
+  if (ready) return 'ready'
+  if (progress >= 62) return 'growing'
+  if (progress >= 28) return 'seedling'
+  return 'sprout'
+}
+
 function getFarmPlotView(plot, now) {
   const crop = FARM_CROP_MAP[plot.cropId]
   if (!crop) {
@@ -440,10 +451,12 @@ function getFarmPlotView(plot, now) {
   const boostedElapsed = elapsed * (1 + wateredBoost)
   const progress = Math.min(100, Math.floor(boostedElapsed / growMs * 100))
   const ready = progress >= 100
+  const growthStage = getFarmGrowthStage(progress, ready)
   return Object.assign({}, plot, {
     empty: false,
     ready,
     progress,
+    growthStage,
     cropName: crop.name,
     cropEmoji: crop.emoji,
     tone: crop.tone,

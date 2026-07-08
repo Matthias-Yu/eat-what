@@ -332,7 +332,10 @@
           hover-class="farm-plot--pressed"
         >
           <view wx:if="{{!item.empty}}" class="farm-crop-pin">
-            <text class="farm-plant">{{item.cropEmoji}}</text>
+            <image wx:if="{{item.growthStage === 'sprout'}}" class="farm-growth-image farm-growth-image--sprout" src="{{farmImages.growthSprout}}" mode="aspectFit"></image>
+            <image wx:elif="{{item.growthStage === 'seedling'}}" class="farm-growth-image farm-growth-image--seedling" src="{{farmImages.growthSeedling}}" mode="aspectFit"></image>
+            <image wx:elif="{{item.growthStage === 'growing'}}" class="farm-growth-image farm-growth-image--growing" src="{{farmImages.growthGrowing}}" mode="aspectFit"></image>
+            <image wx:else class="farm-growth-image farm-growth-image--ready" src="{{farmImages.growthReady}}" mode="aspectFit"></image>
             <view class="farm-crop-tag">
               <text>{{item.ready ? '收获' : item.stageText}}</text>
               <view class="farm-progress"><view style="width: {{item.progress}}%"></view></view>

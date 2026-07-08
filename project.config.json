@@ -18,7 +18,12 @@
   "cloudfunctionRoot": "cloudfunctions/",
   "simulatorPluginLibVersion": {},
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "assets/farm"
+      }
+    ],
     "include": []
   },
   "appid": "wx5728279456c69bc2",
