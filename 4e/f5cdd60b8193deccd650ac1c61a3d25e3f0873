@@ -1,0 +1,32 @@
+cloudfunctions/familyApi/index.js
+  h_7253408329bdad 7
+app.js
+  h_7253408329bdad 12
+pages/members/members.js
+  h_7253408329bdad 36
+pages/index/index.wxml
+  s_05b2ea00d55dba::t_c01889a757a99c 340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4ef5cdd60b8193deccd650ac1c61a3d25e3f0873",
+  "prompts": {},
+  "humans": {
+    "h_7253408329bdad": {
+      "author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "sessions": {
+    "s_05b2ea00d55dba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3b51-e165-7042-8729-d39e3dc1c7bd",
+        "model": "unknown"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
