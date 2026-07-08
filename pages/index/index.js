@@ -37,10 +37,10 @@ const FARM_IMAGES = {
   growthReady: FARM_IMG_BASE + 'growth-ready.png'
 }
 const FARM_CROPS = [
-  { id: 'tomato', name: '番茄', emoji: '🍅', image: FARM_IMG_BASE + 'seed-tomato.jpg', seedCost: 5, growMinutes: 20, harvest: 2, reward: 9, tone: 'sunset' },
-  { id: 'corn', name: '玉米', emoji: '🌽', image: FARM_IMG_BASE + 'seed-corn.jpg', seedCost: 8, growMinutes: 35, harvest: 3, reward: 14, tone: 'honey' },
-  { id: 'carrot', name: '胡萝卜', emoji: '🥕', image: FARM_IMG_BASE + 'seed-carrot.jpg', seedCost: 10, growMinutes: 45, harvest: 3, reward: 18, tone: 'cream' },
-  { id: 'berry', name: '莓果', emoji: '🍓', image: FARM_IMG_BASE + 'seed-berry.jpg', seedCost: 14, growMinutes: 60, harvest: 4, reward: 24, tone: 'blush' }
+  { id: 'tomato', name: '番茄', emoji: '🍅', image: FARM_IMG_BASE + 'seed-tomato.jpg', seedCost: 5, growDays: 1, harvest: 2, reward: 9, tone: 'sunset' },
+  { id: 'corn', name: '玉米', emoji: '🌽', image: FARM_IMG_BASE + 'seed-corn.jpg', seedCost: 8, growDays: 2, harvest: 3, reward: 14, tone: 'honey' },
+  { id: 'carrot', name: '胡萝卜', emoji: '🥕', image: FARM_IMG_BASE + 'seed-carrot.jpg', seedCost: 10, growDays: 3, harvest: 3, reward: 18, tone: 'cream' },
+  { id: 'berry', name: '莓果', emoji: '🍓', image: FARM_IMG_BASE + 'seed-berry.jpg', seedCost: 14, growDays: 4, harvest: 4, reward: 24, tone: 'blush' }
 ]
 const FARM_CROP_MAP = FARM_CROPS.reduce((map, item) => {
   map[item.id] = item
@@ -417,11 +417,13 @@ function normalizeFarmState(value) {
 }
 
 function formatFarmRemaining(ms) {
-  const minutes = Math.max(1, Math.ceil(ms / 60000))
-  if (minutes < 60) return `${minutes} 分钟`
-  const hours = Math.floor(minutes / 60)
-  const rest = minutes % 60
-  return rest ? `${hours} 小时 ${rest} 分钟` : `${hours} 小时`
+  const days = Math.max(1, Math.ceil(ms / 86400000))
+  return `${days} 天`
+}
+
+function getFarmGrowMs(crop) {
+  if (crop.growDays) return crop.growDays * 86400000
+  return Math.max(1, Number(crop.growMinutes) || 1) * 60000
 }
 
 function getFarmGrowthStage(progress, ready) {
@@ -445,7 +447,7 @@ function getFarmPlotView(plot, now) {
       tone: 'mint'
     })
   }
-  const growMs = crop.growMinutes * 60000
+  const growMs = getFarmGrowMs(crop)
   const wateredBoost = plot.wateredAt ? 0.18 : 0
   const elapsed = Math.max(0, now - Number(plot.plantedAt || now))
   const boostedElapsed = elapsed * (1 + wateredBoost)

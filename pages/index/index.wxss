@@ -3754,15 +3754,51 @@ page {
   justify-content: center;
   box-sizing: border-box;
 }
-.farm-growth-image {
+.farm-growth-wrap {
   position: relative;
+  z-index: 1;
+  width: 216rpx;
+  height: 216rpx;
+  transform-origin: 50% 92%;
+  animation: farm-grow-in 0.48s ease both;
+}
+.farm-growth-wrap--sprout {
+  width: 164rpx;
+  height: 164rpx;
+}
+.farm-growth-wrap--seedling {
+  width: 190rpx;
+  height: 190rpx;
+}
+.farm-growth-wrap--growing {
+  width: 226rpx;
+  height: 226rpx;
+}
+.farm-growth-wrap--ready {
+  width: 254rpx;
+  height: 254rpx;
+}
+.farm-growth-image {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
   z-index: 1;
   display: block;
   width: 216rpx;
   height: 216rpx;
+  transform: translateX(-50%);
   transform-origin: 50% 92%;
   filter: drop-shadow(0 12rpx 10rpx rgba(48, 34, 22, 0.18));
-  animation: farm-grow-in 0.48s ease both, farm-plant-sway 3.6s ease-in-out 0.5s infinite;
+  animation: none;
+}
+.farm-growth-image--soil {
+  z-index: 1;
+  clip-path: inset(66% 0 0 0);
+}
+.farm-growth-image--leaf {
+  z-index: 2;
+  clip-path: inset(0 0 26% 0);
+  animation: farm-leaf-sway 3.6s ease-in-out 0.5s infinite;
 }
 .farm-growth-image--sprout {
   width: 164rpx;
@@ -3782,7 +3818,9 @@ page {
   filter:
     drop-shadow(0 12rpx 10rpx rgba(48, 34, 22, 0.18))
     drop-shadow(0 0 12rpx rgba(255, 215, 98, 0.38));
-  animation: farm-grow-in 0.48s ease both, farm-ready-breathe 2.6s ease-in-out 0.5s infinite;
+}
+.farm-growth-image--ready.farm-growth-image--leaf {
+  animation: farm-leaf-ready-breathe 2.6s ease-in-out 0.5s infinite;
 }
 @keyframes farm-grow-in {
   0% {
@@ -3798,22 +3836,22 @@ page {
     transform: translateY(0) scale(1);
   }
 }
-@keyframes farm-plant-sway {
+@keyframes farm-leaf-sway {
   0%,
   100% {
-    transform: rotate(-1.2deg) scale(1);
+    transform: translateX(-50%) rotate(-1.2deg) scale(1);
   }
   50% {
-    transform: rotate(1.4deg) scale(1.02);
+    transform: translateX(-50%) rotate(1.4deg) scale(1.02);
   }
 }
-@keyframes farm-ready-breathe {
+@keyframes farm-leaf-ready-breathe {
   0%,
   100% {
-    transform: translateY(0) scale(1);
+    transform: translateX(-50%) translateY(0) scale(1);
   }
   50% {
-    transform: translateY(-3rpx) scale(1.04);
+    transform: translateX(-50%) translateY(-3rpx) scale(1.04);
   }
 }
 .farm-crop-tag {

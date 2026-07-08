@@ -313,7 +313,7 @@
             <text class="farm-crop-name">{{item.name}}</text>
             <view class="farm-crop-meta">
               <text>☀ {{item.seedCost}}</text>
-              <text>{{item.growMinutes}}分</text>
+              <text>{{item.growDays}}天</text>
             </view>
           </view>
         </view>
@@ -332,10 +332,17 @@
           hover-class="farm-plot--pressed"
         >
           <view wx:if="{{!item.empty}}" class="farm-crop-pin">
-            <image wx:if="{{item.growthStage === 'sprout'}}" class="farm-growth-image farm-growth-image--sprout" src="{{farmImages.growthSprout}}" mode="aspectFit"></image>
-            <image wx:elif="{{item.growthStage === 'seedling'}}" class="farm-growth-image farm-growth-image--seedling" src="{{farmImages.growthSeedling}}" mode="aspectFit"></image>
-            <image wx:elif="{{item.growthStage === 'growing'}}" class="farm-growth-image farm-growth-image--growing" src="{{farmImages.growthGrowing}}" mode="aspectFit"></image>
-            <image wx:else class="farm-growth-image farm-growth-image--ready" src="{{farmImages.growthReady}}" mode="aspectFit"></image>
+            <view class="farm-growth-wrap farm-growth-wrap--{{item.growthStage}}">
+              <image wx:if="{{item.growthStage === 'sprout'}}" class="farm-growth-image farm-growth-image--soil farm-growth-image--sprout" src="{{farmImages.growthSprout}}" mode="aspectFit"></image>
+              <image wx:elif="{{item.growthStage === 'seedling'}}" class="farm-growth-image farm-growth-image--soil farm-growth-image--seedling" src="{{farmImages.growthSeedling}}" mode="aspectFit"></image>
+              <image wx:elif="{{item.growthStage === 'growing'}}" class="farm-growth-image farm-growth-image--soil farm-growth-image--growing" src="{{farmImages.growthGrowing}}" mode="aspectFit"></image>
+              <image wx:else class="farm-growth-image farm-growth-image--soil farm-growth-image--ready" src="{{farmImages.growthReady}}" mode="aspectFit"></image>
+
+              <image wx:if="{{item.growthStage === 'sprout'}}" class="farm-growth-image farm-growth-image--leaf farm-growth-image--sprout" src="{{farmImages.growthSprout}}" mode="aspectFit"></image>
+              <image wx:elif="{{item.growthStage === 'seedling'}}" class="farm-growth-image farm-growth-image--leaf farm-growth-image--seedling" src="{{farmImages.growthSeedling}}" mode="aspectFit"></image>
+              <image wx:elif="{{item.growthStage === 'growing'}}" class="farm-growth-image farm-growth-image--leaf farm-growth-image--growing" src="{{farmImages.growthGrowing}}" mode="aspectFit"></image>
+              <image wx:else class="farm-growth-image farm-growth-image--leaf farm-growth-image--ready" src="{{farmImages.growthReady}}" mode="aspectFit"></image>
+            </view>
             <view class="farm-crop-tag">
               <text>{{item.ready ? '可收获' : item.progress + '%'}}</text>
             </view>
