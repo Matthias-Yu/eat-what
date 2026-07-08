@@ -3359,7 +3359,7 @@ page {
 .farm-page {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(180deg, #fff8ef 0%, #faf3e6 48%, #f6f0df 100%);
+  background: linear-gradient(180deg, #eef7e9 0%, #e6f2df 46%, #dcecd4 100%);
 }
 .farm-page-bg {
   position: absolute;
@@ -3378,8 +3378,8 @@ page {
   height: 420rpx;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 250, 0.72),
-    rgba(255, 255, 250, 0)
+    rgba(238, 247, 233, 0.72),
+    rgba(238, 247, 233, 0)
   );
   pointer-events: none;
 }

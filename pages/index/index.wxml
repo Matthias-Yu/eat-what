@@ -1,4 +1,4 @@
-<navigation-bar title="" back="{{false}}" color="#382d29" background="{{activeTab === 'farm' ? '#fffaf5' : 'transparent'}}"></navigation-bar>
+<navigation-bar title="" back="{{false}}" color="#2f3c29" background="{{activeTab === 'farm' ? '#eef7e9' : 'transparent'}}"></navigation-bar>
 
 <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" scroll-top="{{scrollTop}}" scroll-with-animation="{{false}}">
   <!-- 首页 -->
