@@ -4,7 +4,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 const db = cloud.database()
 const command = db.command
-const COLLECTIONS = ['family_users', 'family_households', 'family_data']
+const COLLECTIONS = ['family_users', 'family_households', 'family_data', 'family_visits']
 let collectionsReady = false
 const RESOURCE_LIMITS = {
   todos: 500,
@@ -515,6 +515,92 @@ async function listMembers(openid) {
   return success({ members: list, isAdmin: openid === primaryAdminOpenid })
 }
 
+async function recordVisit(openid, event) {
+  const user = await getUser(openid)
+  if (!user || !user.householdId) return success({ recorded: false })
+  const household = await getHousehold(user.householdId)
+  const members = household && Array.isArray(household.members) ? household.members : []
+  if (!household || !members.includes(openid)) return success({ recorded: false })
+  await db.collection('family_visits').add({
+    data: {
+      householdId: household._id,
+      openid,
+      scene: textSlice(event.scene, 20),
+      path: textSlice(event.path, 80),
+      enteredAtMs: Date.now(),
+      enteredAt: db.serverDate()
+    }
+  })
+  return success({ recorded: true })
+}
+
+async function listVisitRecords(openid, event = {}) {
+  const { household } = await requireMembership(openid)
+  const members = Array.isArray(household.members) ? household.members : []
+  const primaryAdminOpenid = getPrimaryAdminOpenid(household)
+  if (openid !== primaryAdminOpenid) throw new Error('只有管理员可以查看进入记录')
+  const pageSize = Math.min(Math.max(Number(event.pageSize) || 5, 1), 20)
+  const page = Math.max(Number(event.page) || 1, 1)
+  const skip = (page - 1) * pageSize
+  const users = await Promise.all(members.map((memberOpenid) => getUser(memberOpenid)))
+  const nicknameMap = members.reduce((map, memberOpenid, index) => {
+    const user = users[index] || {}
+    const isAdmin = memberOpenid === primaryAdminOpenid
+    map[memberOpenid] = textSlice(user.nickname, 12) || (isAdmin ? '管理员' : `成员${index + 1}`)
+    return map
+  }, {})
+  const [countResponse, response] = await Promise.all([
+    db.collection('family_visits').where({ householdId: household._id }).count(),
+    db.collection('family_visits')
+      .where({ householdId: household._id })
+      .orderBy('enteredAtMs', 'desc')
+      .skip(skip)
+      .limit(pageSize)
+      .get()
+  ])
+  const records = (response.data || []).map((record) => {
+    const actorOpenid = record.openid || ''
+    const isAdmin = actorOpenid === primaryAdminOpenid
+    return {
+      id: record._id,
+      openid: actorOpenid,
+      nickname: nicknameMap[actorOpenid] || '已退出成员',
+      isAdmin,
+      isSelf: actorOpenid === openid,
+      roleLabel: isAdmin ? '管理员' : '成员',
+      scene: record.scene || '',
+      path: record.path || '',
+      enteredAtMs: Number(record.enteredAtMs) || 0
+    }
+  })
+  return success({
+    records,
+    page,
+    pageSize,
+    total: Number(countResponse.total) || 0
+  })
+}
+
+async function clearVisitRecords(openid) {
+  const { household } = await requireMembership(openid)
+  const primaryAdminOpenid = getPrimaryAdminOpenid(household)
+  if (openid !== primaryAdminOpenid) throw new Error('只有管理员可以清空进入记录')
+  let removed = 0
+  // 云开发单次 remove 最多删 1000 条，循环批量清空当前家庭的全部进入记录
+  for (let guard = 0; guard < 50; guard += 1) {
+    const response = await db.collection('family_visits')
+      .where({ householdId: household._id })
+      .limit(1000)
+      .get()
+    const ids = (response.data || []).map((item) => item._id)
+    if (!ids.length) break
+    await Promise.all(ids.map((id) => db.collection('family_visits').doc(id).remove().catch(() => {})))
+    removed += ids.length
+    if (ids.length < 1000) break
+  }
+  return success({ cleared: true, removed })
+}
+
 async function setMemberNickname(openid, event) {
   const { household } = await requireMembership(openid)
   const members = Array.isArray(household.members) ? household.members : []
@@ -632,6 +718,9 @@ exports.main = async (event) => {
       case 'markOrderNoticesRead': return markOrderNoticesRead(OPENID)
       case 'toggleMessageReaction': return toggleMessageReaction(OPENID, event)
       case 'listMembers': return listMembers(OPENID)
+      case 'recordVisit': return recordVisit(OPENID, event)
+      case 'listVisitRecords': return listVisitRecords(OPENID, event)
+      case 'clearVisitRecords': return clearVisitRecords(OPENID)
       case 'setMemberNickname': return setMemberNickname(OPENID, event)
       case 'removeMember': return removeMember(OPENID, event)
       case 'leaveHousehold': return leaveHousehold(OPENID)
