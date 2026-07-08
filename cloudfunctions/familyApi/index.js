@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk')
+const https = require('https')
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -19,6 +20,12 @@ const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
 const MESSAGE_REACTION_USER_LIMIT = 50
 const FARM_CROP_IDS = ['tomato', 'corn', 'carrot', 'berry']
 const FARM_PLOT_COUNT = 6
+const AI_NAME = '饭团'
+const GLM_HOST = 'open.bigmodel.cn'
+const GLM_PATH = '/api/paas/v4/chat/completions'
+const GLM_MODEL = process.env.GLM_MODEL || 'glm-4.6'
+const AI_MAX_HISTORY = 12
+const AI_MAX_CONTENT = 800
 const CATEGORY_TONE = {
   main: 'honey',
   dish: 'sunset',
@@ -146,7 +153,9 @@ function publicHousehold(household, openid) {
     role: isPrimaryAdmin ? 'primary' : 'secondary',
     roleLabel: isPrimaryAdmin ? '管理员' : '成员',
     canNotifyAdmin: !isPrimaryAdmin && members.length > 1 && members.includes(primaryAdminOpenid),
-    orderNoticeTemplateId: process.env.ORDER_NOTICE_TEMPLATE_ID || ''
+    orderNoticeTemplateId: process.env.ORDER_NOTICE_TEMPLATE_ID || '',
+    aiName: AI_NAME,
+    aiConfigured: !!textSlice(household.glmApiKey, 200)
   }
 }
 
@@ -666,6 +675,97 @@ async function clearVisitRecords(openid) {
   return success({ cleared: true, removed })
 }
 
+function buildAiSystemPrompt(context) {
+  const lines = [
+    `你叫"${AI_NAME}"，是"家庭空间"小程序里的家庭生活助手，说话温暖、简洁、口语化。`,
+    '主要帮家人决定"今晚吃什么"、根据菜单推荐搭配、给生活与家务小建议。',
+    '回答控制在 120 字以内，能直接给结论就不要绕弯。'
+  ]
+  const menu = context && Array.isArray(context.menu) ? context.menu : []
+  if (menu.length) {
+    const names = menu.map((item) => textSlice(item, 20)).filter(Boolean).slice(0, 40)
+    if (names.length) lines.push(`家里现有菜单可参考：${names.join('、')}。推荐时尽量从中挑选。`)
+  }
+  return lines.join('\n')
+}
+
+function normalizeAiMessages(rawMessages) {
+  const list = Array.isArray(rawMessages) ? rawMessages : []
+  return list
+    .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && item.content)
+    .slice(-AI_MAX_HISTORY)
+    .map((item) => ({ role: item.role, content: textSlice(item.content, AI_MAX_CONTENT) }))
+}
+
+function requestGlm(apiKey, payload) {
+  return new Promise((resolve, reject) => {
+    const body = JSON.stringify(payload)
+    const req = https.request({
+      hostname: GLM_HOST,
+      path: GLM_PATH,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Length': Buffer.byteLength(body)
+      },
+      timeout: 20000
+    }, (res) => {
+      let data = ''
+      res.on('data', (chunk) => { data += chunk })
+      res.on('end', () => {
+        try {
+          resolve({ statusCode: res.statusCode, json: JSON.parse(data || '{}') })
+        } catch (error) {
+          reject(new Error('AI 返回解析失败'))
+        }
+      })
+    })
+    req.on('timeout', () => { req.destroy(new Error('AI 请求超时')) })
+    req.on('error', reject)
+    req.write(body)
+    req.end()
+  })
+}
+
+async function setAiApiKey(openid, event) {
+  const { household } = await requireMembership(openid)
+  const primaryAdminOpenid = getPrimaryAdminOpenid(household)
+  if (openid !== primaryAdminOpenid) throw new Error(`只有管理员可以配置${AI_NAME}`)
+  const apiKey = textSlice(event.apiKey, 200)
+  await db.collection('family_households').doc(household._id).update({
+    data: { glmApiKey: apiKey, updatedAt: db.serverDate() }
+  })
+  const updated = await getHousehold(household._id)
+  return success({ household: publicHousehold(updated, openid) })
+}
+
+async function aiChat(openid, event) {
+  const { household } = await requireMembership(openid)
+  const apiKey = textSlice(household.glmApiKey, 200)
+  if (!apiKey) throw new Error(`${AI_NAME}还没配置，请让管理员在家庭云空间里添加 API Key`)
+  const history = normalizeAiMessages(event.messages)
+  if (!history.length || history[history.length - 1].role !== 'user') {
+    throw new Error('请先说点什么')
+  }
+  const messages = [{ role: 'system', content: buildAiSystemPrompt(event.context) }].concat(history)
+  const { statusCode, json } = await requestGlm(apiKey, {
+    model: GLM_MODEL,
+    messages,
+    temperature: 0.7,
+    max_tokens: 800
+  })
+  if (statusCode !== 200) {
+    const detail = json && json.error && json.error.message
+    console.warn('GLM 调用失败', statusCode, detail)
+    throw new Error(detail || `${AI_NAME}暂时不可用`)
+  }
+  const choice = json && Array.isArray(json.choices) ? json.choices[0] : null
+  const reply = choice && choice.message ? textSlice(choice.message.content, AI_MAX_CONTENT) : ''
+  if (!reply) throw new Error(`${AI_NAME}没有返回内容`)
+  return success({ reply })
+}
+
 async function setMemberNickname(openid, event) {
   const { household } = await requireMembership(openid)
   const members = Array.isArray(household.members) ? household.members : []
@@ -786,6 +886,8 @@ exports.main = async (event) => {
       case 'recordVisit': return recordVisit(OPENID, event)
       case 'listVisitRecords': return listVisitRecords(OPENID, event)
       case 'clearVisitRecords': return clearVisitRecords(OPENID)
+      case 'setAiApiKey': return setAiApiKey(OPENID, event)
+      case 'aiChat': return aiChat(OPENID, event)
       case 'setMemberNickname': return setMemberNickname(OPENID, event)
       case 'removeMember': return removeMember(OPENID, event)
       case 'leaveHousehold': return leaveHousehold(OPENID)

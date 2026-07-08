@@ -572,6 +572,11 @@ Page({
     showOrderSuccess: false,
     latestOrderId: '',
     orderSuccessCopy: '',
+    showAiPanel: false,
+    aiInput: '',
+    aiSending: false,
+    aiMessages: [],
+    aiScrollTop: 0,
     familyStatus: 'loading',
     family: null,
     showFamilyPanel: false,
@@ -1478,6 +1483,84 @@ Page({
     this.setData({ showOrderSuccess: false, activeTab: 'home' })
     this.resetScroll()
   },
+
+  openAiPanel() {
+    const update = { showAiPanel: true }
+    if (!this.data.aiMessages.length) {
+      update.aiMessages = [{ role: 'assistant', content: '嗨，我是饭团～今晚想吃点什么，或者需要什么生活小建议，都可以问我。' }]
+    }
+    this.setData(update)
+  },
+
+  closeAiPanel() {
+    this.setData({ showAiPanel: false })
+  },
+
+  onAiInput(event) {
+    this.setData({ aiInput: event.detail.value })
+  },
+
+  buildAiContext() {
+    const pool = (this.allMenuItems && this.allMenuItems.length) ? this.allMenuItems : []
+    return { menu: pool.map((item) => item.name).filter(Boolean).slice(0, 40) }
+  },
+
+  configureAiKey() {
+    const family = this.data.family
+    if (!family || !family.isAdmin) {
+      wx.showToast({ title: '只有管理员可以配置饭团', icon: 'none' })
+      return
+    }
+    wx.showModal({
+      title: family.aiConfigured ? '更新饭团 API Key' : '配置饭团 API Key',
+      editable: true,
+      placeholderText: '粘贴 GLM 的 API Key',
+      confirmText: '保存',
+      success: async (modal) => {
+        if (!modal.confirm) return
+        const apiKey = String(modal.content || '').trim()
+        if (!apiKey) {
+          wx.showToast({ title: '请输入 API Key', icon: 'none' })
+          return
+        }
+        try {
+          const result = await cloudService.call('setAiApiKey', { apiKey })
+          if (result && result.household) this.setData({ family: result.household })
+          wx.showToast({ title: '饭团已就绪', icon: 'success' })
+        } catch (error) {
+          wx.showToast({ title: error.message || '保存失败', icon: 'none' })
+        }
+      }
+    })
+  },
+
+  sendAiMessage() {
+    if (this.data.aiSending) return
+    const text = String(this.data.aiInput || '').trim().slice(0, 500)
+    if (!text) {
+      wx.showToast({ title: '说点什么吧', icon: 'none' })
+      return
+    }
+    const messages = this.data.aiMessages.concat({ role: 'user', content: text })
+    this.setData({ aiMessages: messages, aiInput: '', aiSending: true }, () => this.scrollAiToBottom())
+    cloudService.call('aiChat', {
+      messages: messages.filter((item) => item.role === 'user' || item.role === 'assistant'),
+      context: this.buildAiContext()
+    })
+      .then((result) => {
+        const reply = (result && result.reply) || '我没太理解，可以再说一次吗？'
+        this.setData({ aiMessages: this.data.aiMessages.concat({ role: 'assistant', content: reply }) }, () => this.scrollAiToBottom())
+      })
+      .catch((error) => {
+        wx.showToast({ title: error.message || '饭团暂时不可用', icon: 'none' })
+      })
+      .finally(() => this.setData({ aiSending: false }))
+  },
+
+  scrollAiToBottom() {
+    this.setData({ aiScrollTop: (this.data.aiScrollTop || 0) + 100000 })
+  },
+
 
   openOrderDetail(event) {
     const id = String(event.currentTarget.dataset.id)

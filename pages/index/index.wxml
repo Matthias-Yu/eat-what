@@ -506,6 +506,35 @@
 
 <bottom-nav active="{{activeTab}}" badge="{{cartCount}}" wish-badge="{{wishStats.pending}}" bindchange="setTab"></bottom-nav>
 
+<!-- AI 家庭助手悬浮入口 -->
+<view wx:if="{{!showAiPanel}}" class="ai-fab" bindtap="openAiPanel" hover-class="tap-scale--active">
+  <text class="ai-fab-icon">✦</text>
+  <text class="ai-fab-text">饭团</text>
+</view>
+
+<!-- AI 家庭助手对话 -->
+<view wx:if="{{showAiPanel}}" class="overlay ai-overlay" bindtap="closeAiPanel">
+  <view class="bottom-sheet ai-sheet" catchtap="noop">
+    <view class="sheet-handle"></view>
+    <view class="sheet-header"><view><text class="sheet-title">饭团</text><text class="sheet-subtitle">吃什么、怎么搭配，都能问我</text></view><view class="sheet-close" bindtap="closeAiPanel">×</view></view>
+    <view wx:if="{{family && family.isAdmin && !family.aiConfigured}}" class="ai-config-tip" bindtap="configureAiKey">
+      <text>还没配置饭团的 API Key，点这里添加 →</text>
+    </view>
+    <scroll-view class="ai-list" scroll-y show-scrollbar="{{false}}" scroll-top="{{aiScrollTop}}" scroll-with-animation>
+      <view wx:for="{{aiMessages}}" wx:key="index" class="ai-bubble-row {{item.role === 'user' ? 'is-user' : 'is-ai'}}">
+        <view class="ai-bubble">{{item.content}}</view>
+      </view>
+      <view wx:if="{{aiSending}}" class="ai-bubble-row is-ai">
+        <view class="ai-bubble ai-bubble--typing">正在思考…</view>
+      </view>
+    </scroll-view>
+    <view class="ai-compose">
+      <input class="ai-input" value="{{aiInput}}" bindinput="onAiInput" maxlength="500" placeholder="今晚吃什么好呢…" placeholder-class="input-placeholder" confirm-type="send" bindconfirm="sendAiMessage" disabled="{{aiSending}}" />
+      <view class="ai-send {{aiSending ? 'is-disabled' : ''}}" bindtap="sendAiMessage" hover-class="tap-scale--active">发送</view>
+    </view>
+  </view>
+</view>
+
 <!-- 家庭云空间 -->
 <view wx:if="{{showFamilyPanel}}" class="family-overlay" bindtap="closeFamilyPanel">
   <view class="family-card" catchtap="noop">
@@ -527,6 +556,7 @@
         <text class="family-invite-copy">复制</text>
       </view>
       <button class="family-primary-button" bindtap="openMemberManager">成员管理</button>
+      <button wx:if="{{family.isAdmin}}" class="family-secondary-button" bindtap="configureAiKey">{{family.aiConfigured ? '更新饭团 Key' : '配置饭团 Key'}}</button>
       <button wx:if="{{family.isAdmin && family.orderNoticeTemplateId}}" class="family-secondary-button" bindtap="enableOrderPush">开启点餐提醒</button>
       <button class="family-secondary-button" bindtap="closeFamilyPanel">知道啦</button>
       <text class="family-link danger" bindtap="leaveFamily">{{family.isAdmin ? '解散云空间' : '退出云空间'}}</text>

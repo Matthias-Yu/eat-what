@@ -4008,3 +4008,115 @@ page {
     height: 184rpx;
   }
 }
+
+/* AI 家庭助手 */
+.ai-fab {
+  position: fixed;
+  right: 28rpx;
+  bottom: calc(160rpx + env(safe-area-inset-bottom));
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 104rpx;
+  height: 104rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffb37a, #f17a5c);
+  box-shadow: 0 14rpx 30rpx rgba(216, 83, 58, 0.32);
+}
+.ai-fab-icon {
+  color: #fff;
+  font-size: 34rpx;
+  line-height: 1;
+}
+.ai-fab-text {
+  margin-top: 4rpx;
+  color: #fff;
+  font-size: 18rpx;
+  font-weight: 700;
+}
+.ai-sheet {
+  display: flex;
+  flex-direction: column;
+  height: 76vh;
+}
+.ai-config-tip {
+  margin-bottom: 16rpx;
+  padding: 16rpx 24rpx;
+  border-radius: 20rpx;
+  background: #fff3ea;
+  color: #d8623f;
+  font-size: 23rpx;
+  font-weight: 600;
+}
+.ai-list {
+  flex: 1;
+  min-height: 0;
+  padding: 8rpx 4rpx;
+}
+.ai-bubble-row {
+  display: flex;
+  margin-bottom: 20rpx;
+}
+.ai-bubble-row.is-user {
+  justify-content: flex-end;
+}
+.ai-bubble-row.is-ai {
+  justify-content: flex-start;
+}
+.ai-bubble {
+  max-width: 78%;
+  padding: 18rpx 24rpx;
+  border-radius: 26rpx;
+  font-size: 26rpx;
+  line-height: 1.6;
+  word-break: break-word;
+}
+.ai-bubble-row.is-ai .ai-bubble {
+  background: #fff;
+  color: #3c2f2b;
+  border: 1rpx solid #f0e4dc;
+  border-top-left-radius: 8rpx;
+}
+.ai-bubble-row.is-user .ai-bubble {
+  background: linear-gradient(135deg, #f17a5c, #e95c47);
+  color: #fff;
+  border-top-right-radius: 8rpx;
+}
+.ai-bubble--typing {
+  color: #b09f97;
+}
+.ai-compose {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-top: 18rpx;
+}
+.ai-input {
+  flex: 1;
+  height: 80rpx;
+  padding: 0 24rpx;
+  border: 1rpx solid #ecdfd8;
+  border-radius: 24rpx;
+  box-sizing: border-box;
+  background: #fff;
+  font-size: 25rpx;
+}
+.ai-send {
+  flex-shrink: 0;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 36rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #f17a5c, #e95c47);
+  color: #fff;
+  font-size: 25rpx;
+  font-weight: 700;
+  box-shadow: 0 11rpx 26rpx rgba(216, 83, 58, 0.18);
+}
+.ai-send.is-disabled {
+  opacity: 0.5;
+}
