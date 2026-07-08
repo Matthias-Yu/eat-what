@@ -691,10 +691,13 @@ function buildAiSystemPrompt(context) {
 
 function normalizeAiMessages(rawMessages) {
   const list = Array.isArray(rawMessages) ? rawMessages : []
-  return list
+  const cleaned = list
     .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && item.content)
     .slice(-AI_MAX_HISTORY)
     .map((item) => ({ role: item.role, content: textSlice(item.content, AI_MAX_CONTENT) }))
+  // 丢弃开头的 assistant 消息（如欢迎语），保证对话从用户提问开始，避免浪费 token 与语义错乱
+  while (cleaned.length && cleaned[0].role === 'assistant') cleaned.shift()
+  return cleaned
 }
 
 function requestGlm(apiKey, payload) {
