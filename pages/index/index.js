@@ -5,6 +5,7 @@ const cloudService = require('../../utils/cloud')
 
 const SEARCH_DEBOUNCE_MS = 120
 const CLOUD_SYNC_DEBOUNCE_MS = 800
+const AI_REQUEST_TIMEOUT_MS = 25000
 const ANNIVERSARY_FLIP_INTERVAL_MS = 90
 const ANNIVERSARY_FLIP_MAX_STEPS = 24
 
@@ -267,25 +268,6 @@ function applyImageCache(items, cache) {
     return item
   })
   return changed ? mapped : items
-}
-
-function applyImageObjectCache(images, cache) {
-  if (!cache || !images) return images
-  let changed = false
-  const mapped = Object.keys(images).reduce((result, key) => {
-    const value = images[key]
-    if (typeof value === 'string' && value.indexOf('cloud://') === 0) {
-      const entry = cache[value]
-      if (entry && entry.url) {
-        changed = true
-        result[key] = entry.url
-        return result
-      }
-    }
-    result[key] = value
-    return result
-  }, {})
-  return changed ? mapped : images
 }
 
 function getRecommendedMenuItems(items) {
@@ -1543,18 +1525,29 @@ Page({
     }
     const messages = this.data.aiMessages.concat({ role: 'user', content: text })
     this.setData({ aiMessages: messages, aiInput: '', aiSending: true }, () => this.scrollAiToBottom())
-    cloudService.call('aiChat', {
-      messages: messages.filter((item) => item.role === 'user' || item.role === 'assistant'),
-      context: this.buildAiContext()
+    let settled = false
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('饭团想了好久，请再试一次')), AI_REQUEST_TIMEOUT_MS)
     })
+    Promise.race([
+      cloudService.call('aiChat', {
+        messages: messages.filter((item) => item.role === 'user' || item.role === 'assistant'),
+        context: this.buildAiContext()
+      }),
+      timeout
+    ])
       .then((result) => {
+        if (settled) return
+        settled = true
         const reply = (result && result.reply) || '我没太理解，可以再说一次吗？'
-        this.setData({ aiMessages: this.data.aiMessages.concat({ role: 'assistant', content: reply }) }, () => this.scrollAiToBottom())
+        this.setData({ aiMessages: this.data.aiMessages.concat({ role: 'assistant', content: reply }), aiSending: false }, () => this.scrollAiToBottom())
       })
       .catch((error) => {
+        if (settled) return
+        settled = true
+        this.setData({ aiSending: false })
         wx.showToast({ title: error.message || '饭团暂时不可用', icon: 'none' })
       })
-      .finally(() => this.setData({ aiSending: false }))
   },
 
   scrollAiToBottom() {
