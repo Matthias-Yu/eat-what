@@ -23,7 +23,7 @@ const FARM_PLOT_COUNT = 6
 const AI_NAME = '饭团'
 const GLM_HOST = 'open.bigmodel.cn'
 const GLM_PATH = '/api/paas/v4/chat/completions'
-const GLM_MODEL = process.env.GLM_MODEL || 'glm-4.6'
+const GLM_MODEL = process.env.GLM_MODEL || 'glm-5.2'
 const AI_MAX_HISTORY = 12
 const AI_MAX_CONTENT = 800
 const CATEGORY_TONE = {
@@ -752,8 +752,10 @@ async function aiChat(openid, event) {
   const { statusCode, json } = await requestGlm(apiKey, {
     model: GLM_MODEL,
     messages,
+    // 饭团是轻量家庭对话，关闭深度思考：GLM-5.2 默认开启 thinking 会消耗大量 token 且拖慢响应
+    thinking: { type: 'disabled' },
     temperature: 0.7,
-    max_tokens: 800
+    max_tokens: 2048
   })
   if (statusCode !== 200) {
     const detail = json && json.error && json.error.message
