@@ -450,7 +450,9 @@ page {
   box-sizing: border-box;
   background: linear-gradient(145deg, #ffd6c4, #f4a284);
   box-shadow: 0 8rpx 20rpx rgba(219, 112, 78, 0.2);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 .farm-entry-orb--pressed {
   transform: translateY(3rpx) scale(0.96);
@@ -2126,6 +2128,30 @@ page {
   background: #f3e7e0;
   color: #8a6f63;
 }
+.family-button-grid {
+  display: flex;
+  gap: 16rpx;
+  width: 100%;
+  margin-top: 16rpx;
+}
+.family-grid-button {
+  flex: 1;
+  width: auto;
+  margin: 0;
+}
+.family-grid-button::after {
+  border: none;
+}
+.family-bottom-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40rpx;
+  margin-top: 24rpx;
+}
+.family-bottom-links .family-link {
+  margin-top: 0;
+}
 .family-link {
   margin-top: 20rpx;
   color: #c98a73;
@@ -3196,7 +3222,9 @@ page {
   border: 1rpx solid #ecdfd8;
   border-radius: 22rpx;
   background: #fbf5f1;
-  transition: transform 0.18s ease, background 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease;
 }
 .reaction-chip:active {
   transform: scale(0.9);
@@ -3331,8 +3359,7 @@ page {
 .farm-page {
   position: relative;
   overflow: hidden;
-  background:
-    linear-gradient(180deg, #fff8ef 0%, #faf3e6 48%, #f6f0df 100%);
+  background: linear-gradient(180deg, #fff8ef 0%, #faf3e6 48%, #f6f0df 100%);
 }
 .farm-page-bg {
   position: absolute;
@@ -3349,7 +3376,11 @@ page {
   right: 0;
   top: 0;
   height: 420rpx;
-  background: linear-gradient(180deg, rgba(255, 255, 250, 0.72), rgba(255, 255, 250, 0));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 250, 0.72),
+    rgba(255, 255, 250, 0)
+  );
   pointer-events: none;
 }
 .farm-page > view {
@@ -3379,8 +3410,11 @@ page {
   border: 2rpx solid rgba(255, 210, 128, 0.68);
   border-radius: 24rpx;
   box-sizing: border-box;
-  background:
-    linear-gradient(145deg, rgba(255, 248, 217, 0.96), rgba(255, 255, 246, 0.94));
+  background: linear-gradient(
+    145deg,
+    rgba(255, 248, 217, 0.96),
+    rgba(255, 255, 246, 0.94)
+  );
   color: #9b6533;
   font-size: 26rpx;
   font-weight: 800;
@@ -3426,7 +3460,11 @@ page {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(55, 80, 43, 0.58), rgba(255, 255, 255, 0.02) 60%),
+    linear-gradient(
+      90deg,
+      rgba(55, 80, 43, 0.58),
+      rgba(255, 255, 255, 0.02) 60%
+    ),
     linear-gradient(180deg, rgba(255, 244, 210, 0.12), rgba(70, 96, 50, 0.1));
 }
 .farm-hero-copy {
@@ -3616,7 +3654,9 @@ page {
   text-align: center;
   opacity: 0;
   transform: scale(0.72);
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 .farm-crop-chip.is-active .farm-crop-check {
   opacity: 1;
@@ -3815,8 +3855,7 @@ page {
 .farm-growth-image--ready {
   width: 254rpx;
   height: 254rpx;
-  filter:
-    drop-shadow(0 12rpx 10rpx rgba(48, 34, 22, 0.18))
+  filter: drop-shadow(0 12rpx 10rpx rgba(48, 34, 22, 0.18))
     drop-shadow(0 0 12rpx rgba(255, 215, 98, 0.38));
 }
 .farm-growth-image--ready.farm-growth-image--leaf {

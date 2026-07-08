@@ -556,10 +556,14 @@
         <text class="family-invite-copy">复制</text>
       </view>
       <button class="family-primary-button" bindtap="openMemberManager">成员管理</button>
-      <button wx:if="{{family.isAdmin}}" class="family-secondary-button" bindtap="configureAiKey">{{family.aiConfigured ? '更新饭团 Key' : '配置饭团 Key'}}</button>
-      <button wx:if="{{family.isAdmin && family.orderNoticeTemplateId}}" class="family-secondary-button" bindtap="enableOrderPush">开启点餐提醒</button>
-      <button class="family-secondary-button" bindtap="closeFamilyPanel">知道啦</button>
-      <text class="family-link danger" bindtap="leaveFamily">{{family.isAdmin ? '解散云空间' : '退出云空间'}}</text>
+      <view wx:if="{{family.isAdmin}}" class="family-button-grid">
+        <button class="family-secondary-button family-grid-button" bindtap="configureAiKey">{{family.aiConfigured ? '更新饭团 Key' : '配置饭团 Key'}}</button>
+        <button wx:if="{{family.orderNoticeTemplateId}}" class="family-secondary-button family-grid-button" bindtap="enableOrderPush">开启点餐提醒</button>
+      </view>
+      <view class="family-bottom-links">
+        <text class="family-link" bindtap="closeFamilyPanel">知道啦</text>
+        <text class="family-link danger" bindtap="leaveFamily">{{family.isAdmin ? '解散云空间' : '退出云空间'}}</text>
+      </view>
     </block>
 
     <block wx:elif="{{familyStatus === 'offline'}}">
