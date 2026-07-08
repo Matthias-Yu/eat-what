@@ -1440,7 +1440,38 @@ Page({
         this.syncCloudResource('orders', orders),
         this.syncCloudResource('cart', {})
       ]).then(() => this.pullCloudData())
+      this.notifyOrderToAdmin(order)
     }
+  },
+
+  notifyOrderToAdmin(order) {
+    const family = this.data.family
+    if (!family || !family.canNotifyAdmin) return
+    cloudService.call('notifyOrderAdmin', { order })
+      .catch((error) => console.warn('通知管理员失败', error))
+  },
+
+  enableOrderPush() {
+    const family = this.data.family
+    const tmplId = family && family.orderNoticeTemplateId
+    if (!tmplId) {
+      wx.showToast({ title: '提醒功能未配置', icon: 'none' })
+      return
+    }
+    wx.requestSubscribeMessage({
+      tmplIds: [tmplId],
+      success: (res) => {
+        if (res[tmplId] === 'accept') {
+          wx.showToast({ title: '已开启点餐提醒', icon: 'success' })
+        } else {
+          wx.showToast({ title: '未开启提醒', icon: 'none' })
+        }
+      },
+      fail: (error) => {
+        console.warn('订阅点餐提醒失败', error)
+        wx.showToast({ title: '开启失败，请重试', icon: 'none' })
+      }
+    })
   },
 
   finishOrder() {

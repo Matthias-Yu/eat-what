@@ -11,6 +11,7 @@
       "installDependency": true,
       "envVariables": {
         "FAMILY_CREATE_SECRET_HASH": "332d941a550ac473d1d7c0322cb446258f4cbdca2ea1fd8538336d3e56c2f213"
+        "ORDER_NOTICE_TEMPLATE_ID":"eXAqJWO2eYtTz37wtmrzK2KrcPGB7SBkDDEdqagqg6E"
       }
     }
   ]

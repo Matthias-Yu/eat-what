@@ -527,6 +527,7 @@
         <text class="family-invite-copy">复制</text>
       </view>
       <button class="family-primary-button" bindtap="openMemberManager">成员管理</button>
+      <button wx:if="{{family.isAdmin && family.orderNoticeTemplateId}}" class="family-secondary-button" bindtap="enableOrderPush">开启点餐提醒</button>
       <button class="family-secondary-button" bindtap="closeFamilyPanel">知道啦</button>
       <text class="family-link danger" bindtap="leaveFamily">{{family.isAdmin ? '解散云空间' : '退出云空间'}}</text>
     </block>

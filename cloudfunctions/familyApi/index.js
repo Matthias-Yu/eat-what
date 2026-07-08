@@ -309,6 +309,15 @@ function sanitizeOrderNoticeOrder(order) {
   }
 }
 
+function pad2(value) {
+  return String(value).padStart(2, '0')
+}
+
+function formatNoticeTime(timestamp) {
+  const date = new Date(Number(timestamp) || Date.now())
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+}
+
 async function trySendOrderSubscribeMessage(openid, notice) {
   const templateId = process.env.ORDER_NOTICE_TEMPLATE_ID || ''
   if (!templateId || !cloud.openapi || !cloud.openapi.subscribeMessage) {
@@ -320,9 +329,9 @@ async function trySendOrderSubscribeMessage(openid, notice) {
       templateId,
       page: 'pages/index/index',
       data: {
-        thing1: { value: textSlice(notice.summary, 20) || '新的点餐订单' },
-        thing2: { value: textSlice(notice.remark || '没有特别备注', 20) },
-        thing3: { value: textSlice(notice.createdAtText || '刚刚', 20) }
+        thing18: { value: textSlice(notice.summary, 20) || '新的点餐订单' },
+        time23: { value: formatNoticeTime(notice.createdAt) },
+        thing29: { value: textSlice(notice.remark || '没有特别备注', 20) }
       }
     })
     return { sent: true }
