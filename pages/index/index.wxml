@@ -1,4 +1,5 @@
-<navigation-bar title="" back="{{false}}" color="#2f3c29" background="{{activeTab === 'farm' ? '#eef7e9' : 'transparent'}}"></navigation-bar>
+<image wx:if="{{activeTab === 'farm'}}" class="farm-full-bg" src="{{farmImages.pageBg}}" mode="aspectFill"></image>
+<navigation-bar title="" back="{{false}}" color="#2f3c29" background="transparent"></navigation-bar>
 
 <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" scroll-top="{{scrollTop}}" scroll-with-animation="{{false}}">
   <!-- 首页 -->
