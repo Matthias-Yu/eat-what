@@ -1,0 +1,27 @@
+docs/farm-cloud-assets.md
+  s_05b2ea00d55dba::t_1a315d9a99387c 18-21
+pages/index/index.js
+  s_05b2ea00d55dba::t_a3f9d331d14696 33-37,427-433,454,459
+pages/index/index.wxml
+  s_05b2ea00d55dba::t_88b3ad308aa27c 335-338
+pages/index/index.wxss
+  s_05b2ea00d55dba::t_eb25c9010e967b 3756,3759-3816
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "911a8499b6cb987264ba8193106315ff91243998",
+  "prompts": {},
+  "sessions": {
+    "s_05b2ea00d55dba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3b51-e165-7042-8729-d39e3dc1c7bd",
+        "model": "unknown"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
