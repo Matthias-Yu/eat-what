@@ -1,0 +1,23 @@
+pages/index/index.wxml
+  s_05b2ea00d55dba::t_e9d18493b1ec03 559-562
+pages/index/index.wxss
+  s_05b2ea00d55dba::t_30437b7acbefe6 2106,2111-2127,2141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "746f538b8b0a07720e6c5c270e05b494a8af57ea",
+  "prompts": {},
+  "sessions": {
+    "s_05b2ea00d55dba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3b51-e165-7042-8729-d39e3dc1c7bd",
+        "model": "unknown"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
