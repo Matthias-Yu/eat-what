@@ -1,0 +1,21 @@
+cloudfunctions/familyApi/index.js
+  s_05b2ea00d55dba::t_b4ab83ea88e2ff 20-21,104,113-130,251,371-400,409-411,456
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "edd4e6a6d0d0608f5953d1c5ac34e9f543e2c8f7",
+  "prompts": {},
+  "sessions": {
+    "s_05b2ea00d55dba": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f3b51-e165-7042-8729-d39e3dc1c7bd",
+        "model": "unknown"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
