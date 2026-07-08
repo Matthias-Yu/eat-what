@@ -556,10 +556,10 @@
         <view class="family-invite-info"><text class="family-invite-label">邀请码</text><text class="family-invite-code">{{family.inviteCode}}</text></view>
         <text class="family-invite-copy">复制</text>
       </view>
-      <button class="family-primary-button" bindtap="openMemberManager">成员管理</button>
-      <view wx:if="{{family.isAdmin}}" class="family-button-grid">
-        <button class="family-secondary-button family-grid-button" bindtap="configureAiKey">{{family.aiConfigured ? '更新饭团 Key' : '配置饭团 Key'}}</button>
-        <button wx:if="{{family.orderNoticeTemplateId}}" class="family-secondary-button family-grid-button" bindtap="enableOrderPush">开启点餐提醒</button>
+      <view class="family-action-list">
+        <button class="family-primary-button" bindtap="openMemberManager">成员管理</button>
+        <button wx:if="{{family.isAdmin}}" class="family-secondary-button" bindtap="configureAiKey">{{family.aiConfigured ? '更新饭团 Key' : '配置饭团 Key'}}</button>
+        <button wx:if="{{family.isAdmin && family.orderNoticeTemplateId}}" class="family-secondary-button" bindtap="enableOrderPush">开启点餐提醒</button>
       </view>
       <view class="family-bottom-links">
         <text class="family-link" bindtap="closeFamilyPanel">知道啦</text>

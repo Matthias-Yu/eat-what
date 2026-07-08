@@ -2103,10 +2103,27 @@ page {
   font-weight: 700;
 }
 .family-primary-button {
-  margin: 26rpx 0 0;
+  margin: 0;
   background: linear-gradient(135deg, #f17a5c, #e95c47);
   color: #fff;
   box-shadow: 0 11rpx 26rpx rgba(216, 83, 58, 0.18);
+}
+.family-primary-button::after,
+.family-secondary-button::after {
+  border: none;
+}
+.family-action-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14rpx;
+  margin-top: 26rpx;
+}
+.family-card > .family-primary-button {
+  margin-top: 26rpx;
+}
+.family-card > .family-secondary-button {
+  margin-top: 16rpx;
 }
 .family-tip {
   margin-top: 18rpx;
@@ -2121,7 +2138,7 @@ page {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 16rpx 0 0;
+  margin: 0;
   padding: 0;
   border-radius: 27rpx;
   font-size: 23rpx;
@@ -2129,20 +2146,6 @@ page {
   font-weight: 700;
   background: #f3e7e0;
   color: #8a6f63;
-}
-.family-button-grid {
-  display: flex;
-  gap: 16rpx;
-  width: 100%;
-  margin-top: 16rpx;
-}
-.family-grid-button {
-  flex: 1;
-  width: auto;
-  margin: 0;
-}
-.family-grid-button::after {
-  border: none;
 }
 .family-bottom-links {
   display: flex;
