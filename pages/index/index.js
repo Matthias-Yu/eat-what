@@ -26,7 +26,12 @@ const FARM_PLOT_COUNT = 6
 const FARM_DAILY_BONUS = 12
 const HOME_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/home/'
 const HOME_IMAGES = {
-  pageBg: HOME_IMG_BASE + 'home-page-bg.jpg'
+  morning: HOME_IMG_BASE + 'home-morning-bg.jpg',
+  noon: HOME_IMG_BASE + 'home-noon-bg.jpg',
+  afternoon: HOME_IMG_BASE + 'home-afternoon-bg.jpg',
+  night: HOME_IMG_BASE + 'home-night-bg.jpg',
+  pageBg: HOME_IMG_BASE + 'home-morning-bg.jpg',
+  timeSlot: 'morning'
 }
 const FARM_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/farm/'
 const FARM_IMAGES = {
@@ -151,6 +156,22 @@ function createDefaultFlowerState() {
     inventory: {},
     plots: createFlowerPlots()
   }
+}
+
+function getHomeTimeSlot(date = new Date()) {
+  const hour = date.getHours()
+  if (hour >= 5 && hour < 11) return 'morning'
+  if (hour >= 11 && hour < 14) return 'noon'
+  if (hour >= 14 && hour < 18) return 'afternoon'
+  return 'night'
+}
+
+function getHomeImages(date = new Date()) {
+  const timeSlot = getHomeTimeSlot(date)
+  return Object.assign({}, HOME_IMAGES, {
+    pageBg: HOME_IMAGES[timeSlot] || HOME_IMAGES.morning,
+    timeSlot
+  })
 }
 
 function getAnniversaryDays(date) {
@@ -746,7 +767,7 @@ Page({
     wishStats: { total: 0, completed: 0, pending: 0 },
     showWishComposer: false,
     wishDraft: createWishDraft(),
-    homeImages: HOME_IMAGES,
+    homeImages: getHomeImages(),
     farmImages: FARM_IMAGES,
     farmCrops: FARM_CROPS,
     selectedFarmCrop: FARM_CROPS[0].id,
@@ -977,9 +998,11 @@ Page({
   onShow() {
     const greeting = dateUtil.greeting()
     const dateLabel = dateUtil.todayLabel()
+    const homeImages = getHomeImages()
     const update = {}
     if (this.data.dateLabel !== dateLabel) update.dateLabel = dateLabel
     if (this.data.greeting.text !== greeting.text || this.data.greeting.icon !== greeting.icon) update.greeting = greeting
+    if (!this.data.homeImages || this.data.homeImages.timeSlot !== homeImages.timeSlot) update.homeImages = homeImages
     if (this.data.anniversary) {
       const anniversaryDays = getAnniversaryDays(this.data.anniversary.date)
       if (anniversaryDays !== this.data.anniversaryDays) {
@@ -987,6 +1010,7 @@ Page({
       }
     }
     if (Object.keys(update).length) this.setData(update)
+    if (update.homeImages) this.resolveMenuImages()
     if (Object.prototype.hasOwnProperty.call(update, 'anniversaryDays')) {
       this.startAnniversaryFlip(this.data.anniversaryDisplayDays, update.anniversaryDays, this.data.anniversary)
     }
