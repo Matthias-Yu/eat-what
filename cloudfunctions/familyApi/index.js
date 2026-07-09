@@ -285,6 +285,7 @@ function sanitizeMenuItem(item, index) {
     highlight: textSlice(source.highlight || tags[0], 12) || '小家新增',
     category,
     emoji: textSlice(source.emoji, 2) || '🍽',
+    image: textSlice(source.image, 240),
     tone: CATEGORY_TONE[category] || 'sunset',
     tags,
     recommended: !!source.recommended,

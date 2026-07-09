@@ -712,7 +712,7 @@
     <view class="sheet-header"><view><text class="sheet-title">菜单管理</text><text class="sheet-subtitle">{{editingMenuId ? '修改这道菜的信息' : '新增、编辑或删除小家的菜'}}</text></view><view class="sheet-close" bindtap="closeMenuManager">×</view></view>
     <scroll-view class="menu-manager-scroll" scroll-y show-scrollbar="{{false}}">
       <view wx:if="{{customMenuItems.length}}" class="managed-menu-list">
-        <view wx:for="{{customMenuItems}}" wx:key="id" class="managed-menu-item {{editingMenuId === item.id ? 'is-editing' : ''}}" data-id="{{item.id}}">
+        <view wx:for="{{customMenuDisplayItems}}" wx:key="id" class="managed-menu-item {{editingMenuId === item.id ? 'is-editing' : ''}}" data-id="{{item.id}}">
           <view class="managed-menu-art tone-{{item.tone}}">
             <image wx:if="{{item.image}}" class="managed-food-image" src="{{item.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
             <text wx:else>{{item.emoji}}</text>
@@ -728,6 +728,15 @@
       <view class="menu-form-divider">{{editingMenuId ? '编辑菜品' : '新增菜品'}}</view>
       <view class="form-group"><text class="form-label">菜名</text><input class="form-input form-input-main" value="{{menuDraft.name}}" data-field="name" bindinput="onMenuDraftInput" maxlength="18" placeholder="例如：椒盐鸡翅" placeholder-class="input-placeholder" /></view>
       <view class="form-group"><text class="form-label">描述 <text>选填</text></text><input class="form-input" value="{{menuDraft.description}}" data-field="description" bindinput="onMenuDraftInput" maxlength="28" placeholder="一句话写下它的味道" placeholder-class="input-placeholder" /></view>
+      <view class="form-group">
+        <text class="form-label">图片 <text>选填</text></text>
+        <view class="menu-image-picker {{menuDraft.imagePreview ? 'has-image' : ''}}" bindtap="chooseMenuImage" hover-class="tap-scale--active">
+          <image wx:if="{{menuDraft.imagePreview}}" class="menu-image-preview" src="{{menuDraft.imagePreview}}" mode="aspectFill"></image>
+          <view wx:else class="menu-image-empty"><text>＋</text><text>上传菜品图片</text></view>
+          <view wx:if="{{menuDraft.imageUploading}}" class="menu-image-uploading">上传中…</view>
+          <view wx:elif="{{menuDraft.imagePreview}}" class="menu-image-change">更换图片</view>
+        </view>
+      </view>
       <view class="menu-form-row">
         <view class="form-group menu-emoji-field"><text class="form-label">图标</text><input class="form-input" value="{{menuDraft.emoji}}" data-field="emoji" bindinput="onMenuDraftInput" maxlength="4" placeholder="🍗" placeholder-class="input-placeholder" /></view>
         <view class="form-group menu-tags-field"><text class="form-label">标签</text><input class="form-input" value="{{menuDraft.tags}}" data-field="tags" bindinput="onMenuDraftInput" maxlength="20" placeholder="下饭、微辣" placeholder-class="input-placeholder" /></view>

@@ -43,6 +43,7 @@ const FARM_CROPS = [
   { id: 'carrot', name: '胡萝卜', emoji: '🥕', image: FARM_IMG_BASE + 'seed-carrot.jpg', seedCost: 10, growDays: 3, harvest: 3, reward: 18, tone: 'cream' },
   { id: 'berry', name: '莓果', emoji: '🍓', image: FARM_IMG_BASE + 'seed-berry.jpg', seedCost: 14, growDays: 4, harvest: 4, reward: 24, tone: 'blush' }
 ]
+const CUSTOM_MENU_IMAGE_DIR = 'assets/custom-menu'
 const FARM_CROP_MAP = FARM_CROPS.reduce((map, item) => {
   map[item.id] = item
   return map
@@ -225,7 +226,7 @@ function normalizeCustomMenuItem(item) {
     highlight: textSlice(source.highlight || tags[0], 12) || '小家新增',
     category,
     emoji: textSlice(source.emoji, 2) || CATEGORY_EMOJI[category],
-    image: textSlice(source.image, 120),
+    image: textSlice(source.image, 240),
     tone: CATEGORY_TONE[category] || 'sunset',
     tags: tags.length > 1 ? tags : parseMenuTags(tags[0], category),
     recommended: !!source.recommended,
@@ -320,6 +321,9 @@ function createMenuDraft() {
     name: '',
     description: '',
     emoji: '',
+    image: '',
+    imagePreview: '',
+    imageUploading: false,
     tags: '',
     category: 'dish',
     recommended: false
@@ -534,6 +538,7 @@ Page({
     categories,
     menuCategories: MENU_CATEGORIES,
     customMenuItems: [],
+    customMenuDisplayItems: [],
     recommendedItems: getRecommendedMenuItems(menuItems),
     bannerItems: getBannerItems(menuItems),
     filteredItems: getRecommendedMenuItems(menuItems),
@@ -638,6 +643,7 @@ Page({
       dateLabel: dateUtil.todayLabel(),
       greeting: dateUtil.greeting(),
       customMenuItems,
+      customMenuDisplayItems: customMenuItems,
       recommendedItems: getRecommendedMenuItems(allMenuItems),
       bannerItems: getBannerItems(allMenuItems),
       filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
@@ -726,6 +732,8 @@ Page({
     if (filteredItems !== this.data.filteredItems) update.filteredItems = filteredItems
     const cartItems = applyImageCache(this.data.cartItems, cache)
     if (cartItems !== this.data.cartItems) update.cartItems = cartItems
+    const customMenuDisplayItems = applyImageCache(this.data.customMenuItems, cache)
+    if (customMenuDisplayItems !== this.data.customMenuDisplayItems) update.customMenuDisplayItems = customMenuDisplayItems
     if (Object.keys(update).length) this.setData(update)
     this.prefetchMenuImages()
   },
@@ -907,6 +915,7 @@ Page({
       storage.write('customMenuItems', customMenuItems)
       Object.assign(update, {
         customMenuItems,
+        customMenuDisplayItems: applyImageCache(customMenuItems, this.imageUrlCache || {}),
         recommendedItems: getRecommendedMenuItems(menuItemsForView),
         bannerItems: getBannerItems(menuItemsForView),
         filteredItems: getFilteredMenuItems(menuItemsForView, this.data.currentCategory, this.data.searchKeyword)
@@ -991,6 +1000,7 @@ Page({
     this.menuItemMap = getMenuItemMap(allMenuItems)
     const update = Object.assign({
       customMenuItems: normalizedMenuItems,
+      customMenuDisplayItems: applyImageCache(normalizedMenuItems, this.imageUrlCache || {}),
       recommendedItems: getRecommendedMenuItems(allMenuItems),
       bannerItems: getBannerItems(allMenuItems),
       filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
@@ -1804,7 +1814,13 @@ Page({
   },
 
   openMenuManager() {
-    this.setData({ showMenuManager: true, menuDraft: createMenuDraft(), editingMenuId: null })
+    this.setData({
+      showMenuManager: true,
+      menuDraft: createMenuDraft(),
+      editingMenuId: null,
+      customMenuDisplayItems: applyImageCache(this.data.customMenuItems, this.imageUrlCache || {})
+    })
+    this.resolveMenuImages()
   },
 
   closeMenuManager() {
@@ -1815,17 +1831,25 @@ Page({
     const id = String(event.currentTarget.dataset.id || '')
     const menuItem = this.data.customMenuItems.find((item) => item.id === id)
     if (!menuItem) return
+    const cachedImage = this.imageUrlCache && this.imageUrlCache[menuItem.image]
+    const imagePreview = cachedImage
+      ? cachedImage.url
+      : (menuItem.image && menuItem.image.indexOf('cloud://') !== 0 ? menuItem.image : '')
     this.setData({
       editingMenuId: id,
       menuDraft: {
         name: menuItem.name,
         description: menuItem.description,
         emoji: menuItem.emoji,
+        image: menuItem.image || '',
+        imagePreview,
+        imageUploading: false,
         tags: (menuItem.tags || []).join('、'),
         category: menuItem.category,
         recommended: !!menuItem.recommended
       }
     })
+    if (menuItem.image && menuItem.image.indexOf('cloud://') === 0 && !cachedImage) this.resolveMenuImages()
   },
 
   pickRandomDish() {
@@ -2125,8 +2149,79 @@ Page({
     this.setData({ 'menuDraft.recommended': !this.data.menuDraft.recommended })
   },
 
+  chooseMenuImage() {
+    if (this.data.menuDraft.imageUploading) return
+    let selectedImagePath = ''
+    const choose = wx.chooseMedia
+      ? new Promise((resolve, reject) => {
+        wx.chooseMedia({
+          count: 1,
+          mediaType: ['image'],
+          sourceType: ['album', 'camera'],
+          sizeType: ['compressed'],
+          success: (res) => resolve(res.tempFiles && res.tempFiles[0] && res.tempFiles[0].tempFilePath),
+          fail: reject
+        })
+      })
+      : new Promise((resolve, reject) => {
+        wx.chooseImage({
+          count: 1,
+          sourceType: ['album', 'camera'],
+          sizeType: ['compressed'],
+          success: (res) => resolve(res.tempFilePaths && res.tempFilePaths[0]),
+          fail: reject
+        })
+      })
+    choose
+      .then((tempFilePath) => {
+        if (!tempFilePath) return null
+        selectedImagePath = tempFilePath
+        this.setData({
+          'menuDraft.imagePreview': tempFilePath,
+          'menuDraft.imageUploading': true
+        })
+        return this.uploadMenuImage(tempFilePath)
+      })
+      .then((fileID) => {
+        if (!fileID) return
+        if (!this.imageUrlCache) this.imageUrlCache = {}
+        this.imageUrlCache[fileID] = { url: selectedImagePath, expireAt: Date.now() + IMAGE_URL_TTL_MS }
+        this.setData({
+          'menuDraft.image': fileID,
+          'menuDraft.imageUploading': false
+        })
+        wx.showToast({ title: '图片已上传', icon: 'success' })
+      })
+      .catch((error) => {
+        if (error && /cancel/i.test(error.errMsg || error.message || '')) {
+          this.setData({ 'menuDraft.imageUploading': false })
+          return
+        }
+        console.warn('上传菜品图片失败', error)
+        this.setData({
+          'menuDraft.image': '',
+          'menuDraft.imagePreview': '',
+          'menuDraft.imageUploading': false
+        })
+        wx.showToast({ title: '图片上传失败', icon: 'none' })
+      })
+  },
+
+  uploadMenuImage(tempFilePath) {
+    if (!wx.cloud || !wx.cloud.uploadFile) return Promise.reject(new Error('当前微信版本不支持云上传'))
+    cloudService.init()
+    const extMatch = String(tempFilePath).match(/\.([a-zA-Z0-9]+)(?:\?|$)/)
+    const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg'
+    const cloudPath = `${CUSTOM_MENU_IMAGE_DIR}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    return wx.cloud.uploadFile({ cloudPath, filePath: tempFilePath }).then((res) => res.fileID)
+  },
+
   saveMenuItem() {
     const draft = this.data.menuDraft
+    if (draft.imageUploading) {
+      wx.showToast({ title: '图片还在上传', icon: 'none' })
+      return
+    }
     const name = textSlice(draft.name, 18)
     if (!name) {
       wx.showToast({ title: '写下菜名吧', icon: 'none' })
@@ -2142,8 +2237,6 @@ Page({
     const tags = parseMenuTags(draft.tags, category)
 
     if (editingId) {
-      // 更新已有菜品（保留原 id 与 image）
-      const existing = this.data.customMenuItems.find((item) => item.id === editingId)
       const menuItem = normalizeCustomMenuItem({
         id: editingId,
         name,
@@ -2151,7 +2244,7 @@ Page({
         highlight: tags[0],
         category,
         emoji: textSlice(draft.emoji, 2) || CATEGORY_EMOJI[category],
-        image: existing && existing.image,
+        image: draft.image,
         tags,
         recommended: draft.recommended
       })
@@ -2171,6 +2264,7 @@ Page({
       highlight: tags[0],
       category,
       emoji: textSlice(draft.emoji, 2) || CATEGORY_EMOJI[category],
+      image: draft.image,
       tags,
       recommended: draft.recommended
     })
