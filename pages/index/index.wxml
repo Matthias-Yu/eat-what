@@ -273,7 +273,10 @@
   <view wx:elif="{{activeTab === 'farm'}}" class="page farm-page stagger">
     <image class="farm-page-bg" src="{{farmImages.pageBg}}" mode="aspectFill"></image>
     <view class="page-header farm-header">
-      <view><text class="page-kicker">LITTLE FARM</text><text class="page-title">我们的小农场</text></view>
+      <view class="farm-title-row">
+        <view class="page-back-button farm-back-button" data-target="home" bindtap="navigateFromCard" hover-class="page-back-button--pressed">‹</view>
+        <view class="page-title-copy"><text class="page-kicker">LITTLE FARM</text><text class="page-title">我们的小农场</text></view>
+      </view>
       <view class="farm-wallet"><text>☀</text><text>{{farmStats.coins}}</text></view>
     </view>
 
@@ -389,7 +392,10 @@
   <!-- 花店 -->
   <view wx:elif="{{activeTab === 'flower'}}" class="page flower-page stagger">
     <view class="page-header flower-header">
-      <view><text class="page-kicker">LITTLE FLORIST</text><text class="page-title">我们的小花店</text></view>
+      <view class="flower-title-row">
+        <view class="page-back-button flower-back-button" data-target="home" bindtap="navigateFromCard" hover-class="page-back-button--pressed">‹</view>
+        <view class="page-title-copy"><text class="page-kicker">LITTLE FLORIST</text><text class="page-title">我们的小花店</text></view>
+      </view>
       <view class="flower-wallet"><text>✿</text><text>{{flowerStats.nectar}}</text></view>
     </view>
 
