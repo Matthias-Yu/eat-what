@@ -1,4 +1,6 @@
+<image wx:if="{{activeTab === 'home'}}" class="home-full-bg" src="{{homeImages.pageBg}}" mode="aspectFill"></image>
 <image wx:if="{{activeTab === 'farm'}}" class="farm-full-bg" src="{{farmImages.pageBg}}" mode="aspectFill"></image>
+<image wx:if="{{activeTab === 'flower'}}" class="flower-full-bg" src="{{flowerImages.pageBg}}" mode="aspectFill"></image>
 <navigation-bar title="" back="{{false}}" color="#2f3c29" background="transparent"></navigation-bar>
 
 <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" scroll-top="{{scrollTop}}" scroll-with-animation="{{false}}">
@@ -15,6 +17,12 @@
             <image class="farm-entry-image" src="{{farmImages.entry}}" mode="aspectFill"></image>
           </view>
           <text wx:if="{{farmStats.ready}}" class="farm-entry-badge">{{farmStats.ready > 99 ? '99+' : farmStats.ready}}</text>
+        </view>
+        <view class="flower-entry-orb" data-target="flower" bindtap="navigateFromCard" hover-class="flower-entry-orb--pressed">
+          <view class="flower-entry-face">
+            <image class="flower-entry-image" src="{{flowerImages.entry}}" mode="aspectFill"></image>
+          </view>
+          <text wx:if="{{flowerStats.ready}}" class="flower-entry-badge">{{flowerStats.ready > 99 ? '99+' : flowerStats.ready}}</text>
         </view>
         <view class="avatar" bindtap="navigateFromCard" data-target="profile" hover-class="tap-scale--active">
           <view class="avatar-face">☺</view>
@@ -374,6 +382,103 @@
           <text>＋</text>
           <text>＋</text>
         </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 花店 -->
+  <view wx:elif="{{activeTab === 'flower'}}" class="page flower-page stagger">
+    <view class="page-header flower-header">
+      <view><text class="page-kicker">LITTLE FLORIST</text><text class="page-title">我们的小花店</text></view>
+      <view class="flower-wallet"><text>✿</text><text>{{flowerStats.nectar}}</text></view>
+    </view>
+
+    <view class="flower-hero">
+      <image class="flower-hero-image" src="{{flowerImages.hero}}" mode="aspectFill"></image>
+      <view class="flower-hero-shade"></view>
+      <view class="flower-hero-copy">
+        <text class="flower-hero-title">给今天包一束花</text>
+        <text class="flower-hero-subtitle">种花、收花材，再慢慢攒成小家的浪漫</text>
+      </view>
+      <button class="flower-bonus-button {{flowerStats.dailyAvailable ? '' : 'is-disabled'}}" bindtap="claimFlowerDailyBonus" hover-class="button-pressed">{{flowerStats.dailyAvailable ? '领今日花露' : '今日已领取'}}</button>
+    </view>
+
+    <view class="flower-mood-strip">
+      <view><text>✿</text><text>花露 {{flowerStats.nectar}}</text></view>
+      <view><text>♧</text><text>花圃 {{flowerStats.planted}}/6</text></view>
+      <view><text>♡</text><text>{{flowerStats.ready ? '有花开' : '慢慢等'}}</text></view>
+    </view>
+
+    <view class="flower-panel flower-stats-shell">
+      <view class="flower-stats">
+        <view><text>{{flowerStats.planted}}</text><text>已种下</text></view>
+        <view><text>{{flowerStats.ready}}</text><text>可收花</text></view>
+        <view><text>{{flowerStats.materials}}</text><text>花材</text></view>
+      </view>
+    </view>
+
+    <view class="section-heading flower-section-heading">
+      <view><text class="section-title">选择花种</text><text class="section-subtitle">花种越多，花材库越漂亮</text></view>
+    </view>
+    <view class="flower-panel flower-seed-tray">
+      <view class="flower-type-grid">
+        <view
+          wx:for="{{flowerTypes}}"
+          wx:key="id"
+          class="flower-type-chip tone-{{item.tone}} {{selectedFlowerType === item.id ? 'is-active' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="selectFlowerType"
+          hover-class="tap-scale--active"
+        >
+          <text class="flower-type-check">✓</text>
+          <image class="flower-type-image" src="{{item.image}}" mode="aspectFill"></image>
+          <view class="flower-type-info">
+            <text class="flower-type-name">{{item.name}}</text>
+            <view class="flower-type-meta">
+              <text>✿ {{item.seedCost}}</text>
+              <text>{{item.growDays}}天</text>
+            </view>
+            <text class="flower-type-meaning">{{item.meaning}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="flower-garden-shell">
+      <image class="flower-garden-image" src="{{flowerImages.garden}}" mode="aspectFill"></image>
+      <view class="flower-garden">
+        <view
+          wx:for="{{flowerPlots}}"
+          wx:key="id"
+          class="flower-plot flower-plot-{{item.id}} {{item.empty ? 'is-empty' : ''}} {{item.ready ? 'is-ready' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="tapFlowerPlot"
+          hover-class="flower-plot--pressed"
+        >
+          <view wx:if="{{!item.empty}}" class="flower-plant-pin">
+            <image class="flower-plant-image flower-plant-image--{{item.stage}}" src="{{item.flowerImage}}" mode="aspectFit"></image>
+            <view class="flower-crop-tag">
+              <text>{{item.ready ? '可收花' : item.progress + '%'}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="section-heading flower-section-heading">
+      <view><text class="section-title">花材库</text><text class="section-subtitle">成熟后的花会收进这里</text></view>
+    </view>
+    <view wx:if="{{flowerInventoryList.length}}" class="flower-inventory">
+      <view wx:for="{{flowerInventoryList}}" wx:key="id" class="flower-inventory-item">
+        <image src="{{item.image}}" mode="aspectFill"></image>
+        <view><text>{{item.name}}</text><text>× {{item.count}}</text></view>
+      </view>
+    </view>
+    <view wx:else class="flower-panel flower-empty-store">
+      <view class="flower-empty-visual">✿</view>
+      <view class="flower-empty-copy">
+        <text class="flower-empty-title">等第一朵花开</text>
+        <text class="flower-empty-subtitle">花材会慢慢攒成一束属于小家的花</text>
       </view>
     </view>
   </view>

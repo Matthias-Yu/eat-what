@@ -22,6 +22,14 @@
       {
         "type": "folder",
         "value": "assets/farm"
+      },
+      {
+        "type": "folder",
+        "value": "assets/flower"
+      },
+      {
+        "type": "folder",
+        "value": "assets/home"
       }
     ],
     "include": []

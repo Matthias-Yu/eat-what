@@ -32,6 +32,20 @@ page {
   box-sizing: border-box;
 }
 
+.home-full-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
+
+.home-page {
+  position: relative;
+  background: transparent;
+}
+
 .home-top,
 .page-header,
 .section-heading,
@@ -486,6 +500,56 @@ page {
   border-radius: 999rpx;
   box-sizing: border-box;
   background: #ef604a;
+  color: #fff;
+  font-size: 17rpx;
+  font-weight: 800;
+  line-height: 24rpx;
+  text-align: center;
+}
+.flower-entry-orb {
+  position: relative;
+  width: 80rpx;
+  height: 80rpx;
+  overflow: visible;
+  padding: 5rpx;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: linear-gradient(145deg, #ffddea, #d9c1ff);
+  box-shadow: 0 8rpx 20rpx rgba(184, 112, 154, 0.18);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.flower-entry-orb--pressed {
+  transform: translateY(3rpx) scale(0.96);
+  box-shadow: 0 4rpx 12rpx rgba(184, 112, 154, 0.12);
+}
+.flower-entry-face {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 4rpx solid #fff;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: #fff3f8;
+}
+.flower-entry-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform: scale(1.18);
+}
+.flower-entry-badge {
+  position: absolute;
+  top: -7rpx;
+  right: -7rpx;
+  min-width: 28rpx;
+  height: 28rpx;
+  padding: 0 7rpx;
+  border: 3rpx solid #fff;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  background: #ef6c91;
   color: #fff;
   font-size: 17rpx;
   font-weight: 800;
@@ -4094,6 +4158,479 @@ page {
   font-weight: 800;
   line-height: 50rpx;
   text-align: center;
+}
+
+/* 花店 */
+.flower-full-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
+.flower-page {
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+}
+.flower-page > view {
+  position: relative;
+  z-index: 1;
+}
+.flower-header {
+  align-items: flex-start;
+  margin-bottom: 22rpx;
+  padding: 0 2rpx;
+}
+.flower-header .page-kicker {
+  color: #b97896;
+  letter-spacing: 2rpx;
+}
+.flower-header .page-title {
+  color: #40313a;
+}
+.flower-wallet {
+  min-width: 142rpx;
+  height: 72rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid rgba(244, 190, 210, 0.74);
+  border-radius: 24rpx;
+  box-sizing: border-box;
+  background: rgba(255, 250, 252, 0.94);
+  color: #a95f7f;
+  font-size: 26rpx;
+  font-weight: 800;
+  box-shadow: 0 10rpx 24rpx rgba(167, 99, 131, 0.12);
+}
+.flower-wallet text:first-child {
+  width: 42rpx;
+  height: 42rpx;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ffb5d0, #c9b8ff);
+  color: #fff;
+  font-size: 24rpx;
+  line-height: 42rpx;
+  text-align: center;
+}
+.flower-hero {
+  position: relative;
+  min-height: 328rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 34rpx 30rpx 28rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.82);
+  border-radius: 34rpx;
+  box-sizing: border-box;
+  background: #f8dfea;
+  color: #fff;
+  box-shadow: 0 22rpx 48rpx rgba(171, 103, 138, 0.18);
+}
+.flower-hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.flower-hero-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(102, 67, 82, 0.56), rgba(255, 255, 255, 0.04) 62%),
+    linear-gradient(180deg, rgba(255, 239, 246, 0.1), rgba(124, 78, 99, 0.08));
+}
+.flower-hero-copy {
+  position: relative;
+  z-index: 4;
+  width: 58%;
+  display: flex;
+  flex-direction: column;
+  text-shadow: 0 3rpx 12rpx rgba(75, 45, 58, 0.26);
+}
+.flower-hero-title {
+  font-size: 42rpx;
+  line-height: 1.18;
+  font-weight: 850;
+}
+.flower-hero-subtitle {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  line-height: 1.45;
+  opacity: 0.92;
+}
+.flower-bonus-button {
+  position: relative;
+  z-index: 4;
+  align-self: flex-start;
+  width: auto;
+  min-width: 206rpx;
+  height: 66rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 30rpx 0 0;
+  padding: 0 30rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.72);
+  border-radius: 33rpx;
+  background: linear-gradient(145deg, #fffdf7, #ffd8e8);
+  color: #9a5a78;
+  font-size: 23rpx;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 10rpx 22rpx rgba(142, 81, 111, 0.16);
+}
+.flower-bonus-button.is-disabled {
+  color: rgba(111, 91, 101, 0.68);
+  background: rgba(255, 255, 255, 0.68);
+}
+.flower-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1rpx solid rgba(238, 213, 224, 0.76);
+  border-radius: 28rpx;
+  box-sizing: border-box;
+  background: rgba(255, 252, 250, 0.9);
+  box-shadow:
+    0 12rpx 26rpx rgba(123, 82, 103, 0.06),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.86);
+}
+.flower-mood-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12rpx;
+  margin: 18rpx 0;
+  padding: 12rpx;
+  border: 1rpx solid rgba(238, 213, 224, 0.64);
+  border-radius: 24rpx;
+  box-sizing: border-box;
+  background: rgba(255, 252, 250, 0.84);
+}
+.flower-mood-strip > view {
+  height: 58rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  border-radius: 18rpx;
+  background: rgba(255, 246, 250, 0.76);
+  color: #886577;
+  font-size: 20rpx;
+  font-weight: 800;
+}
+.flower-mood-strip text:first-child {
+  color: #d47aa0;
+}
+.flower-stats-shell {
+  margin: 0 0 34rpx;
+  padding: 16rpx;
+}
+.flower-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+}
+.flower-stats > view {
+  height: 112rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid rgba(238, 213, 224, 0.58);
+  border-radius: 22rpx;
+  background: rgba(255, 253, 251, 0.9);
+}
+.flower-stats text:first-child {
+  color: #b25f88;
+  font-size: 38rpx;
+  font-weight: 850;
+}
+.flower-stats text:last-child {
+  margin-top: 4rpx;
+  color: #a18d96;
+  font-size: 20rpx;
+}
+.flower-section-heading {
+  margin-top: 34rpx;
+  margin-bottom: 16rpx;
+}
+.flower-section-heading .section-title::before {
+  background: linear-gradient(180deg, #e983ab, #b9a8ff);
+}
+.flower-seed-tray {
+  padding: 16rpx;
+}
+.flower-type-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12rpx;
+}
+.flower-type-chip {
+  position: relative;
+  min-width: 0;
+  min-height: 154rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  overflow: hidden;
+  padding: 10rpx 12rpx 10rpx 10rpx;
+  border: 1rpx solid rgba(238, 213, 224, 0.64);
+  border-radius: 22rpx;
+  box-sizing: border-box;
+  background: rgba(255, 253, 251, 0.9);
+  box-shadow: 0 8rpx 16rpx rgba(124, 82, 103, 0.04);
+}
+.flower-type-chip.is-active {
+  border-color: rgba(210, 112, 153, 0.9);
+  background: rgba(255, 245, 250, 0.98);
+  transform: translateY(-2rpx);
+  box-shadow: 0 12rpx 22rpx rgba(192, 104, 148, 0.12);
+}
+.flower-type-check {
+  position: absolute;
+  z-index: 3;
+  top: 9rpx;
+  right: 9rpx;
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: #d7779d;
+  color: #fff;
+  font-size: 17rpx;
+  font-weight: 900;
+  line-height: 28rpx;
+  text-align: center;
+  opacity: 0;
+  transform: scale(0.72);
+}
+.flower-type-chip.is-active .flower-type-check {
+  opacity: 1;
+  transform: scale(1);
+}
+.flower-type-image {
+  width: 94rpx;
+  height: 94rpx;
+  flex-shrink: 0;
+  border: 1rpx solid rgba(255, 255, 255, 0.8);
+  border-radius: 18rpx;
+  box-sizing: border-box;
+  background: #fff7fb;
+}
+.flower-type-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.flower-type-name {
+  color: #40313a;
+  font-size: 23rpx;
+  font-weight: 850;
+  line-height: 1.2;
+}
+.flower-type-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5rpx;
+  margin-top: 8rpx;
+}
+.flower-type-meta text {
+  height: 28rpx;
+  padding: 0 9rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 241, 248, 0.9);
+  color: #9b6c80;
+  font-size: 16rpx;
+  font-weight: 750;
+  line-height: 28rpx;
+}
+.flower-type-meaning {
+  margin-top: 7rpx;
+  color: #b29aa6;
+  font-size: 17rpx;
+  line-height: 1.2;
+}
+.flower-garden-shell {
+  position: relative;
+  overflow: hidden;
+  margin-top: 24rpx;
+  height: 1040rpx;
+  border: 4rpx solid rgba(255, 255, 255, 0.84);
+  border-radius: 36rpx;
+  box-sizing: border-box;
+  background: #f2d9e3;
+  box-shadow: 0 22rpx 46rpx rgba(158, 99, 128, 0.16);
+}
+.flower-garden-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.flower-garden {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+.flower-plot {
+  position: absolute;
+  width: 260rpx;
+  height: 250rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  transition: transform 0.18s ease;
+}
+.flower-plot-1 { left: 31%; top: 25%; }
+.flower-plot-2 { left: 69%; top: 25%; }
+.flower-plot-3 { left: 31%; top: 47%; }
+.flower-plot-4 { left: 69%; top: 47%; }
+.flower-plot-5 { left: 31%; top: 69%; }
+.flower-plot-6 { left: 69%; top: 69%; }
+.flower-plot--pressed {
+  transform: translate(-50%, -48%) scale(0.96);
+}
+.flower-plant-pin {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flower-plant-image {
+  width: 178rpx;
+  height: 178rpx;
+  display: block;
+  border-radius: 50%;
+  filter: drop-shadow(0 12rpx 10rpx rgba(82, 50, 64, 0.14));
+  transform-origin: 50% 92%;
+  animation: flower-sway 3.8s ease-in-out infinite;
+}
+.flower-plant-image--sprout {
+  width: 122rpx;
+  height: 122rpx;
+  opacity: 0.72;
+}
+.flower-plant-image--bud {
+  width: 152rpx;
+  height: 152rpx;
+  opacity: 0.86;
+}
+.flower-plant-image--blooming {
+  width: 190rpx;
+  height: 190rpx;
+}
+.flower-plant-image--ready {
+  width: 218rpx;
+  height: 218rpx;
+  filter:
+    drop-shadow(0 12rpx 10rpx rgba(82, 50, 64, 0.14))
+    drop-shadow(0 0 14rpx rgba(255, 210, 230, 0.48));
+}
+@keyframes flower-sway {
+  0%,
+  100% { transform: rotate(-1deg) scale(1); }
+  50% { transform: rotate(1.2deg) scale(1.025); }
+}
+.flower-crop-tag {
+  position: absolute;
+  z-index: 2;
+  right: 36rpx;
+  top: 20rpx;
+  min-width: 64rpx;
+  height: 46rpx;
+  padding: 0 14rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.84);
+  border-radius: 999rpx 999rpx 999rpx 14rpx;
+  box-sizing: border-box;
+  background: rgba(255, 250, 253, 0.9);
+  color: #8e6780;
+  font-size: 18rpx;
+  font-weight: 800;
+  line-height: 42rpx;
+  text-align: center;
+}
+.flower-plot.is-ready .flower-crop-tag {
+  background: rgba(255, 229, 240, 0.94);
+  color: #b4547f;
+}
+.flower-inventory {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
+.flower-inventory-item {
+  min-height: 106rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 16rpx 18rpx;
+  border: 1rpx solid rgba(238, 213, 224, 0.62);
+  border-radius: 24rpx;
+  box-sizing: border-box;
+  background: rgba(255, 253, 251, 0.92);
+}
+.flower-inventory-item image {
+  width: 64rpx;
+  height: 64rpx;
+  flex-shrink: 0;
+  border-radius: 20rpx;
+  background: #fff7fb;
+}
+.flower-inventory-item view {
+  display: flex;
+  flex-direction: column;
+}
+.flower-inventory-item view text:first-child {
+  color: #40313a;
+  font-size: 23rpx;
+  font-weight: 800;
+}
+.flower-inventory-item view text:last-child {
+  margin-top: 4rpx;
+  color: #a18d96;
+  font-size: 20rpx;
+}
+.flower-empty-store {
+  min-height: 210rpx;
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 26rpx 28rpx;
+}
+.flower-empty-visual {
+  width: 122rpx;
+  height: 122rpx;
+  flex-shrink: 0;
+  border-radius: 34rpx;
+  background: linear-gradient(145deg, #ffe2ee, #eee5ff);
+  color: #d7779d;
+  font-size: 58rpx;
+  line-height: 122rpx;
+  text-align: center;
+}
+.flower-empty-copy {
+  display: flex;
+  flex-direction: column;
+}
+.flower-empty-title {
+  color: #40313a;
+  font-size: 29rpx;
+  font-weight: 850;
+}
+.flower-empty-subtitle {
+  margin-top: 10rpx;
+  color: #9f8d96;
+  font-size: 21rpx;
+  line-height: 1.35;
 }
 
 @media (max-width: 340px) {

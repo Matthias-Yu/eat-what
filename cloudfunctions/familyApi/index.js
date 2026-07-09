@@ -20,6 +20,8 @@ const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
 const MESSAGE_REACTION_USER_LIMIT = 50
 const FARM_CROP_IDS = ['tomato', 'corn', 'carrot', 'berry']
 const FARM_PLOT_COUNT = 6
+const FLOWER_IDS = ['rose', 'tulip', 'daisy', 'sunflower', 'babysbreath', 'lavender', 'lily', 'hydrangea']
+const FLOWER_PLOT_COUNT = 6
 const AI_NAME = '饭团'
 const GLM_HOST = 'open.bigmodel.cn'
 const GLM_PATH = '/api/paas/v4/chat/completions'
@@ -109,6 +111,7 @@ function emptySharedData(householdId) {
     wishes: [],
     menus: [],
     farm: createDefaultFarmState(),
+    flower: createDefaultFlowerState(),
     places: [],
     orderNotices: [],
     anniversary: null,
@@ -132,6 +135,24 @@ function createDefaultFarmState() {
     lastBonusDate: '',
     inventory: {},
     plots: createDefaultFarmPlots()
+  }
+}
+
+function createDefaultFlowerPlots() {
+  return Array.from({ length: FLOWER_PLOT_COUNT }).map((_, index) => ({
+    id: index + 1,
+    flowerId: '',
+    plantedAt: 0,
+    caredAt: 0
+  }))
+}
+
+function createDefaultFlowerState() {
+  return {
+    nectar: 36,
+    lastBonusDate: '',
+    inventory: {},
+    plots: createDefaultFlowerPlots()
   }
 }
 
@@ -258,6 +279,7 @@ async function getSharedData(openid) {
     wishes: Array.isArray(data.wishes) ? data.wishes : [],
     menus: Array.isArray(data.menus) ? data.menus : [],
     farm: sanitizeFarmState(data.farm),
+    flower: sanitizeFlowerState(data.flower),
     places: Array.isArray(data.places) ? data.places : [],
     orderNotices: getVisibleOrderNotices(data, openid),
     anniversary: data.anniversary || null,
@@ -417,6 +439,36 @@ function sanitizeFarmState(value) {
   }
 }
 
+function sanitizeFlowerState(value) {
+  const fallback = createDefaultFlowerState()
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  const inventory = {}
+  if (source.inventory && typeof source.inventory === 'object' && !Array.isArray(source.inventory)) {
+    Object.keys(source.inventory).forEach((id) => {
+      if (FLOWER_IDS.includes(id)) inventory[id] = Math.max(0, Number(source.inventory[id]) || 0)
+    })
+  }
+  const rawPlots = Array.isArray(source.plots) ? source.plots : []
+  const plots = fallback.plots.map((plot, index) => {
+    const raw = rawPlots[index] && typeof rawPlots[index] === 'object' && !Array.isArray(rawPlots[index])
+      ? rawPlots[index]
+      : {}
+    const flowerId = FLOWER_IDS.includes(raw.flowerId) ? raw.flowerId : ''
+    return {
+      id: plot.id,
+      flowerId,
+      plantedAt: flowerId ? Number(raw.plantedAt) || Date.now() : 0,
+      caredAt: flowerId ? Number(raw.caredAt) || 0 : 0
+    }
+  })
+  return {
+    nectar: Object.prototype.hasOwnProperty.call(source, 'nectar') ? Math.max(0, Number(source.nectar) || 0) : fallback.nectar,
+    lastBonusDate: textSlice(source.lastBonusDate, 10),
+    inventory,
+    plots
+  }
+}
+
 function sanitizeResource(resource, value) {
   if (resource === 'cart') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
@@ -427,6 +479,9 @@ function sanitizeResource(resource, value) {
   }
   if (resource === 'farm') {
     return sanitizeFarmState(value)
+  }
+  if (resource === 'flower') {
+    return sanitizeFlowerState(value)
   }
   if (!Object.prototype.hasOwnProperty.call(RESOURCE_LIMITS, resource)) throw new Error('不支持的数据类型')
   if (!Array.isArray(value)) throw new Error('数据格式不正确')
@@ -473,6 +528,7 @@ async function migrateLocal(openid, event) {
   if (!(current.wishes || []).length) update.wishes = sanitizeResource('wishes', local.wishes || [])
   if (!(current.menus || []).length) update.menus = sanitizeResource('menus', local.menus || [])
   if (!current.farm) update.farm = sanitizeResource('farm', local.farm || null)
+  if (!current.flower) update.flower = sanitizeResource('flower', local.flower || null)
   if (!(current.places || []).length) update.places = sanitizeResource('places', local.places || [])
   await db.collection('family_data').doc(household._id).update({ data: update })
   return getSharedData(openid)

@@ -24,6 +24,10 @@ const TODO_CATEGORY_CLASS = {
 
 const FARM_PLOT_COUNT = 6
 const FARM_DAILY_BONUS = 12
+const HOME_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/home/'
+const HOME_IMAGES = {
+  pageBg: HOME_IMG_BASE + 'home-page-bg.jpg'
+}
 const FARM_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/farm/'
 const FARM_IMAGES = {
   pageBg: FARM_IMG_BASE + 'farm-page-clean-bg.jpg',
@@ -43,8 +47,31 @@ const FARM_CROPS = [
   { id: 'carrot', name: '胡萝卜', emoji: '🥕', image: FARM_IMG_BASE + 'seed-carrot.jpg', seedCost: 10, growDays: 3, harvest: 3, reward: 18, tone: 'cream' },
   { id: 'berry', name: '莓果', emoji: '🍓', image: FARM_IMG_BASE + 'seed-berry.jpg', seedCost: 14, growDays: 4, harvest: 4, reward: 24, tone: 'blush' }
 ]
+const FLOWER_PLOT_COUNT = 6
+const FLOWER_DAILY_BONUS = 12
+const FLOWER_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/flower/'
+const FLOWER_IMAGES = {
+  pageBg: FLOWER_IMG_BASE + 'flower-page-bg.jpg',
+  hero: FLOWER_IMG_BASE + 'flower-hero.jpg',
+  garden: FLOWER_IMG_BASE + 'flower-garden.jpg',
+  entry: FLOWER_IMG_BASE + 'flower-rose.jpg'
+}
+const FLOWER_TYPES = [
+  { id: 'rose', name: '玫瑰', image: FLOWER_IMG_BASE + 'flower-rose.jpg', seedCost: 5, growDays: 1, harvest: 2, reward: 7, tone: 'rose', meaning: '喜欢你' },
+  { id: 'tulip', name: '郁金香', image: FLOWER_IMG_BASE + 'flower-tulip.jpg', seedCost: 6, growDays: 1, harvest: 2, reward: 8, tone: 'peach', meaning: '温柔告白' },
+  { id: 'daisy', name: '雏菊', image: FLOWER_IMG_BASE + 'flower-daisy.jpg', seedCost: 7, growDays: 2, harvest: 3, reward: 10, tone: 'cream', meaning: '小小快乐' },
+  { id: 'sunflower', name: '向日葵', image: FLOWER_IMG_BASE + 'flower-sunflower.jpg', seedCost: 8, growDays: 2, harvest: 3, reward: 12, tone: 'honey', meaning: '明亮陪伴' },
+  { id: 'babysbreath', name: '满天星', image: FLOWER_IMG_BASE + 'flower-babysbreath.jpg', seedCost: 9, growDays: 2, harvest: 3, reward: 13, tone: 'mint', meaning: '藏在心里' },
+  { id: 'lavender', name: '薰衣草', image: FLOWER_IMG_BASE + 'flower-lavender.jpg', seedCost: 10, growDays: 3, harvest: 4, reward: 16, tone: 'lavender', meaning: '安稳想念' },
+  { id: 'lily', name: '铃兰', image: FLOWER_IMG_BASE + 'flower-lily.jpg', seedCost: 12, growDays: 3, harvest: 4, reward: 18, tone: 'sage', meaning: '好运到来' },
+  { id: 'hydrangea', name: '绣球', image: FLOWER_IMG_BASE + 'flower-hydrangea.jpg', seedCost: 14, growDays: 4, harvest: 5, reward: 22, tone: 'blue', meaning: '浪漫团圆' }
+]
 const CUSTOM_MENU_IMAGE_DIR = 'assets/custom-menu'
 const FARM_CROP_MAP = FARM_CROPS.reduce((map, item) => {
+  map[item.id] = item
+  return map
+}, {})
+const FLOWER_TYPE_MAP = FLOWER_TYPES.reduce((map, item) => {
   map[item.id] = item
   return map
 }, {})
@@ -105,6 +132,24 @@ function createDefaultFarmState() {
     lastBonusDate: '',
     inventory: {},
     plots: createFarmPlots()
+  }
+}
+
+function createFlowerPlots() {
+  return Array.from({ length: FLOWER_PLOT_COUNT }).map((_, index) => ({
+    id: index + 1,
+    flowerId: '',
+    plantedAt: 0,
+    caredAt: 0
+  }))
+}
+
+function createDefaultFlowerState() {
+  return {
+    nectar: 36,
+    lastBonusDate: '',
+    inventory: {},
+    plots: createFlowerPlots()
   }
 }
 
@@ -264,6 +309,41 @@ function applyImageCache(items, cache) {
       if (entry && entry.url) {
         changed = true
         return Object.assign({}, item, { image: entry.url })
+      }
+    }
+    return item
+  })
+  return changed ? mapped : items
+}
+
+function applyImageCacheToObject(source, cache) {
+  if (!cache || !source || typeof source !== 'object') return source
+  let changed = false
+  const mapped = {}
+  Object.keys(source).forEach((key) => {
+    const value = source[key]
+    if (typeof value === 'string' && value.indexOf('cloud://') === 0) {
+      const entry = cache[value]
+      if (entry && entry.url) {
+        mapped[key] = entry.url
+        changed = true
+        return
+      }
+    }
+    mapped[key] = value
+  })
+  return changed ? mapped : source
+}
+
+function applyFlowerPlotImageCache(items, cache) {
+  if (!cache || !items) return items
+  let changed = false
+  const mapped = items.map((item) => {
+    if (item && typeof item.flowerImage === 'string' && item.flowerImage.indexOf('cloud://') === 0) {
+      const entry = cache[item.flowerImage]
+      if (entry && entry.url) {
+        changed = true
+        return Object.assign({}, item, { flowerImage: entry.url })
       }
     }
     return item
@@ -476,6 +556,95 @@ function getFarmView(farmState, selectedCropId) {
   }
 }
 
+function normalizeFlowerState(value) {
+  const fallback = createDefaultFlowerState()
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
+  const inventory = {}
+  if (source.inventory && typeof source.inventory === 'object' && !Array.isArray(source.inventory)) {
+    Object.keys(source.inventory).forEach((id) => {
+      if (FLOWER_TYPE_MAP[id]) inventory[id] = Math.max(0, Number(source.inventory[id]) || 0)
+    })
+  }
+  const rawPlots = Array.isArray(source.plots) ? source.plots : []
+  const plots = fallback.plots.map((plot, index) => {
+    const raw = rawPlots[index] || {}
+    const flowerId = FLOWER_TYPE_MAP[raw.flowerId] ? raw.flowerId : ''
+    return {
+      id: plot.id,
+      flowerId,
+      plantedAt: flowerId ? Number(raw.plantedAt) || Date.now() : 0,
+      caredAt: flowerId ? Number(raw.caredAt) || 0 : 0
+    }
+  })
+  return {
+    nectar: Object.prototype.hasOwnProperty.call(source, 'nectar') ? Math.max(0, Number(source.nectar) || 0) : fallback.nectar,
+    lastBonusDate: textSlice(source.lastBonusDate, 10),
+    inventory,
+    plots
+  }
+}
+
+function getFlowerStage(progress, ready) {
+  if (ready) return 'ready'
+  if (progress >= 64) return 'blooming'
+  if (progress >= 32) return 'bud'
+  return 'sprout'
+}
+
+function getFlowerPlotView(plot, now) {
+  const flower = FLOWER_TYPE_MAP[plot.flowerId]
+  if (!flower) {
+    return Object.assign({}, plot, {
+      empty: true,
+      ready: false,
+      progress: 0,
+      stage: 'empty',
+      flowerName: '',
+      flowerImage: '',
+      actionText: '种花'
+    })
+  }
+  const growMs = flower.growDays * 86400000
+  const careBoost = plot.caredAt ? 0.16 : 0
+  const elapsed = Math.max(0, now - Number(plot.plantedAt || now))
+  const boostedElapsed = elapsed * (1 + careBoost)
+  const progress = Math.min(100, Math.floor(boostedElapsed / growMs * 100))
+  const ready = progress >= 100
+  return Object.assign({}, plot, {
+    empty: false,
+    ready,
+    progress,
+    stage: getFlowerStage(progress, ready),
+    flowerName: flower.name,
+    flowerImage: flower.image,
+    tone: flower.tone,
+    actionText: ready ? '收花' : (plot.caredAt ? '已照料' : '照料')
+  })
+}
+
+function getFlowerView(flowerState, selectedFlowerId) {
+  const state = normalizeFlowerState(flowerState)
+  const now = Date.now()
+  const plots = state.plots.map((plot) => getFlowerPlotView(plot, now))
+  const inventoryList = FLOWER_TYPES
+    .map((flower) => Object.assign({}, flower, { count: Number(state.inventory[flower.id]) || 0 }))
+    .filter((item) => item.count > 0)
+  const selectedFlower = FLOWER_TYPE_MAP[selectedFlowerId] || FLOWER_TYPES[0]
+  return {
+    flowerState: state,
+    flowerPlots: plots,
+    flowerInventoryList: inventoryList,
+    selectedFlowerType: selectedFlower.id,
+    flowerStats: {
+      nectar: state.nectar,
+      planted: plots.filter((item) => !item.empty).length,
+      ready: plots.filter((item) => item.ready).length,
+      materials: inventoryList.reduce((sum, item) => sum + item.count, 0),
+      dailyAvailable: state.lastBonusDate !== todayDateString()
+    }
+  }
+}
+
 function getProfileStats(todos, orders) {
   const completedTodos = todos.filter((item) => item.completed).length
   return {
@@ -577,6 +746,7 @@ Page({
     wishStats: { total: 0, completed: 0, pending: 0 },
     showWishComposer: false,
     wishDraft: createWishDraft(),
+    homeImages: HOME_IMAGES,
     farmImages: FARM_IMAGES,
     farmCrops: FARM_CROPS,
     selectedFarmCrop: FARM_CROPS[0].id,
@@ -584,6 +754,13 @@ Page({
     farmPlots: [],
     farmInventoryList: [],
     farmStats: { coins: 0, planted: 0, ready: 0, harvests: 0, dailyAvailable: false },
+    flowerImages: FLOWER_IMAGES,
+    flowerTypes: FLOWER_TYPES,
+    selectedFlowerType: FLOWER_TYPES[0].id,
+    flowerState: createDefaultFlowerState(),
+    flowerPlots: [],
+    flowerInventoryList: [],
+    flowerStats: { nectar: 0, planted: 0, ready: 0, materials: 0, dailyAvailable: false },
     todos: [],
     visibleTodos: [],
     homeTodos: [],
@@ -626,6 +803,7 @@ Page({
     const savedWishes = storage.read('wishes', [])
     const orderPushEnabled = !!storage.read('orderPushEnabled', false)
     const farmView = getFarmView(storage.read('farm', null), this.data.selectedFarmCrop)
+    const flowerView = getFlowerView(storage.read('flower', null), this.data.selectedFlowerType)
     const savedCustomMenuItems = storage.read('customMenuItems', [])
     const customMenuItems = (Array.isArray(savedCustomMenuItems) ? savedCustomMenuItems : [])
       .map(normalizeCustomMenuItem)
@@ -661,6 +839,11 @@ Page({
       farmInventoryList: farmView.farmInventoryList,
       selectedFarmCrop: farmView.selectedFarmCrop,
       farmStats: farmView.farmStats,
+      flowerState: flowerView.flowerState,
+      flowerPlots: flowerView.flowerPlots,
+      flowerInventoryList: flowerView.flowerInventoryList,
+      selectedFlowerType: flowerView.selectedFlowerType,
+      flowerStats: flowerView.flowerStats,
       cart,
       cartItems: cartView.cartItems,
       cartCount: cartView.cartCount,
@@ -702,7 +885,30 @@ Page({
         }
       })
     }
+    const collectValues = (source) => {
+      if (!source || typeof source !== 'object') return
+      Object.keys(source).forEach((key) => {
+        const value = source[key]
+        if (typeof value === 'string' && value.indexOf('cloud://') === 0) {
+          const entry = cache[value]
+          if (!entry || entry.expireAt <= now) pending.add(value)
+        }
+      })
+    }
+    const collectFlowerPlots = (items) => {
+      (items || []).forEach((item) => {
+        if (item && typeof item.flowerImage === 'string' && item.flowerImage.indexOf('cloud://') === 0) {
+          const entry = cache[item.flowerImage]
+          if (!entry || entry.expireAt <= now) pending.add(item.flowerImage)
+        }
+      })
+    }
     collect(this.allMenuItems)
+    collect(this.data.flowerTypes)
+    collect(this.data.flowerInventoryList)
+    collectFlowerPlots(this.data.flowerPlots)
+    collectValues(this.data.homeImages)
+    collectValues(this.data.flowerImages)
     if (!pending.size || this.imageResolving) return
 
     this.imageResolving = true
@@ -737,6 +943,16 @@ Page({
     if (cartItems !== this.data.cartItems) update.cartItems = cartItems
     const customMenuDisplayItems = applyImageCache(this.data.customMenuItems, cache)
     if (customMenuDisplayItems !== this.data.customMenuDisplayItems) update.customMenuDisplayItems = customMenuDisplayItems
+    const homeImages = applyImageCacheToObject(this.data.homeImages, cache)
+    if (homeImages !== this.data.homeImages) update.homeImages = homeImages
+    const flowerImages = applyImageCacheToObject(this.data.flowerImages, cache)
+    if (flowerImages !== this.data.flowerImages) update.flowerImages = flowerImages
+    const flowerTypes = applyImageCache(this.data.flowerTypes, cache)
+    if (flowerTypes !== this.data.flowerTypes) update.flowerTypes = flowerTypes
+    const flowerInventoryList = applyImageCache(this.data.flowerInventoryList, cache)
+    if (flowerInventoryList !== this.data.flowerInventoryList) update.flowerInventoryList = flowerInventoryList
+    const flowerPlots = applyFlowerPlotImageCache(this.data.flowerPlots, cache)
+    if (flowerPlots !== this.data.flowerPlots) update.flowerPlots = flowerPlots
     if (Object.keys(update).length) this.setData(update)
     this.prefetchMenuImages()
   },
@@ -775,6 +991,7 @@ Page({
       this.startAnniversaryFlip(this.data.anniversaryDisplayDays, update.anniversaryDays, this.data.anniversary)
     }
     this.refreshFarmView()
+    this.refreshFlowerView()
     this.startFarmTimer()
     this.refreshFamilySession()
     this.startCloudPolling()
@@ -899,6 +1116,7 @@ Page({
     const orders = Array.isArray(data.orders) ? data.orders : []
     const wishes = Array.isArray(data.wishes) ? data.wishes : []
     const farmView = getFarmView(data.farm, this.data.selectedFarmCrop)
+    const flowerView = getFlowerView(data.flower, this.data.selectedFlowerType)
     const customMenuItems = Array.isArray(data.menus) ? data.menus.map(normalizeCustomMenuItem).slice(0, CUSTOM_MENU_LIMIT) : []
     const menuItemsForView = getAllMenuItems(customMenuItems)
     const cartView = getCartView(cart, menuItemsForView)
@@ -909,6 +1127,7 @@ Page({
     const ordersChanged = !isSameList(this.data.orders, orders)
     const wishesChanged = !isSameList(this.data.wishes, wishView.wishes)
     const farmChanged = !isSameList(this.data.farmState, farmView.farmState)
+    const flowerChanged = !isSameList(this.data.flowerState, flowerView.flowerState)
     const menusChanged = !isSameList(this.data.customMenuItems, customMenuItems)
     const update = {}
 
@@ -963,6 +1182,16 @@ Page({
         farmInventoryList: farmView.farmInventoryList,
         selectedFarmCrop: farmView.selectedFarmCrop,
         farmStats: farmView.farmStats
+      })
+    }
+    if (flowerChanged) {
+      storage.write('flower', flowerView.flowerState)
+      Object.assign(update, {
+        flowerState: flowerView.flowerState,
+        flowerPlots: flowerView.flowerPlots,
+        flowerInventoryList: flowerView.flowerInventoryList,
+        selectedFlowerType: flowerView.selectedFlowerType,
+        flowerStats: flowerView.flowerStats
       })
     }
     if (todosChanged || ordersChanged) {
@@ -1124,7 +1353,7 @@ Page({
         familyNickname: ''
       })
       const data = await cloudService.call('migrateLocal', {
-        data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, wishes: this.data.wishes, menus: this.data.customMenuItems, farm: this.data.farmState, places: [] }
+        data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, wishes: this.data.wishes, menus: this.data.customMenuItems, farm: this.data.farmState, flower: this.data.flowerState, places: [] }
       })
       this.applyCloudData(data)
       this.startCloudPolling()
@@ -1236,6 +1465,7 @@ Page({
     if (Object.keys(update).length) {
       this.setData(update)
       if (activeTab === 'farm') this.refreshFarmView()
+      if (activeTab === 'flower') this.refreshFlowerView()
       if (update.activeTab) this.resetScroll()
     }
   },
@@ -1249,6 +1479,7 @@ Page({
     if (target === this.data.activeTab) return
     this.setData({ activeTab: target })
     if (target === 'farm') this.refreshFarmView()
+    if (target === 'flower') this.refreshFlowerView()
     this.resetScroll()
   },
 
@@ -1822,6 +2053,120 @@ Page({
     farmState.lastBonusDate = today
     this.commitFarmState(farmState, { sync: true })
     wx.showToast({ title: `阳光金币 +${FARM_DAILY_BONUS}`, icon: 'success' })
+  },
+
+  refreshFlowerView() {
+    const flowerView = getFlowerView(this.data.flowerState, this.data.selectedFlowerType)
+    const cache = this.imageUrlCache || {}
+    this.setData({
+      flowerState: flowerView.flowerState,
+      flowerPlots: applyFlowerPlotImageCache(flowerView.flowerPlots, cache),
+      flowerInventoryList: applyImageCache(flowerView.flowerInventoryList, cache),
+      selectedFlowerType: flowerView.selectedFlowerType,
+      flowerStats: flowerView.flowerStats
+    })
+    return flowerView
+  },
+
+  commitFlowerState(flowerState, options = {}) {
+    const flowerView = getFlowerView(flowerState, options.selectedFlowerId || this.data.selectedFlowerType)
+    const cache = this.imageUrlCache || {}
+    this.setData(Object.assign({
+      flowerState: flowerView.flowerState,
+      flowerPlots: applyFlowerPlotImageCache(flowerView.flowerPlots, cache),
+      flowerInventoryList: applyImageCache(flowerView.flowerInventoryList, cache),
+      selectedFlowerType: flowerView.selectedFlowerType,
+      flowerStats: flowerView.flowerStats
+    }, options.extraData || {}))
+    if (options.persist !== false) storage.write('flower', flowerView.flowerState)
+    if (options.sync) this.syncCloudResource('flower', flowerView.flowerState, { debounce: true })
+    return flowerView
+  },
+
+  selectFlowerType(event) {
+    const id = event.currentTarget.dataset.id
+    if (!FLOWER_TYPE_MAP[id]) return
+    this.commitFlowerState(this.data.flowerState, { selectedFlowerId: id, persist: false })
+  },
+
+  tapFlowerPlot(event) {
+    const id = Number(event.currentTarget.dataset.id)
+    const plot = this.data.flowerPlots.find((item) => Number(item.id) === id)
+    if (!plot) return
+    if (plot.empty) {
+      this.plantFlower(id)
+      return
+    }
+    if (plot.ready) {
+      this.harvestFlower(id)
+      return
+    }
+    this.careFlower(id)
+  },
+
+  plantFlower(plotId) {
+    const flower = FLOWER_TYPE_MAP[this.data.selectedFlowerType] || FLOWER_TYPES[0]
+    const flowerState = normalizeFlowerState(this.data.flowerState)
+    if (flowerState.nectar < flower.seedCost) {
+      wx.showToast({ title: '花露不够，先领今日花露吧', icon: 'none' })
+      return
+    }
+    flowerState.nectar -= flower.seedCost
+    flowerState.plots = flowerState.plots.map((plot) => {
+      if (Number(plot.id) !== Number(plotId) || plot.flowerId) return plot
+      return { id: plot.id, flowerId: flower.id, plantedAt: Date.now(), caredAt: 0 }
+    })
+    this.commitFlowerState(flowerState, { sync: true })
+    wx.showToast({ title: `种下${flower.name}`, icon: 'success' })
+  },
+
+  careFlower(plotId) {
+    const flowerState = normalizeFlowerState(this.data.flowerState)
+    let cared = false
+    flowerState.plots = flowerState.plots.map((plot) => {
+      if (Number(plot.id) !== Number(plotId) || !plot.flowerId || plot.caredAt) return plot
+      cared = true
+      return Object.assign({}, plot, { caredAt: Date.now() })
+    })
+    if (!cared) {
+      wx.showToast({ title: '这朵花已经照料过啦', icon: 'none' })
+      return
+    }
+    this.commitFlowerState(flowerState, { sync: true })
+    wx.showToast({ title: '照料完成', icon: 'success' })
+  },
+
+  harvestFlower(plotId) {
+    const flowerState = normalizeFlowerState(this.data.flowerState)
+    const plotView = this.data.flowerPlots.find((item) => Number(item.id) === Number(plotId))
+    if (!plotView || !plotView.ready) {
+      wx.showToast({ title: '花还没开，再等等', icon: 'none' })
+      return
+    }
+    const flower = FLOWER_TYPE_MAP[plotView.flowerId]
+    if (!flower) return
+    flowerState.inventory[flower.id] = (Number(flowerState.inventory[flower.id]) || 0) + flower.harvest
+    flowerState.nectar += flower.reward
+    flowerState.plots = flowerState.plots.map((plot) => (
+      Number(plot.id) === Number(plotId)
+        ? { id: plot.id, flowerId: '', plantedAt: 0, caredAt: 0 }
+        : plot
+    ))
+    this.commitFlowerState(flowerState, { sync: true })
+    wx.showToast({ title: `收获 ${flower.name} ×${flower.harvest}`, icon: 'success' })
+  },
+
+  claimFlowerDailyBonus() {
+    const today = todayDateString()
+    const flowerState = normalizeFlowerState(this.data.flowerState)
+    if (flowerState.lastBonusDate === today) {
+      wx.showToast({ title: '今天已经领过啦', icon: 'none' })
+      return
+    }
+    flowerState.nectar += FLOWER_DAILY_BONUS
+    flowerState.lastBonusDate = today
+    this.commitFlowerState(flowerState, { sync: true })
+    wx.showToast({ title: `花露 +${FLOWER_DAILY_BONUS}`, icon: 'success' })
   },
 
   openMenuManager() {
@@ -2447,7 +2792,7 @@ Page({
     const cloudActive = this.data.familyStatus === 'active'
     wx.showModal({
       title: cloudActive ? '清空家庭数据？' : '清空本地数据？',
-      content: cloudActive ? '两个人的购物车、订单、待办和农场都会被清空。' : '购物车、订单、待办和农场都会恢复到初始状态。',
+      content: cloudActive ? '两个人的购物车、订单、待办、农场和花店都会被清空。' : '购物车、订单、待办、农场和花店都会恢复到初始状态。',
       confirmText: '清空',
       confirmColor: '#e75c48',
       success: (result) => {
@@ -2460,12 +2805,14 @@ Page({
         const todoView = getTodoView(DEFAULT_TODOS, this.data.todoFilter)
         const wishView = getWishView([])
         const farmView = getFarmView(createDefaultFarmState(), FARM_CROPS[0].id)
+        const flowerView = getFlowerView(createDefaultFlowerState(), FLOWER_TYPES[0].id)
         this.allMenuItems = allMenuItems
         this.menuItemMap = getMenuItemMap(allMenuItems)
         storage.clear()
         this.setData({
           activeTab: 'home',
           customMenuItems,
+          customMenuDisplayItems: customMenuItems,
           recommendedItems: getRecommendedMenuItems(allMenuItems),
           bannerItems: getBannerItems(allMenuItems),
           filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
@@ -2486,6 +2833,11 @@ Page({
           farmInventoryList: farmView.farmInventoryList,
           selectedFarmCrop: farmView.selectedFarmCrop,
           farmStats: farmView.farmStats,
+          flowerState: flowerView.flowerState,
+          flowerPlots: flowerView.flowerPlots,
+          flowerInventoryList: flowerView.flowerInventoryList,
+          selectedFlowerType: flowerView.selectedFlowerType,
+          flowerStats: flowerView.flowerStats,
           profileStats: getProfileStats(todoView.todos, orders)
         })
         this.resolveMenuImages()
@@ -2496,6 +2848,7 @@ Page({
         this.syncCloudResource('wishes', wishView.wishes)
         this.syncCloudResource('menus', customMenuItems)
         this.syncCloudResource('farm', farmView.farmState)
+        this.syncCloudResource('flower', flowerView.flowerState)
         wx.showToast({ title: '已清空', icon: 'success' })
       }
     })
