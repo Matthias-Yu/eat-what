@@ -559,7 +559,7 @@
       <view class="family-action-list">
         <button class="family-primary-button" bindtap="openMemberManager">成员管理</button>
         <button wx:if="{{family.isAdmin}}" class="family-secondary-button" bindtap="configureAiKey">{{family.aiConfigured ? '更新饭团 Key' : '配置饭团 Key'}}</button>
-        <button wx:if="{{family.isAdmin && family.orderNoticeTemplateId}}" class="family-secondary-button" bindtap="enableOrderPush">开启点餐提醒</button>
+        <button wx:if="{{family.isAdmin && family.orderNoticeTemplateId}}" class="family-secondary-button" bindtap="enableOrderPush">{{orderPushEnabled ? '关闭点餐提醒' : '开启点餐提醒'}}</button>
       </view>
       <view class="family-bottom-links">
         <text class="family-link" bindtap="closeFamilyPanel">知道啦</text>

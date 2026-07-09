@@ -572,6 +572,7 @@ Page({
     familyNickname: '',
     familyBusy: false,
     familyError: '',
+    orderPushEnabled: false,
     wishes: [],
     wishStats: { total: 0, completed: 0, pending: 0 },
     showWishComposer: false,
@@ -623,6 +624,7 @@ Page({
     const cart = storage.read('cart', {})
     const orders = storage.read('orders', [])
     const savedWishes = storage.read('wishes', [])
+    const orderPushEnabled = !!storage.read('orderPushEnabled', false)
     const farmView = getFarmView(storage.read('farm', null), this.data.selectedFarmCrop)
     const savedCustomMenuItems = storage.read('customMenuItems', [])
     const customMenuItems = (Array.isArray(savedCustomMenuItems) ? savedCustomMenuItems : [])
@@ -644,6 +646,7 @@ Page({
       greeting: dateUtil.greeting(),
       customMenuItems,
       customMenuDisplayItems: customMenuItems,
+      orderPushEnabled,
       recommendedItems: getRecommendedMenuItems(allMenuItems),
       bannerItems: getBannerItems(allMenuItems),
       filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
@@ -1449,6 +1452,12 @@ Page({
   },
 
   enableOrderPush() {
+    if (this.data.orderPushEnabled) {
+      storage.write('orderPushEnabled', false)
+      this.setData({ orderPushEnabled: false })
+      wx.showToast({ title: '已关闭点餐提醒', icon: 'none' })
+      return
+    }
     const family = this.data.family
     const tmplId = family && family.orderNoticeTemplateId
     if (!tmplId) {
@@ -1459,6 +1468,8 @@ Page({
       tmplIds: [tmplId],
       success: (res) => {
         if (res[tmplId] === 'accept') {
+          storage.write('orderPushEnabled', true)
+          this.setData({ orderPushEnabled: true })
           wx.showToast({ title: '已开启点餐提醒', icon: 'success' })
         } else {
           wx.showToast({ title: '未开启提醒', icon: 'none' })
