@@ -46,6 +46,66 @@ page {
   background: transparent;
 }
 
+.home-page .home-top,
+.home-page .anniversary-card,
+.home-page .hero-swiper,
+.home-page .quick-grid,
+.home-page > .section-heading,
+.home-page .recommend-scroll,
+.home-page .home-todo-card,
+.home-page .love-note {
+  opacity: 0;
+  transform: translateY(18rpx) scale(0.985);
+  animation: home-rise-in 0.52s cubic-bezier(0.18, 0.86, 0.3, 1) forwards;
+}
+
+.home-page .home-top {
+  animation-delay: 0.02s;
+}
+
+.home-page .anniversary-card {
+  animation-delay: 0.06s;
+}
+
+.home-page .hero-swiper {
+  animation-delay: 0.1s;
+}
+
+.home-page .quick-grid {
+  animation-delay: 0.14s;
+}
+
+.home-page > .section-heading {
+  animation-delay: 0.18s;
+}
+
+.home-page .recommend-scroll {
+  animation-delay: 0.22s;
+}
+
+.home-page .todo-heading {
+  animation-delay: 0.26s;
+}
+
+.home-page .home-todo-card {
+  animation-delay: 0.3s;
+}
+
+.home-page .love-note {
+  animation-delay: 0.34s;
+}
+
+@keyframes home-rise-in {
+  0% {
+    opacity: 0;
+    transform: translateY(18rpx) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .home-top,
 .page-header,
 .section-heading,
