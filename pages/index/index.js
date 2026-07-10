@@ -1097,10 +1097,52 @@ Page({
     })
   },
 
-  // 只预取当前页面首屏会出现的图片，避免冷启动把所有素材同时塞进下载队列。
-  prefetchActiveTabImages(activeTab) {
+  prefetchImageUrls(sources) {
     if (!wx.getImageInfo) return
     if (!this.prefetchedImageUrls) this.prefetchedImageUrls = new Set()
+    ;(sources || []).filter((url) => typeof url === 'string' && /^https?:\/\//.test(url)).forEach((url) => {
+      if (this.prefetchedImageUrls.has(url)) return
+      this.prefetchedImageUrls.add(url)
+      wx.getImageInfo({
+        src: url,
+        fail: () => this.prefetchedImageUrls.delete(url)
+      })
+    })
+  },
+
+  // 首页首屏稳定后，再把云端图片全部放进微信图片缓存。
+  schedulePrefetchAllImages() {
+    if (this.prefetchAllImagesTimer) clearTimeout(this.prefetchAllImagesTimer)
+    this.prefetchAllImagesTimer = setTimeout(() => {
+      this.prefetchAllImagesTimer = null
+      const cache = this.imageUrlCache || {}
+      const sources = Object.keys(cache)
+        .filter((fileID) => !/\.(ttf|otf|woff2?)$/i.test(fileID))
+        .map((fileID) => cache[fileID] && cache[fileID].url)
+      const collectItems = (items, key = 'image') => {
+        ;(items || []).forEach((item) => item && sources.push(item[key]))
+      }
+      const collectObject = (source, excludedKeys = []) => {
+        Object.keys(source || {}).forEach((key) => {
+          if (excludedKeys.indexOf(key) === -1) sources.push(source[key])
+        })
+      }
+      collectItems(this.allMenuItems)
+      collectItems(this.data.farmCrops)
+      collectItems(this.data.flowerTypes)
+      collectItems(this.data.flowerInventoryList)
+      collectItems(this.data.flowerPlots, 'flowerImage')
+      collectObject(this.data.homeImages, ['timeSlot'])
+      collectObject(this.data.letterImages, ['handwritingFont'])
+      collectObject(this.data.menuImages)
+      collectObject(this.data.farmImages)
+      collectObject(this.data.flowerImages)
+      this.prefetchImageUrls(sources)
+    }, 500)
+  },
+
+  // 当前页面关键图优先预取，首页出现后继续在后台预取全部图片。
+  prefetchActiveTabImages(activeTab) {
     const sources = []
     if (activeTab === 'home') {
       sources.push(
@@ -1120,14 +1162,8 @@ Page({
       const images = this.data.flowerImages || {}
       sources.push(images.pageBg, images.hero, images.garden)
     }
-    sources.filter((url) => typeof url === 'string' && /^https?:\/\//.test(url)).forEach((url) => {
-      if (this.prefetchedImageUrls.has(url)) return
-      this.prefetchedImageUrls.add(url)
-      wx.getImageInfo({
-        src: url,
-        fail: () => this.prefetchedImageUrls.delete(url)
-      })
-    })
+    this.prefetchImageUrls(sources)
+    if (activeTab === 'home') this.schedulePrefetchAllImages()
   },
 
   onShow() {
@@ -1177,6 +1213,7 @@ Page({
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
+    if (this.prefetchAllImagesTimer) { clearTimeout(this.prefetchAllImagesTimer); this.prefetchAllImagesTimer = null }
     this.clearAnniversaryFlipTimer()
     this.stopFarmTimer()
     this.flushCloudSyncs()
@@ -1187,6 +1224,7 @@ Page({
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
+    if (this.prefetchAllImagesTimer) { clearTimeout(this.prefetchAllImagesTimer); this.prefetchAllImagesTimer = null }
     this.clearAnniversaryFlipTimer()
     this.stopFarmTimer()
     this.flushCloudSyncs()
