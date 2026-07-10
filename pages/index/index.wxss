@@ -3601,10 +3601,6 @@ page {
 }
 
 /* 家庭来信：首页信封 */
-.handwritten-font {
-  font-family: "STKaiti", "KaiTi", "FZKai-Z03", "Songti SC", serif;
-  font-weight: 500;
-}
 .home-letter-arrival {
   position: relative;
   width: 100%;
@@ -3717,7 +3713,6 @@ page {
 .home-letter-title {
   margin-top: 8rpx;
   color: #50362d;
-  font-family: "STKaiti", "KaiTi", "Songti SC", serif;
   font-size: 34rpx;
   font-weight: 700;
   letter-spacing: 2rpx;
@@ -3759,43 +3754,87 @@ page {
   50% { transform: scale(1.15) rotate(24deg); opacity: 1; }
 }
 
-/* 云空间写信入口 */
-.family-letter-entry {
+/* 家庭成员与管理入口 */
+.family-function-section {
   width: 100%;
-  min-height: 104rpx;
+  margin-top: 24rpx;
+}
+.family-function-title {
+  display: block;
+  margin: 0 4rpx 12rpx;
+  color: #8d786e;
+  font-size: 19rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+}
+.family-member-actions {
+  width: 100%;
   display: flex;
   align-items: center;
-  margin-top: 16rpx;
-  padding: 15rpx 18rpx;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+.family-action-tile {
+  flex: 0 0 218rpx;
+  width: 218rpx;
+  height: 92rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16rpx;
   border: 1rpx solid #ecd8c8;
   border-radius: 24rpx;
   box-sizing: border-box;
   background: linear-gradient(135deg, #fff8ee, #fbe8dc);
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
-.family-letter-entry--pressed { transform: scale(0.975); opacity: 0.9; }
-.family-letter-mark {
+.family-action-tile--members {
+  border-color: #dce7df;
+  background: linear-gradient(135deg, #f5faf7, #e9f3ed);
+}
+.family-action-tile--pressed { transform: scale(0.965); opacity: 0.88; }
+.family-action-tile-icon {
   flex: 0 0 auto;
-  width: 60rpx;
-  height: 60rpx;
-  border-radius: 20rpx;
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 15rpx;
   background: #c7775c;
   color: #fff7ef;
-  font-size: 30rpx;
-  line-height: 60rpx;
+  font-size: 22rpx;
+  line-height: 44rpx;
   text-align: center;
   box-shadow: 0 8rpx 18rpx rgba(159, 85, 62, 0.16);
 }
-.family-letter-entry-copy {
-  min-width: 0;
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  margin-left: 16rpx;
+.family-action-tile--members .family-action-tile-icon {
+  background: #6e9b82;
+  box-shadow: 0 8rpx 18rpx rgba(83, 126, 103, 0.15);
 }
-.family-letter-entry-copy text:first-child { color: #63483d; font-size: 22rpx; font-weight: 800; }
-.family-letter-entry-copy text:last-child { margin-top: 5rpx; color: #a17f70; font-size: 17rpx; }
-.family-letter-arrow { color: #bb8169; font-size: 38rpx; }
+.family-action-tile-title {
+  margin: 0 0 0 10rpx;
+  color: #60473c;
+  font-size: 20rpx;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.family-action-tile--members .family-action-tile-title { color: #496958; }
+.family-settings-section { margin-top: 20rpx; }
+.family-setting-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+.family-action-tile--setting {
+  border-color: #eadfd9;
+  background: #f3e7e0;
+}
+.family-action-tile--setting .family-action-tile-title {
+  margin-left: 0;
+  color: #80685d;
+}
 
 /* 写信弹层 */
 .letter-compose-overlay,
@@ -3840,7 +3879,6 @@ page {
 .letter-compose-top { display: flex; align-items: center; justify-content: space-between; }
 .letter-compose-top > text {
   color: #5a3c30;
-  font-family: "STKaiti", "KaiTi", "Songti SC", serif;
   font-size: 38rpx;
   font-weight: 700;
   letter-spacing: 3rpx;
@@ -3880,11 +3918,16 @@ page {
 .letter-send-button {
   width: 100%;
   height: 84rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin: 26rpx 0 0;
+  padding: 0;
   border-radius: 28rpx;
   background: linear-gradient(135deg, #c9785b, #a95143);
   color: #fff8ee;
   font-size: 24rpx;
+  line-height: 1;
   font-weight: 700;
   letter-spacing: 2rpx;
   box-shadow: 0 13rpx 26rpx rgba(139, 65, 49, 0.2);
@@ -3921,6 +3964,28 @@ page {
   background: rgba(255,255,255,0.12);
   color: #fff5ed;
 }
+.letter-withdraw-button {
+  position: absolute;
+  z-index: 30;
+  left: 4rpx;
+  top: 0;
+  width: 184rpx;
+  height: 58rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 1rpx solid rgba(255, 238, 228, 0.24);
+  border-radius: 29rpx;
+  background: rgba(72, 45, 36, 0.58);
+  color: rgba(255, 246, 239, 0.92);
+  font-size: 20rpx;
+  line-height: 1;
+  font-weight: 600;
+  backdrop-filter: blur(10rpx);
+}
+.letter-withdraw-button::after { border: 0; }
 .letter-envelope-large {
   position: absolute;
   z-index: 12;
@@ -3930,7 +3995,6 @@ page {
   height: 328rpx;
   margin: -164rpx 0 0 -260rpx;
   filter: drop-shadow(0 34rpx 30rpx rgba(12, 6, 4, 0.34));
-  transform-style: preserve-3d;
   transition: opacity 0.4s ease 0.15s, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .letter-envelope-back,
@@ -3940,18 +4004,6 @@ page {
   border-radius: 22rpx;
 }
 .letter-envelope-back { z-index: 1; background: #dfa078; }
-.letter-envelope-paper-peek {
-  position: absolute;
-  z-index: 2;
-  left: 34rpx;
-  right: 34rpx;
-  top: 30rpx;
-  height: 220rpx;
-  border-radius: 10rpx;
-  background: #fff8e9;
-  box-shadow: 0 -4rpx 10rpx rgba(86, 47, 31, 0.08);
-  transition: transform 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) 0.12s;
-}
 .letter-envelope-flap {
   position: absolute;
   z-index: 6;
@@ -3962,8 +4014,7 @@ page {
   clip-path: polygon(0 0, 100% 0, 50% 100%);
   transform-origin: 50% 0;
   background: linear-gradient(155deg, #f6d0b4, #e9a47b);
-  backface-visibility: hidden;
-  transition: transform 0.58s cubic-bezier(0.25, 0.72, 0.2, 1);
+  transition: transform 0.62s cubic-bezier(0.22, 0.76, 0.24, 1), z-index 0s linear 0.31s;
 }
 .letter-envelope-pocket {
   z-index: 5;
@@ -3996,7 +4047,6 @@ page {
   right: 0;
   top: calc(50% + 205rpx);
   color: rgba(255, 245, 236, 0.82);
-  font-family: "STKaiti", "KaiTi", serif;
   font-size: 24rpx;
   letter-spacing: 3rpx;
   text-align: center;
@@ -4015,8 +4065,8 @@ page {
   background: #fff8e8;
   box-shadow: 0 40rpx 100rpx rgba(20, 10, 6, 0.4);
   opacity: 0;
-  transform: translateY(220rpx) scale(0.5) rotate(-1.5deg);
-  transition: opacity 0.32s ease, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateY(150rpx) scale(0.58) rotate(-1.2deg);
+  transition: opacity 0.2s ease 0.28s, transform 0.82s cubic-bezier(0.16, 1, 0.3, 1) 0.28s;
 }
 .letter-paper-scroll { position: relative; z-index: 2; width: 100%; height: 100%; }
 .letter-paper-content {
@@ -4024,11 +4074,12 @@ page {
   padding: 78rpx 54rpx 72rpx;
   box-sizing: border-box;
   background: repeating-linear-gradient(to bottom, transparent 0, transparent 65rpx, rgba(133, 97, 75, 0.095) 66rpx, transparent 67rpx);
+  opacity: 0;
+  transition: opacity 0.24s ease;
 }
 .letter-paper-salutation { display: block; color: #4d382e; font-size: 32rpx; line-height: 1.8; letter-spacing: 2rpx; }
 .letter-paper-body {
   display: block;
-  margin-top: 28rpx;
   color: #43342d;
   font-size: 31rpx;
   line-height: 2.08;
@@ -4038,15 +4089,26 @@ page {
 .letter-paper-signature { display: flex; flex-direction: column; align-items: flex-end; margin-top: 52rpx; color: #62493d; font-size: 27rpx; line-height: 1.8; }
 .letter-paper-signature text:last-child { color: #94796a; font-size: 21rpx; }
 .letter-paper-heart { margin-top: 34rpx; color: #ad6653; font-size: 38rpx; text-align: center; }
-.stage-opening .letter-envelope-flap { transform: rotateX(178deg); z-index: 0; }
-.stage-opening .letter-envelope-seal { opacity: 0; transform: scale(1.25) rotate(10deg); }
-.stage-opening .letter-envelope-paper-peek { transform: translateY(-104rpx); }
-.stage-opening .letter-paper-card { opacity: 0.8; transform: translateY(25rpx) scale(0.72) rotate(-0.7deg); }
-.stage-reading .letter-envelope-flap { transform: rotateX(178deg); z-index: 0; }
-.stage-reading .letter-envelope-seal { opacity: 0; }
+.stage-unsealing .letter-envelope-seal,
+.stage-opening .letter-envelope-seal,
+.stage-reading .letter-envelope-seal { opacity: 0; transform: scale(0.72) rotate(-12deg) translateY(10rpx); }
+.stage-opening .letter-envelope-flap,
+.stage-reading .letter-envelope-flap { transform: scaleY(-1); z-index: 0; }
+.stage-opening .letter-paper-card { opacity: 1; transform: translateY(-155rpx) scale(0.62) rotate(-0.7deg); }
 .stage-reading .letter-envelope-large { opacity: 0; transform: translateY(260rpx) scale(0.7); }
 .stage-reading .letter-opening-tip { opacity: 0; }
-.stage-reading .letter-paper-card { z-index: 20; opacity: 1; transform: translateY(0) scale(1) rotate(-0.35deg); }
+.stage-reading .letter-paper-card {
+  z-index: 20;
+  opacity: 1;
+  transform: translateY(0) scale(1) rotate(-0.35deg);
+  transition-delay: 0s;
+  animation: letter-direct-in 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.stage-reading .letter-paper-content { opacity: 1; transition-delay: 0.18s; }
+@keyframes letter-direct-in {
+  from { opacity: 0; transform: translateY(30rpx) scale(0.96) rotate(-0.7deg); }
+  to { opacity: 1; transform: translateY(0) scale(1) rotate(-0.35deg); }
+}
 @keyframes letter-stage-glow {
   from { transform: scale(0.9); opacity: 0.55; }
   to { transform: scale(1.1); opacity: 1; }

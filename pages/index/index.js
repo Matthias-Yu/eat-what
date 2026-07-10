@@ -863,6 +863,7 @@ Page({
     letterStage: 'closed',
     letterDraft: '',
     letterSending: false,
+    letterWithdrawing: false,
     myOpenid: '',
     myNickname: ''
   },
@@ -1099,21 +1100,16 @@ Page({
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
-    this.clearLetterTimers()
     this.clearAnniversaryFlipTimer()
     this.stopFarmTimer()
     this.flushCloudSyncs()
     this.stopCloudPolling()
-    if (this.data.showLetterViewer && this.data.letterStage !== 'reading') {
-      this.setData({ letterStage: 'reading' })
-    }
   },
 
   onUnload() {
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
-    this.clearLetterTimers()
     this.clearAnniversaryFlipTimer()
     this.stopFarmTimer()
     this.flushCloudSyncs()
@@ -2671,19 +2667,11 @@ Page({
       ? this.data.lettersDisplay.find((item) => item.id === id)
       : this.data.latestLetter
     if (!letter || this.data.showLetterViewer) return
-    this.clearLetterTimers()
     this.setData({
       selectedLetter: letter,
       showLetterViewer: true,
-      letterStage: 'closed'
+      letterStage: 'reading'
     })
-    this.letterOpeningTimer = setTimeout(() => {
-      this.setData({ letterStage: 'opening' })
-      if (wx.vibrateShort) wx.vibrateShort({ type: 'light' })
-    }, 60)
-    this.letterReadingTimer = setTimeout(() => {
-      this.setData({ letterStage: 'reading' })
-    }, 760)
     if (this.data.familyStatus === 'active' && letter.isUnread) {
       cloudService.call('openLetter', { letterId: letter.id })
         .then((result) => this.commitLetters(result.letters || this.data.letters))
@@ -2692,18 +2680,40 @@ Page({
   },
 
   closeLetterViewer() {
-    this.clearLetterTimers()
+    if (this.data.letterWithdrawing) return
     this.setData({ showLetterViewer: false, letterStage: 'closed' })
   },
 
-  clearLetterTimers() {
-    if (this.letterOpeningTimer) {
-      clearTimeout(this.letterOpeningTimer)
-      this.letterOpeningTimer = null
-    }
-    if (this.letterReadingTimer) {
-      clearTimeout(this.letterReadingTimer)
-      this.letterReadingTimer = null
+  withdrawLetter() {
+    const letter = this.data.selectedLetter
+    if (!letter || !letter.isMine || this.data.letterWithdrawing) return
+    wx.showModal({
+      title: '撤回这封信？',
+      content: '撤回后，家里的其他成员也将无法再看到这封信。',
+      confirmText: '确认撤回',
+      confirmColor: '#b65346',
+      success: (result) => {
+        if (result.confirm) this.submitWithdrawLetter(letter.id)
+      }
+    })
+  },
+
+  async submitWithdrawLetter(letterId) {
+    this.setData({ letterWithdrawing: true })
+    try {
+      const result = await cloudService.call('withdrawLetter', { letterId })
+      this.commitLetters(result.letters || [], {
+        extraData: {
+          showLetterViewer: false,
+          selectedLetter: null,
+          letterStage: 'closed'
+        }
+      })
+      wx.showToast({ title: '这封信已撤回', icon: 'success' })
+    } catch (error) {
+      wx.showToast({ title: error.message || '撤回失败', icon: 'none' })
+    } finally {
+      this.setData({ letterWithdrawing: false })
     }
   },
 

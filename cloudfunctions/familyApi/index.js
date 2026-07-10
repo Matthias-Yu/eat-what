@@ -601,6 +601,31 @@ async function openLetter(openid, event) {
   })
 }
 
+async function withdrawLetter(openid, event) {
+  const { household } = await requireMembership(openid)
+  const letterId = textSlice(event.letterId, 48)
+  if (!letterId) throw new Error('没有找到这封信')
+  let letters = []
+  await db.runTransaction(async (transaction) => {
+    const document = transaction.collection('family_data').doc(household._id)
+    const response = await document.get()
+    const data = response.data || emptySharedData(household._id)
+    const current = (Array.isArray(data.letters) ? data.letters : []).map(sanitizeLetterItem)
+    const target = current.find((item) => item.id === letterId)
+    if (!target) throw new Error('这封信已经不在了')
+    if (target.authorOpenid !== openid) throw new Error('只能撤回自己写的信')
+    letters = current.filter((item) => item.id !== letterId)
+    await document.update({
+      data: {
+        letters: command.set(letters),
+        updatedAt: db.serverDate(),
+        updatedBy: openid
+      }
+    })
+  })
+  return success({ letters })
+}
+
 async function updateResource(openid, event) {
   const { household } = await requireMembership(openid)
   const resource = String(event.resource || '')
@@ -1051,6 +1076,7 @@ exports.main = async (event) => {
       case 'toggleMessageReaction': return toggleMessageReaction(OPENID, event)
       case 'sendLetter': return sendLetter(OPENID, event)
       case 'openLetter': return openLetter(OPENID, event)
+      case 'withdrawLetter': return withdrawLetter(OPENID, event)
       case 'listMembers': return listMembers(OPENID)
       case 'recordVisit': return recordVisit(OPENID, event)
       case 'listVisitRecords': return listVisitRecords(OPENID, event)

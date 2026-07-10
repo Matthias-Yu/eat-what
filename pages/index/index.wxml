@@ -47,7 +47,7 @@
       </view>
     </view>
 
-    <view wx:if="{{familyStatus === 'active' && latestLetter}}" class="home-letter-arrival {{latestLetter.isUnread ? 'is-unread' : 'is-read'}}" bindtap="openLetter" hover-class="home-letter-arrival--pressed">
+    <view wx:if="{{familyStatus === 'active' && letters.length > 0 && latestLetter}}" class="home-letter-arrival {{latestLetter.isUnread ? 'is-unread' : 'is-read'}}" bindtap="openLetter" hover-class="home-letter-arrival--pressed">
       <view class="letter-glow-ring"></view>
       <view class="letter-sparkle sparkle-left">✦</view>
       <view class="letter-sparkle sparkle-right">✦</view>
@@ -56,8 +56,8 @@
       </view>
       <view class="home-letter-copy">
         <text class="home-letter-kicker">{{latestLetter.isUnread ? 'A LETTER FOR HOME' : 'OUR LITTLE LETTER'}}</text>
-        <text class="home-letter-title">{{latestLetter.isUnread ? '家里来信了' : '再读一遍这封信'}}</text>
-        <text class="home-letter-meta">来自 {{latestLetter.authorName}} · {{latestLetter.isUnread ? '轻触拆开' : latestLetter.dateText}}</text>
+        <text class="home-letter-title">{{latestLetter.isUnread ? '你收到一封信' : '再读一遍这封信'}}</text>
+        <text class="home-letter-meta">{{latestLetter.isUnread ? '轻触拆开' : '轻触再读一遍'}}</text>
       </view>
     </view>
 
@@ -677,19 +677,33 @@
       <text class="family-title">{{family.name}}</text>
       <text class="family-copy">已有 {{family.memberCount}} 位成员，数据每 12 秒自动同步</text>
       <view class="family-active-card"><text>☁</text><view><text>云端同步正常 · 你是{{family.roleLabel}}</text><text>{{family.isAdmin ? '把邀请码发给家人，即可一起加入' : '由管理员邀请并管理成员'}}</text></view></view>
-      <view class="family-letter-entry" bindtap="openLetterComposer" hover-class="family-letter-entry--pressed">
-        <view class="family-letter-mark">✉</view>
-        <view class="family-letter-entry-copy"><text>给家里写一封信</text><text>把没说出口的话，认真写下来</text></view>
-        <text class="family-letter-arrow">›</text>
-      </view>
       <view wx:if="{{family.isAdmin && family.inviteCode}}" class="family-invite-row" bindtap="copyInviteCode">
         <view class="family-invite-info"><text class="family-invite-label">邀请码</text><text class="family-invite-code">{{family.inviteCode}}</text></view>
         <text class="family-invite-copy">复制</text>
       </view>
-      <view class="family-action-list">
-        <button class="family-primary-button" bindtap="openMemberManager">成员管理</button>
-        <button wx:if="{{family.isAdmin}}" class="family-secondary-button" bindtap="configureAiKey">{{family.aiConfigured ? '更新饭团 Key' : '配置饭团 Key'}}</button>
-        <button wx:if="{{family.isAdmin && family.orderNoticeTemplateId}}" class="family-secondary-button" bindtap="enableOrderPush">{{orderPushEnabled ? '关闭点餐提醒' : '开启点餐提醒'}}</button>
+      <view class="family-function-section">
+        <text class="family-function-title">家庭成员</text>
+        <view class="family-member-actions">
+          <view class="family-action-tile family-action-tile--letter" bindtap="openLetterComposer" hover-class="family-action-tile--pressed">
+            <view class="family-action-tile-icon">✉</view>
+            <text class="family-action-tile-title">写一封信</text>
+          </view>
+          <view class="family-action-tile family-action-tile--members" bindtap="openMemberManager" hover-class="family-action-tile--pressed">
+            <view class="family-action-tile-icon">☺</view>
+            <text class="family-action-tile-title">成员管理</text>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{family.isAdmin}}" class="family-function-section family-settings-section">
+        <text class="family-function-title">管理设置</text>
+        <view class="family-setting-actions">
+          <view class="family-action-tile family-action-tile--setting" bindtap="configureAiKey" hover-class="family-action-tile--pressed">
+            <text class="family-action-tile-title">{{family.aiConfigured ? '更新饭团 Key' : '配置饭团 Key'}}</text>
+          </view>
+          <view wx:if="{{family.orderNoticeTemplateId}}" class="family-action-tile family-action-tile--setting" bindtap="enableOrderPush" hover-class="family-action-tile--pressed">
+            <text class="family-action-tile-title">{{orderPushEnabled ? '关闭点餐提醒' : '开启点餐提醒'}}</text>
+          </view>
+        </view>
       </view>
       <view class="family-bottom-links">
         <text class="family-link" bindtap="closeFamilyPanel">知道啦</text>
@@ -743,9 +757,8 @@
     <view class="letter-compose-content">
       <view class="letter-compose-top"><text>写给家里</text><view class="letter-compose-close" bindtap="closeLetterComposer">×</view></view>
       <text class="letter-compose-hint">不用斟酌太久，真心的话写下来就很好。</text>
-      <textarea class="letter-textarea handwritten-font" value="{{letterDraft}}" bindinput="onLetterDraftInput" maxlength="360" auto-height="{{false}}" placeholder="亲爱的家人……" placeholder-class="letter-placeholder" disabled="{{letterSending}}"></textarea>
+      <textarea class="letter-textarea" value="{{letterDraft}}" bindinput="onLetterDraftInput" maxlength="360" auto-height="{{false}}" placeholder="写下想说的话……" placeholder-class="letter-placeholder" disabled="{{letterSending}}"></textarea>
       <view class="letter-compose-count">{{letterDraft.length || 0}} / 360</view>
-      <view class="letter-signature handwritten-font">—— {{myNickname || '家里的一员'}}</view>
       <button class="letter-send-button" bindtap="sendLetter" loading="{{letterSending}}" disabled="{{letterSending}}">{{letterSending ? '正在寄出…' : '确认发出'}}</button>
     </view>
   </view>
@@ -759,21 +772,11 @@
       <image class="letter-paper-texture" src="{{letterImages.paperTexture}}" mode="aspectFill"></image>
       <scroll-view class="letter-paper-scroll" scroll-y show-scrollbar="{{false}}">
         <view class="letter-paper-content">
-          <text class="letter-paper-salutation handwritten-font">亲爱的家人：</text>
-          <text class="letter-paper-body handwritten-font">{{selectedLetter.text}}</text>
-          <view class="letter-paper-signature handwritten-font"><text>—— {{selectedLetter.authorName}}</text><text>{{selectedLetter.dateText}}</text></view>
-          <view class="letter-paper-heart">♡</view>
+          <text class="letter-paper-body">{{selectedLetter.text}}</text>
         </view>
       </scroll-view>
     </view>
-    <view class="letter-envelope-large">
-      <view class="letter-envelope-back"></view>
-      <view class="letter-envelope-paper-peek"></view>
-      <view class="letter-envelope-flap"></view>
-      <view class="letter-envelope-pocket"></view>
-      <view class="letter-envelope-seal">♥</view>
-    </view>
-    <text class="letter-opening-tip">{{letterStage === 'closed' ? '一封来自家里的信' : '正在轻轻拆开…'}}</text>
+    <button wx:if="{{selectedLetter.isMine}}" class="letter-withdraw-button" catchtap="withdrawLetter" loading="{{letterWithdrawing}}" disabled="{{letterWithdrawing}}">{{letterWithdrawing ? '正在撤回…' : '撤回这封信'}}</button>
   </view>
 </view>
 
