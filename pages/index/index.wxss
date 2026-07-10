@@ -1083,11 +1083,13 @@ page {
   transition: transform 0.2s ease;
 }
 
-.food-grid--motion-a {
+.menu-page.stagger > .food-grid.food-grid--motion-a {
+  opacity: 1;
   animation: food-grid-enter-a 280ms cubic-bezier(0.2, 0.82, 0.28, 1) both;
 }
 
-.food-grid--motion-b {
+.menu-page.stagger > .food-grid.food-grid--motion-b {
+  opacity: 1;
   animation: food-grid-enter-b 280ms cubic-bezier(0.2, 0.82, 0.28, 1) both;
 }
 

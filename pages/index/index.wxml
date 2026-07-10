@@ -215,7 +215,7 @@
       </view>
     </scroll-view>
 
-    <view class="food-grid food-stagger food-grid--motion-{{menuMotion}}" hidden="{{!filteredItems.length}}">
+    <view class="food-grid food-grid--motion-{{menuMotion}}" hidden="{{!filteredItems.length}}">
       <view wx:for="{{menuDisplayItems}}" wx:key="id" hidden="{{!item.menuVisible}}" id="dish-card-{{item.id}}" class="food-card">
         <view class="food-art tone-{{item.tone}}">
           <view class="food-art-glow"></view>
