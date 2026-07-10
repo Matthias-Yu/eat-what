@@ -30,6 +30,10 @@
       {
         "type": "folder",
         "value": "assets/home"
+      },
+      {
+        "type": "folder",
+        "value": "assets/letter"
       }
     ],
     "include": []

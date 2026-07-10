@@ -33,6 +33,11 @@ const HOME_IMAGES = {
   pageBg: HOME_IMG_BASE + 'home-morning-bg.jpg',
   timeSlot: 'morning'
 }
+const LETTER_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/letter/'
+const LETTER_IMAGES = {
+  envelopeClosed: LETTER_IMG_BASE + 'envelope-closed.png',
+  paperTexture: LETTER_IMG_BASE + 'letter-paper-texture.png'
+}
 const FARM_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/farm/'
 const FARM_IMAGES = {
   pageBg: FARM_IMG_BASE + 'farm-page-clean-bg.jpg',
@@ -83,6 +88,8 @@ const FLOWER_TYPE_MAP = FLOWER_TYPES.reduce((map, item) => {
 
 const CUSTOM_MENU_LIMIT = 100
 const MESSAGES_LIMIT = 200
+const LETTERS_LIMIT = 60
+const LETTER_TEXT_LIMIT = 360
 const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
 // 云存储临时链接约 2 小时过期，留出裕量按 90 分钟刷新
 const IMAGE_URL_TTL_MS = 90 * 60 * 1000
@@ -267,6 +274,38 @@ function getMessagesView(messages, myOpenid) {
     messages: normalized,
     messagesDisplay,
     recentMessages: messagesDisplay.slice(0, 2)
+  }
+}
+
+function normalizeLetters(letters) {
+  return (Array.isArray(letters) ? letters : [])
+    .map((item, index) => ({
+      id: textSlice(item && item.id, 48) || `letter-${Date.now()}-${index}`,
+      text: textSlice(item && item.text, LETTER_TEXT_LIMIT),
+      authorOpenid: textSlice(item && item.authorOpenid, 60),
+      authorName: textSlice(item && item.authorName, 12) || '小家成员',
+      createdAt: Number(item && item.createdAt) || Date.now(),
+      openedBy: Array.isArray(item && item.openedBy) ? item.openedBy.filter(Boolean) : []
+    }))
+    .filter((item) => item.text)
+    .slice(0, LETTERS_LIMIT)
+}
+
+function getLettersView(letters, myOpenid) {
+  const normalized = normalizeLetters(letters)
+  const lettersDisplay = normalized.map((item) => {
+    const date = new Date(item.createdAt)
+    return Object.assign({}, item, {
+      isMine: !!myOpenid && item.authorOpenid === myOpenid,
+      isUnread: !!myOpenid && item.openedBy.indexOf(myOpenid) === -1,
+      dateText: `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
+    })
+  })
+  return {
+    letters: normalized,
+    lettersDisplay,
+    latestLetter: lettersDisplay[0] || null,
+    hasUnreadLetter: lettersDisplay.some((item) => item.isUnread)
   }
 }
 
@@ -768,6 +807,7 @@ Page({
     showWishComposer: false,
     wishDraft: createWishDraft(),
     homeImages: getHomeImages(),
+    letterImages: LETTER_IMAGES,
     farmImages: FARM_IMAGES,
     farmCrops: FARM_CROPS,
     selectedFarmCrop: FARM_CROPS[0].id,
@@ -813,6 +853,16 @@ Page({
     showMessages: false,
     messageDraft: '',
     reactionEmojis: MESSAGE_REACTION_EMOJIS,
+    letters: [],
+    lettersDisplay: [],
+    latestLetter: null,
+    hasUnreadLetter: false,
+    selectedLetter: null,
+    showLetterComposer: false,
+    showLetterViewer: false,
+    letterStage: 'closed',
+    letterDraft: '',
+    letterSending: false,
     myOpenid: '',
     myNickname: ''
   },
@@ -838,6 +888,7 @@ Page({
     const anniversaryDays = anniversary ? getAnniversaryDays(anniversary.date) : 0
     const anniversaryDisplayDays = getAnniversaryDisplayStart(anniversary, anniversaryDays)
     const messagesView = getMessagesView(storage.read('messages', []), this.data.myOpenid)
+    const lettersView = getLettersView(storage.read('letters', []), this.data.myOpenid)
     this.allMenuItems = allMenuItems
     this.menuItemMap = getMenuItemMap(allMenuItems)
     this.setData({
@@ -878,7 +929,11 @@ Page({
       anniversaryDisplayDays,
       messages: messagesView.messages,
       recentMessages: messagesView.recentMessages,
-      messagesDisplay: messagesView.messagesDisplay
+      messagesDisplay: messagesView.messagesDisplay,
+      letters: lettersView.letters,
+      lettersDisplay: lettersView.lettersDisplay,
+      latestLetter: lettersView.latestLetter,
+      hasUnreadLetter: lettersView.hasUnreadLetter
     })
     this.startAnniversaryFlip(anniversaryDisplayDays, anniversaryDays, anniversary)
     this.startFarmTimer()
@@ -929,6 +984,7 @@ Page({
     collect(this.data.flowerInventoryList)
     collectFlowerPlots(this.data.flowerPlots)
     collectValues(this.data.homeImages)
+    collectValues(this.data.letterImages)
     collectValues(this.data.flowerImages)
     if (!pending.size || this.imageResolving) return
 
@@ -966,6 +1022,8 @@ Page({
     if (customMenuDisplayItems !== this.data.customMenuDisplayItems) update.customMenuDisplayItems = customMenuDisplayItems
     const homeImages = applyImageCacheToObject(this.data.homeImages, cache)
     if (homeImages !== this.data.homeImages) update.homeImages = homeImages
+    const letterImages = applyImageCacheToObject(this.data.letterImages, cache)
+    if (letterImages !== this.data.letterImages) update.letterImages = letterImages
     const flowerImages = applyImageCacheToObject(this.data.flowerImages, cache)
     if (flowerImages !== this.data.flowerImages) update.flowerImages = flowerImages
     const flowerTypes = applyImageCache(this.data.flowerTypes, cache)
@@ -1041,16 +1099,21 @@ Page({
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
+    this.clearLetterTimers()
     this.clearAnniversaryFlipTimer()
     this.stopFarmTimer()
     this.flushCloudSyncs()
     this.stopCloudPolling()
+    if (this.data.showLetterViewer && this.data.letterStage !== 'reading') {
+      this.setData({ letterStage: 'reading' })
+    }
   },
 
   onUnload() {
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
+    this.clearLetterTimers()
     this.clearAnniversaryFlipTimer()
     this.stopFarmTimer()
     this.flushCloudSyncs()
@@ -1076,7 +1139,13 @@ Page({
       cloudService.init()
       const session = await cloudService.call('getSession')
       if (session.openid && this.data.myOpenid !== session.openid) {
-        this.setData({ myOpenid: session.openid })
+        const lettersView = getLettersView(this.data.letters, session.openid)
+        this.setData({
+          myOpenid: session.openid,
+          lettersDisplay: lettersView.lettersDisplay,
+          latestLetter: lettersView.latestLetter,
+          hasUnreadLetter: lettersView.hasUnreadLetter
+        })
       }
       if (session.nickname && this.data.myNickname !== session.nickname) {
         this.setData({ myNickname: session.nickname })
@@ -1237,6 +1306,17 @@ Page({
       update.messages = messagesView.messages
       update.recentMessages = messagesView.recentMessages
       update.messagesDisplay = messagesView.messagesDisplay
+    }
+    const lettersView = getLettersView(data.letters, data.openid || this.data.myOpenid)
+    if (!isSameList(this.data.letters, lettersView.letters)) {
+      storage.write('letters', lettersView.letters)
+      update.letters = lettersView.letters
+      update.lettersDisplay = lettersView.lettersDisplay
+      update.latestLetter = lettersView.latestLetter
+      update.hasUnreadLetter = lettersView.hasUnreadLetter
+      if (this.data.selectedLetter) {
+        update.selectedLetter = lettersView.lettersDisplay.find((item) => item.id === this.data.selectedLetter.id) || this.data.selectedLetter
+      }
     }
 
     if (Object.keys(update).length) this.setData(update)
@@ -2511,6 +2591,120 @@ Page({
     })
     this.commitMessages(messages)
     if (wx.vibrateShort) wx.vibrateShort({ type: 'light' })
+  },
+
+  commitLetters(letters, options = {}) {
+    const lettersView = getLettersView(letters, this.data.myOpenid)
+    const selectedLetter = this.data.selectedLetter
+      ? lettersView.lettersDisplay.find((item) => item.id === this.data.selectedLetter.id) || this.data.selectedLetter
+      : null
+    this.setData(Object.assign({
+      letters: lettersView.letters,
+      lettersDisplay: lettersView.lettersDisplay,
+      latestLetter: lettersView.latestLetter,
+      hasUnreadLetter: lettersView.hasUnreadLetter,
+      selectedLetter
+    }, options.extraData || {}))
+    storage.write('letters', lettersView.letters)
+    return lettersView
+  },
+
+  openLetterComposer() {
+    if (this.data.familyStatus !== 'active') {
+      wx.showToast({ title: '先加入家庭云空间吧', icon: 'none' })
+      return
+    }
+    this.setData({ showFamilyPanel: false, showLetterComposer: true, familyError: '' })
+  },
+
+  closeLetterComposer() {
+    if (this.data.letterSending) return
+    this.setData({ showLetterComposer: false })
+  },
+
+  onLetterDraftInput(event) {
+    this.setData({ letterDraft: event.detail.value })
+  },
+
+  sendLetter() {
+    const text = textSlice(this.data.letterDraft, LETTER_TEXT_LIMIT)
+    if (!text) {
+      wx.showToast({ title: '先写下想说的话吧', icon: 'none' })
+      return
+    }
+    if (this.data.letterSending || this.data.familyStatus !== 'active') return
+    wx.showModal({
+      title: '确认把信寄到首页吗？',
+      content: '发出后，家里的每个人都能拆开阅读。',
+      confirmText: '确认发出',
+      confirmColor: '#b6634b',
+      success: (result) => {
+        if (result.confirm) this.submitLetter(text)
+      }
+    })
+  },
+
+  async submitLetter(text) {
+    this.setData({ letterSending: true })
+    try {
+      const result = await cloudService.call('sendLetter', { text })
+      this.commitLetters(result.letters || [], {
+        extraData: {
+          activeTab: 'home',
+          scrollTop: 0,
+          letterDraft: '',
+          showLetterComposer: false
+        }
+      })
+      if (wx.vibrateShort) wx.vibrateShort({ type: 'medium' })
+      wx.showToast({ title: '信已经寄到首页', icon: 'success' })
+    } catch (error) {
+      wx.showToast({ title: error.message || '这封信没寄出去', icon: 'none' })
+    } finally {
+      this.setData({ letterSending: false })
+    }
+  },
+
+  openLetter(event) {
+    const id = event && event.currentTarget && event.currentTarget.dataset.id
+    const letter = id
+      ? this.data.lettersDisplay.find((item) => item.id === id)
+      : this.data.latestLetter
+    if (!letter || this.data.showLetterViewer) return
+    this.clearLetterTimers()
+    this.setData({
+      selectedLetter: letter,
+      showLetterViewer: true,
+      letterStage: 'closed'
+    })
+    this.letterOpeningTimer = setTimeout(() => {
+      this.setData({ letterStage: 'opening' })
+      if (wx.vibrateShort) wx.vibrateShort({ type: 'light' })
+    }, 60)
+    this.letterReadingTimer = setTimeout(() => {
+      this.setData({ letterStage: 'reading' })
+    }, 760)
+    if (this.data.familyStatus === 'active' && letter.isUnread) {
+      cloudService.call('openLetter', { letterId: letter.id })
+        .then((result) => this.commitLetters(result.letters || this.data.letters))
+        .catch((error) => console.warn('记录拆信状态失败', error))
+    }
+  },
+
+  closeLetterViewer() {
+    this.clearLetterTimers()
+    this.setData({ showLetterViewer: false, letterStage: 'closed' })
+  },
+
+  clearLetterTimers() {
+    if (this.letterOpeningTimer) {
+      clearTimeout(this.letterOpeningTimer)
+      this.letterOpeningTimer = null
+    }
+    if (this.letterReadingTimer) {
+      clearTimeout(this.letterReadingTimer)
+      this.letterReadingTimer = null
+    }
   },
 
   onMenuDraftInput(event) {

@@ -13,7 +13,8 @@ const RESOURCE_LIMITS = {
   wishes: 300,
   menus: 100,
   places: 500,
-  messages: 200
+  messages: 200,
+  letters: 60
 }
 const MENU_CATEGORIES = ['main', 'dish', 'light', 'drink']
 const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
@@ -116,6 +117,7 @@ function emptySharedData(householdId) {
     orderNotices: [],
     anniversary: null,
     messages: [],
+    letters: [],
     updatedAt: db.serverDate()
   }
 }
@@ -284,6 +286,7 @@ async function getSharedData(openid) {
     orderNotices: getVisibleOrderNotices(data, openid),
     anniversary: data.anniversary || null,
     messages: Array.isArray(data.messages) ? data.messages : [],
+    letters: Array.isArray(data.letters) ? data.letters : [],
     updatedAt: data.updatedAt || null
   })
 }
@@ -409,6 +412,21 @@ function sanitizeMessageItem(item, index) {
   }
 }
 
+function sanitizeLetterItem(item, index) {
+  const source = item && typeof item === 'object' && !Array.isArray(item) ? item : {}
+  const createdAt = Number(source.createdAt) || Date.now()
+  return {
+    id: textSlice(source.id, 48) || `letter-${createdAt}-${index}`,
+    text: textSlice(source.text, 360),
+    authorOpenid: textSlice(source.authorOpenid, 60),
+    authorName: textSlice(source.authorName, 12) || '小家成员',
+    createdAt,
+    openedBy: Array.isArray(source.openedBy)
+      ? [...new Set(source.openedBy.map((value) => textSlice(value, 60)).filter(Boolean))].slice(0, 50)
+      : []
+  }
+}
+
 function sanitizeFarmState(value) {
   const fallback = createDefaultFarmState()
   const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
@@ -493,7 +511,94 @@ function sanitizeResource(resource, value) {
       .map(sanitizeMessageItem)
       .filter((item) => item.text)
   }
+  if (resource === 'letters') {
+    return value
+      .slice(0, RESOURCE_LIMITS.letters)
+      .map(sanitizeLetterItem)
+      .filter((item) => item.text)
+  }
   return value.slice(0, RESOURCE_LIMITS[resource])
+}
+
+async function sendLetter(openid, event) {
+  const { user, household } = await requireMembership(openid)
+  const text = textSlice(event.text, 360)
+  if (!text) throw new Error('先写下想说的话吧')
+  const createdAt = Date.now()
+  const letter = sanitizeLetterItem({
+    id: `letter-${createdAt}-${Math.random().toString(36).slice(2, 8)}`,
+    text,
+    authorOpenid: openid,
+    authorName: textSlice(user.nickname, 12) || (openid === getPrimaryAdminOpenid(household) ? '管理员' : '小家成员'),
+    createdAt,
+    openedBy: []
+  }, 0)
+  let letters = []
+  try {
+    await db.runTransaction(async (transaction) => {
+      const document = transaction.collection('family_data').doc(household._id)
+      const response = await document.get()
+      const data = response.data || emptySharedData(household._id)
+      letters = [letter].concat(Array.isArray(data.letters) ? data.letters.map(sanitizeLetterItem) : [])
+        .slice(0, RESOURCE_LIMITS.letters)
+      await document.update({
+        data: {
+          letters: command.set(letters),
+          updatedAt: db.serverDate(),
+          updatedBy: openid
+        }
+      })
+    })
+  } catch (error) {
+    let data
+    try {
+      const response = await db.collection('family_data').doc(household._id).get()
+      data = response.data || emptySharedData(household._id)
+    } catch (missingError) {
+      letters = [letter]
+      await db.collection('family_data').doc(household._id).set({
+        data: Object.assign(emptySharedData(household._id), {
+          letters,
+          updatedAt: db.serverDate(),
+          updatedBy: openid
+        })
+      })
+      return success({ letter, letters })
+    }
+    letters = [letter].concat(Array.isArray(data.letters) ? data.letters.map(sanitizeLetterItem) : [])
+      .slice(0, RESOURCE_LIMITS.letters)
+    await db.collection('family_data').doc(household._id).update({
+      data: {
+        letters: command.set(letters),
+        updatedAt: db.serverDate(),
+        updatedBy: openid
+      }
+    })
+  }
+  return success({ letter, letters })
+}
+
+async function openLetter(openid, event) {
+  const { household } = await requireMembership(openid)
+  const letterId = textSlice(event.letterId, 48)
+  if (!letterId) throw new Error('没有找到这封信')
+  const response = await db.collection('family_data').doc(household._id).get()
+  const data = response.data || emptySharedData(household._id)
+  const letters = (Array.isArray(data.letters) ? data.letters : []).map(sanitizeLetterItem)
+  const targetIndex = letters.findIndex((item) => item.id === letterId)
+  if (targetIndex === -1) throw new Error('这封信已经不在了')
+  if (letters[targetIndex].openedBy.indexOf(openid) === -1) {
+    const update = {
+      updatedAt: db.serverDate(),
+      updatedBy: openid
+    }
+    update[`letters.${targetIndex}.openedBy`] = command.addToSet(openid)
+    await db.collection('family_data').doc(household._id).update({ data: update })
+  }
+  const updated = await db.collection('family_data').doc(household._id).get()
+  return success({
+    letters: (Array.isArray(updated.data.letters) ? updated.data.letters : []).map(sanitizeLetterItem)
+  })
 }
 
 async function updateResource(openid, event) {
@@ -944,6 +1049,8 @@ exports.main = async (event) => {
       case 'notifyOrderAdmin': return notifyOrderAdmin(OPENID, event)
       case 'markOrderNoticesRead': return markOrderNoticesRead(OPENID)
       case 'toggleMessageReaction': return toggleMessageReaction(OPENID, event)
+      case 'sendLetter': return sendLetter(OPENID, event)
+      case 'openLetter': return openLetter(OPENID, event)
       case 'listMembers': return listMembers(OPENID)
       case 'recordVisit': return recordVisit(OPENID, event)
       case 'listVisitRecords': return listVisitRecords(OPENID, event)
