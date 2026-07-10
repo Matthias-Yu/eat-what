@@ -683,37 +683,46 @@
       <text class="family-title">{{family.name}}</text>
       <text class="family-copy">已有 {{family.memberCount}} 位成员，数据每 12 秒自动同步</text>
       <view class="family-active-card"><text>☁</text><view><text>云端同步正常 · 你是{{family.roleLabel}}</text><text>{{family.isAdmin ? '把邀请码发给家人，即可一起加入' : '由管理员邀请并管理成员'}}</text></view></view>
-      <view wx:if="{{family.isAdmin && family.inviteCode}}" class="family-invite-row" bindtap="copyInviteCode">
-        <view class="family-invite-info"><text class="family-invite-label">邀请码</text><text class="family-invite-code">{{family.inviteCode}}</text></view>
-        <text class="family-invite-copy">复制</text>
+      <view wx:if="{{family.isAdmin && family.inviteCode}}" class="family-menu-section">
+        <text class="family-menu-heading">邀请家人</text>
+        <view class="family-invite-row" bindtap="copyInviteCode" hover-class="family-menu-item--pressed">
+          <view class="family-invite-info"><text class="family-invite-label">家庭邀请码</text><text class="family-invite-code">{{family.inviteCode}}</text></view>
+          <view class="family-invite-action"><text>复制</text><text>›</text></view>
+        </view>
       </view>
-      <view class="family-function-section">
-        <text class="family-function-title">家庭成员</text>
-        <view class="family-member-actions">
-          <view class="family-action-tile family-action-tile--letter" bindtap="openLetterComposer" hover-class="family-action-tile--pressed">
-            <view class="family-action-tile-icon">✉</view>
-            <text class="family-action-tile-title">写一封信</text>
+      <view class="family-menu-section">
+        <text class="family-menu-heading">常用功能</text>
+        <view class="family-menu-list">
+          <view class="family-menu-item" bindtap="openLetterComposer" hover-class="family-menu-item--pressed">
+            <view class="family-menu-icon is-letter">✉</view>
+            <view class="family-menu-copy"><text>写一封信</text><text>把想说的话寄到小家首页</text></view>
+            <text class="family-menu-arrow">›</text>
           </view>
-          <view class="family-action-tile family-action-tile--members" bindtap="openMemberManager" hover-class="family-action-tile--pressed">
-            <view class="family-action-tile-icon">☺</view>
-            <text class="family-action-tile-title">成员管理</text>
+          <view class="family-menu-item" bindtap="openMemberManager" hover-class="family-menu-item--pressed">
+            <view class="family-menu-icon is-member">☺</view>
+            <view class="family-menu-copy"><text>家庭成员</text><text>查看成员{{family.isAdmin ? '、修改昵称和管理权限' : '与最近访问记录'}}</text></view>
+            <text class="family-menu-arrow">›</text>
           </view>
         </view>
       </view>
-      <view wx:if="{{family.isAdmin}}" class="family-function-section family-settings-section">
-        <text class="family-function-title">管理设置</text>
-        <view class="family-setting-actions">
-          <view class="family-action-tile family-action-tile--setting" bindtap="configureAiKey" hover-class="family-action-tile--pressed">
-            <text class="family-action-tile-title">{{family.aiConfigured ? '更新饭团 Key' : '配置饭团 Key'}}</text>
+      <view wx:if="{{family.isAdmin}}" class="family-menu-section">
+        <text class="family-menu-heading">管理员设置</text>
+        <view class="family-menu-list">
+          <view class="family-menu-item" bindtap="configureAiKey" hover-class="family-menu-item--pressed">
+            <view class="family-menu-icon is-ai">AI</view>
+            <view class="family-menu-copy"><text>饭团助手</text><text>{{family.aiConfigured ? '已配置，可更新 API Key' : '未配置，添加 API Key 后启用'}}</text></view>
+            <text class="family-menu-arrow">›</text>
           </view>
-          <view wx:if="{{family.orderNoticeTemplateId}}" class="family-action-tile family-action-tile--setting" bindtap="enableOrderPush" hover-class="family-action-tile--pressed">
-            <text class="family-action-tile-title">{{orderPushEnabled ? '关闭点餐提醒' : '开启点餐提醒'}}</text>
+          <view wx:if="{{family.orderNoticeTemplateId}}" class="family-menu-item" bindtap="enableOrderPush" hover-class="family-menu-item--pressed">
+            <view class="family-menu-icon is-notice">◉</view>
+            <view class="family-menu-copy"><text>点餐提醒</text><text>{{orderPushEnabled ? '已开启，轻触可关闭' : '未开启，轻触接收点餐通知'}}</text></view>
+            <text class="family-menu-arrow">›</text>
           </view>
         </view>
       </view>
-      <view class="family-bottom-links">
-        <text class="family-link" bindtap="closeFamilyPanel">知道啦</text>
-        <text class="family-link danger" bindtap="leaveFamily">{{family.isAdmin ? '解散云空间' : '退出云空间'}}</text>
+      <view class="family-panel-footer">
+        <view class="family-done-button" bindtap="closeFamilyPanel" hover-class="family-menu-item--pressed">完成</view>
+        <text class="family-danger-link" bindtap="leaveFamily">{{family.isAdmin ? '解散家庭云空间' : '退出家庭云空间'}}</text>
       </view>
     </block>
 
