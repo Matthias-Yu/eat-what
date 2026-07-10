@@ -1,4 +1,5 @@
 <image wx:if="{{activeTab === 'home'}}" class="home-full-bg" src="{{homeImages.pageBg}}" mode="aspectFill"></image>
+<image wx:if="{{activeTab === 'menu'}}" class="menu-full-bg" src="{{menuImages.pageBg}}" mode="aspectFill"></image>
 <image wx:if="{{activeTab === 'farm'}}" class="farm-full-bg" src="{{farmImages.pageBg}}" mode="aspectFill"></image>
 <image wx:if="{{activeTab === 'flower'}}" class="flower-full-bg" src="{{flowerImages.pageBg}}" mode="aspectFill"></image>
 <navigation-bar title="" back="{{false}}" color="#2f3c29" background="transparent"></navigation-bar>
@@ -757,8 +758,7 @@
     <view class="letter-compose-content">
       <view class="letter-compose-top"><text>写给家里</text><view class="letter-compose-close" bindtap="closeLetterComposer">×</view></view>
       <text class="letter-compose-hint">不用斟酌太久，真心的话写下来就很好。</text>
-      <textarea class="letter-textarea" value="{{letterDraft}}" bindinput="onLetterDraftInput" maxlength="360" auto-height="{{false}}" placeholder="写下想说的话……" placeholder-class="letter-placeholder" disabled="{{letterSending}}"></textarea>
-      <view class="letter-compose-count">{{letterDraft.length || 0}} / 360</view>
+      <textarea class="letter-textarea" value="{{letterDraft}}" bindinput="onLetterDraftInput" maxlength="-1" auto-height="{{false}}" placeholder="写下想说的话……" placeholder-class="letter-placeholder" disabled="{{letterSending}}"></textarea>
       <button class="letter-send-button" bindtap="sendLetter" loading="{{letterSending}}" disabled="{{letterSending}}">{{letterSending ? '正在寄出…' : '确认发出'}}</button>
     </view>
   </view>

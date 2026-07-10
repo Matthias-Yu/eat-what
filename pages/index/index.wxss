@@ -41,6 +41,20 @@ page {
   pointer-events: none;
 }
 
+.menu-full-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
+
+.menu-page {
+  position: relative;
+  background: transparent;
+}
+
 .home-page {
   position: relative;
   background: transparent;
@@ -3913,7 +3927,6 @@ page {
   letter-spacing: 2rpx;
 }
 .letter-placeholder { color: rgba(119, 88, 73, 0.42); }
-.letter-compose-count { margin-top: 7rpx; color: #b59a89; font-size: 17rpx; text-align: right; }
 .letter-signature { margin-top: 8rpx; color: #6d5042; font-size: 26rpx; text-align: right; }
 .letter-send-button {
   width: 100%;

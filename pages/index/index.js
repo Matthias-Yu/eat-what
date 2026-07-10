@@ -38,6 +38,10 @@ const LETTER_IMAGES = {
   envelopeClosed: LETTER_IMG_BASE + 'envelope-closed.png',
   paperTexture: LETTER_IMG_BASE + 'letter-paper-texture.png'
 }
+const MENU_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/menu/'
+const MENU_IMAGES = {
+  pageBg: MENU_IMG_BASE + 'menu-page-bg.jpg'
+}
 const FARM_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/farm/'
 const FARM_IMAGES = {
   pageBg: FARM_IMG_BASE + 'farm-page-clean-bg.jpg',
@@ -89,7 +93,6 @@ const FLOWER_TYPE_MAP = FLOWER_TYPES.reduce((map, item) => {
 const CUSTOM_MENU_LIMIT = 100
 const MESSAGES_LIMIT = 200
 const LETTERS_LIMIT = 60
-const LETTER_TEXT_LIMIT = 360
 const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
 // 云存储临时链接约 2 小时过期，留出裕量按 90 分钟刷新
 const IMAGE_URL_TTL_MS = 90 * 60 * 1000
@@ -281,7 +284,7 @@ function normalizeLetters(letters) {
   return (Array.isArray(letters) ? letters : [])
     .map((item, index) => ({
       id: textSlice(item && item.id, 48) || `letter-${Date.now()}-${index}`,
-      text: textSlice(item && item.text, LETTER_TEXT_LIMIT),
+      text: String((item && item.text) || '').trim(),
       authorOpenid: textSlice(item && item.authorOpenid, 60),
       authorName: textSlice(item && item.authorName, 12) || '小家成员',
       createdAt: Number(item && item.createdAt) || Date.now(),
@@ -808,6 +811,7 @@ Page({
     wishDraft: createWishDraft(),
     homeImages: getHomeImages(),
     letterImages: LETTER_IMAGES,
+    menuImages: MENU_IMAGES,
     farmImages: FARM_IMAGES,
     farmCrops: FARM_CROPS,
     selectedFarmCrop: FARM_CROPS[0].id,
@@ -986,6 +990,7 @@ Page({
     collectFlowerPlots(this.data.flowerPlots)
     collectValues(this.data.homeImages)
     collectValues(this.data.letterImages)
+    collectValues(this.data.menuImages)
     collectValues(this.data.flowerImages)
     if (!pending.size || this.imageResolving) return
 
@@ -1025,6 +1030,8 @@ Page({
     if (homeImages !== this.data.homeImages) update.homeImages = homeImages
     const letterImages = applyImageCacheToObject(this.data.letterImages, cache)
     if (letterImages !== this.data.letterImages) update.letterImages = letterImages
+    const menuImages = applyImageCacheToObject(this.data.menuImages, cache)
+    if (menuImages !== this.data.menuImages) update.menuImages = menuImages
     const flowerImages = applyImageCacheToObject(this.data.flowerImages, cache)
     if (flowerImages !== this.data.flowerImages) update.flowerImages = flowerImages
     const flowerTypes = applyImageCache(this.data.flowerTypes, cache)
@@ -2623,7 +2630,7 @@ Page({
   },
 
   sendLetter() {
-    const text = textSlice(this.data.letterDraft, LETTER_TEXT_LIMIT)
+    const text = String(this.data.letterDraft || '').trim()
     if (!text) {
       wx.showToast({ title: '先写下想说的话吧', icon: 'none' })
       return
