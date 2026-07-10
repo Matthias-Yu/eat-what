@@ -771,7 +771,7 @@
 
 <!-- 拆信与阅读 -->
 <view wx:if="{{showLetterViewer && selectedLetter}}" class="letter-viewer-overlay" bindtap="closeLetterViewer" catchtouchmove="noop">
-  <view class="letter-scene stage-{{letterStage}}" catchtap="noop">
+  <view class="letter-scene" catchtap="noop">
     <view class="letter-viewer-close" bindtap="closeLetterViewer">×</view>
     <view class="letter-paper-card">
       <image class="letter-paper-texture" src="{{letterImages.paperTexture}}" mode="aspectFill"></image>

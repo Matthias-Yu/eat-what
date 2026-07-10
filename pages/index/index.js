@@ -881,7 +881,6 @@ Page({
     messagesDisplay: [],
     showMessages: false,
     messageDraft: '',
-    reactionEmojis: MESSAGE_REACTION_EMOJIS,
     letters: [],
     lettersDisplay: [],
     latestLetter: null,
@@ -889,7 +888,6 @@ Page({
     selectedLetter: null,
     showLetterComposer: false,
     showLetterViewer: false,
-    letterStage: 'closed',
     letterDraft: '',
     letterSending: false,
     letterWithdrawing: false,
@@ -1165,7 +1163,6 @@ Page({
       }
     }
     if (Object.keys(update).length) this.setData(update)
-    if (update.homeImages) this.resolveMenuImages()
     if (Object.prototype.hasOwnProperty.call(update, 'anniversaryDays')) {
       this.startAnniversaryFlip(this.data.anniversaryDisplayDays, update.anniversaryDays, this.data.anniversary)
     }
@@ -1194,16 +1191,14 @@ Page({
   },
 
   onHide() {
-    this.clearRollTimer()
-    if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
-    if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
-    this.clearAnniversaryFlipTimer()
-    this.stopFarmTimer()
-    this.flushCloudSyncs()
-    this.stopCloudPolling()
+    this.cleanupPageTasks()
   },
 
   onUnload() {
+    this.cleanupPageTasks()
+  },
+
+  cleanupPageTasks() {
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
@@ -1820,12 +1815,6 @@ Page({
   updateCart(cart, extraData = {}) {
     const cartView = getCartView(cart, this.allMenuItems)
     this.setData(Object.assign({ cart }, cartView, extraData))
-    return cartView
-  },
-
-  refreshCart() {
-    const cartView = getCartView(this.data.cart, this.allMenuItems)
-    this.setData(cartView)
     return cartView
   },
 
@@ -2782,8 +2771,7 @@ Page({
     if (!letter || this.data.showLetterViewer) return
     this.setData({
       selectedLetter: letter,
-      showLetterViewer: true,
-      letterStage: 'reading'
+      showLetterViewer: true
     }, () => {
       this.loadLetterHandwritingFont()
       this.resolveMenuImages()
@@ -2797,7 +2785,7 @@ Page({
 
   closeLetterViewer() {
     if (this.data.letterWithdrawing) return
-    this.setData({ showLetterViewer: false, letterStage: 'closed' })
+    this.setData({ showLetterViewer: false })
   },
 
   withdrawLetter() {
@@ -2821,8 +2809,7 @@ Page({
       this.commitLetters(result.letters || [], {
         extraData: {
           showLetterViewer: false,
-          selectedLetter: null,
-          letterStage: 'closed'
+          selectedLetter: null
         }
       })
       wx.showToast({ title: '这封信已撤回', icon: 'success' })
@@ -3113,12 +3100,6 @@ Page({
         if (!result.confirm) return
         this.commitTodos(this.data.todos.filter((item) => Number(item.id) !== id), { sync: true })
       }
-    })
-  },
-
-  refreshProfile() {
-    this.setData({
-      profileStats: getProfileStats(this.data.todos, this.data.orders)
     })
   },
 
