@@ -772,7 +772,7 @@
       <image class="letter-paper-texture" src="{{letterImages.paperTexture}}" mode="aspectFill"></image>
       <scroll-view class="letter-paper-scroll" scroll-y show-scrollbar="{{false}}">
         <view class="letter-paper-content">
-          <text class="letter-paper-body">{{selectedLetter.text}}</text>
+          <view class="letter-paper-body">{{selectedLetter.text}}</view>
         </view>
       </scroll-view>
     </view>

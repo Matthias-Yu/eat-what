@@ -11,7 +11,7 @@ Cloud file prefix used by code:
 Required files:
 
 - `envelope-closed.png`
-- `letter-paper-texture.png`
+- `letter-paper-v2.jpg`
 
 Local upload copies are stored at:
 

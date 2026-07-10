@@ -34,9 +34,11 @@ const HOME_IMAGES = {
   timeSlot: 'morning'
 }
 const LETTER_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/letter/'
+const LETTER_FONT_FILE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/font/MaShanZheng-Regular.ttf'
 const LETTER_IMAGES = {
   envelopeClosed: LETTER_IMG_BASE + 'envelope-closed.png',
-  paperTexture: LETTER_IMG_BASE + 'letter-paper-texture.png'
+  paperTexture: LETTER_IMG_BASE + 'letter-paper-v2.jpg',
+  handwritingFont: LETTER_FONT_FILE
 }
 const MENU_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/menu/'
 const MENU_IMAGES = {
@@ -284,7 +286,7 @@ function normalizeLetters(letters) {
   return (Array.isArray(letters) ? letters : [])
     .map((item, index) => ({
       id: textSlice(item && item.id, 48) || `letter-${Date.now()}-${index}`,
-      text: String((item && item.text) || '').trim(),
+      text: String((item && item.text) || ''),
       authorOpenid: textSlice(item && item.authorOpenid, 60),
       authorName: textSlice(item && item.authorName, 12) || '小家成员',
       createdAt: Number(item && item.createdAt) || Date.now(),
@@ -1040,8 +1042,33 @@ Page({
     if (flowerInventoryList !== this.data.flowerInventoryList) update.flowerInventoryList = flowerInventoryList
     const flowerPlots = applyFlowerPlotImageCache(this.data.flowerPlots, cache)
     if (flowerPlots !== this.data.flowerPlots) update.flowerPlots = flowerPlots
-    if (Object.keys(update).length) this.setData(update)
-    this.prefetchMenuImages()
+    const finish = () => {
+      this.loadLetterHandwritingFont()
+      this.prefetchMenuImages()
+    }
+    if (Object.keys(update).length) this.setData(update, finish)
+    else finish()
+  },
+
+  loadLetterHandwritingFont() {
+    if (!wx.loadFontFace || this.letterFontLoaded || this.letterFontLoading) return
+    const source = this.data.letterImages && this.data.letterImages.handwritingFont
+    if (!source || source.indexOf('cloud://') === 0) return
+    this.letterFontLoading = true
+    wx.loadFontFace({
+      family: 'FamilyHandwriting',
+      source: `url("${source}")`,
+      global: true,
+      success: () => {
+        this.letterFontLoaded = true
+      },
+      fail: (error) => {
+        console.warn('手写字体加载失败，已使用系统字体', error)
+      },
+      complete: () => {
+        this.letterFontLoading = false
+      }
+    })
   },
 
   // 预下载全部菜品图片，让切换分类/打开点餐页时图片可直接命中缓存秒显示。
@@ -1052,6 +1079,7 @@ Page({
     if (!this.prefetchedImageUrls) this.prefetchedImageUrls = new Set()
     Object.keys(cache).forEach((fileID) => {
       const entry = cache[fileID]
+      if (/\.(ttf|otf|woff2?)$/i.test(fileID)) return
       if (!entry || !entry.url || this.prefetchedImageUrls.has(entry.url)) return
       this.prefetchedImageUrls.add(entry.url)
       wx.getImageInfo({
@@ -2630,8 +2658,8 @@ Page({
   },
 
   sendLetter() {
-    const text = String(this.data.letterDraft || '').trim()
-    if (!text) {
+    const text = String(this.data.letterDraft || '')
+    if (!text.trim()) {
       wx.showToast({ title: '先写下想说的话吧', icon: 'none' })
       return
     }

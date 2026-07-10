@@ -38,6 +38,10 @@
       {
         "type": "folder",
         "value": "assets/menu"
+      },
+      {
+        "type": "folder",
+        "value": "assets/font"
       }
     ],
     "include": []

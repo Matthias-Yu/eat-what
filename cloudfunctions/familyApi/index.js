@@ -417,7 +417,7 @@ function sanitizeLetterItem(item, index) {
   const createdAt = Number(source.createdAt) || Date.now()
   return {
     id: textSlice(source.id, 48) || `letter-${createdAt}-${index}`,
-    text: String(source.text || '').trim(),
+    text: String(source.text || ''),
     authorOpenid: textSlice(source.authorOpenid, 60),
     authorName: textSlice(source.authorName, 12) || '小家成员',
     createdAt,
@@ -522,8 +522,8 @@ function sanitizeResource(resource, value) {
 
 async function sendLetter(openid, event) {
   const { user, household } = await requireMembership(openid)
-  const text = String(event.text || '').trim()
-  if (!text) throw new Error('先写下想说的话吧')
+  const text = String(event.text || '')
+  if (!text.trim()) throw new Error('先写下想说的话吧')
   const createdAt = Date.now()
   const letter = sanitizeLetterItem({
     id: `letter-${createdAt}-${Math.random().toString(36).slice(2, 8)}`,
