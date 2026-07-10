@@ -518,12 +518,13 @@ function getTodoView(todos, filter) {
 
 function getWishView(wishes) {
   const normalizedWishes = (wishes || [])
-    .map((item) => ({
+    .map((item, index) => ({
       id: item.id || Date.now(),
       title: textSlice(item.title, 30) || '一起做一件小事',
       note: textSlice(item.note, 40),
       completed: !!item.completed,
-      createdAt: item.createdAt || Date.now()
+      createdAt: item.createdAt || Date.now(),
+      tone: ['sage', 'peach', 'lavender'][index % 3]
     }))
     .sort((a, b) => Number(a.completed) - Number(b.completed) || Number(b.createdAt) - Number(a.createdAt))
   const completed = normalizedWishes.filter((item) => item.completed).length
@@ -533,7 +534,8 @@ function getWishView(wishes) {
     wishStats: {
       total,
       completed,
-      pending: total - completed
+      pending: total - completed,
+      percent: total ? Math.round(completed / total * 100) : 0
     }
   }
 }
@@ -831,7 +833,7 @@ Page({
     familyError: '',
     orderPushEnabled: false,
     wishes: [],
-    wishStats: { total: 0, completed: 0, pending: 0 },
+    wishStats: { total: 0, completed: 0, pending: 0, percent: 0 },
     showWishComposer: false,
     wishDraft: createWishDraft(),
     homeImages: applyImageCacheToObject(getHomeImages(), INITIAL_IMAGE_URL_CACHE),
