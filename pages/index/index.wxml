@@ -1,12 +1,12 @@
-<image wx:if="{{activeTab === 'home'}}" class="home-full-bg" src="{{homeImages.pageBg}}" mode="aspectFill"></image>
-<image wx:if="{{activeTab === 'menu'}}" class="menu-full-bg" src="{{menuImages.pageBg}}" mode="aspectFill"></image>
-<image wx:if="{{activeTab === 'farm'}}" class="farm-full-bg" src="{{farmImages.pageBg}}" mode="aspectFill"></image>
-<image wx:if="{{activeTab === 'flower'}}" class="flower-full-bg" src="{{flowerImages.pageBg}}" mode="aspectFill"></image>
+<image class="home-full-bg {{activeTab === 'home' ? 'home-full-bg--active' : ''}}" src="{{homeImages.pageBg}}" mode="aspectFill"></image>
+<image wx:if="{{visitedTabs.menu}}" class="menu-full-bg {{activeTab === 'menu' ? 'menu-full-bg--active' : ''}}" src="{{menuImages.pageBg}}" mode="aspectFill"></image>
+<image wx:if="{{visitedTabs.farm}}" class="farm-full-bg {{activeTab === 'farm' ? 'farm-full-bg--active' : ''}}" src="{{farmImages.pageBg}}" mode="aspectFill"></image>
+<image wx:if="{{visitedTabs.flower}}" class="flower-full-bg {{activeTab === 'flower' ? 'flower-full-bg--active' : ''}}" src="{{flowerImages.pageBg}}" mode="aspectFill"></image>
 <navigation-bar title="" back="{{false}}" color="#2f3c29" background="transparent"></navigation-bar>
 
 <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" scroll-top="{{scrollTop}}" scroll-with-animation="{{false}}">
   <!-- 首页 -->
-  <view wx:if="{{activeTab === 'home'}}" class="page home-page stagger">
+  <view wx:if="{{visitedTabs.home}}" hidden="{{activeTab !== 'home'}}" class="page home-page stagger">
     <view class="home-top">
       <view>
         <view class="eyebrow"><text>{{greeting.icon}}</text><text>{{greeting.text}}，宝贝</text></view>
@@ -181,7 +181,7 @@
   </view>
 
   <!-- 点餐 -->
-  <view wx:elif="{{activeTab === 'menu'}}" class="page menu-page stagger">
+  <view wx:if="{{visitedTabs.menu}}" hidden="{{activeTab !== 'menu'}}" class="page menu-page stagger">
     <view class="page-header">
       <view><text class="page-kicker">OUR KITCHEN</text><text class="page-title">今天想吃什么？</text></view>
       <view class="header-cart" bindtap="openCart" hover-class="tap-scale--active">
@@ -235,7 +235,7 @@
   </view>
 
   <!-- 心愿单 -->
-  <view wx:elif="{{activeTab === 'wishlist'}}" class="page wishlist-page stagger">
+  <view wx:if="{{visitedTabs.wishlist}}" hidden="{{activeTab !== 'wishlist'}}" class="page wishlist-page stagger">
     <view class="wishlist-hero-card">
       <view class="wishlist-hero-copy">
         <text class="page-kicker">WISH MAP</text>
@@ -285,7 +285,7 @@
   </view>
 
   <!-- 农场 -->
-  <view wx:elif="{{activeTab === 'farm'}}" class="page farm-page stagger">
+  <view wx:if="{{visitedTabs.farm}}" hidden="{{activeTab !== 'farm'}}" class="page farm-page stagger">
     <image class="farm-page-bg" src="{{farmImages.pageBg}}" mode="aspectFill"></image>
     <view class="page-header farm-header">
       <view class="farm-title-row">
@@ -405,7 +405,7 @@
   </view>
 
   <!-- 花店 -->
-  <view wx:elif="{{activeTab === 'flower'}}" class="page flower-page stagger">
+  <view wx:if="{{visitedTabs.flower}}" hidden="{{activeTab !== 'flower'}}" class="page flower-page stagger">
     <view class="page-header flower-header">
       <view class="flower-title-row">
         <view class="page-back-button flower-back-button" data-target="home" bindtap="navigateFromCard" hover-class="page-back-button--pressed">‹</view>
@@ -505,7 +505,7 @@
   </view>
 
   <!-- 待办 -->
-  <view wx:elif="{{activeTab === 'todo'}}" class="page todo-page stagger">
+  <view wx:if="{{visitedTabs.todo}}" hidden="{{activeTab !== 'todo'}}" class="page todo-page stagger">
     <view class="page-header todo-page-header">
       <view><text class="page-kicker">LITTLE THINGS</text><text class="page-title">生活待办</text></view>
       <view class="todo-date-icon">{{todoStats.percent}}<text>%</text></view>
@@ -556,7 +556,7 @@
   </view>
 
   <!-- 我的 -->
-  <view wx:else class="page profile-page stagger">
+  <view wx:if="{{visitedTabs.profile}}" hidden="{{activeTab !== 'profile'}}" class="page profile-page stagger">
     <view class="profile-hero">
       <view class="profile-bubble bubble-one">♡</view>
       <view class="profile-bubble bubble-two">✦</view>

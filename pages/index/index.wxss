@@ -38,9 +38,14 @@ page {
   z-index: 0;
   width: 100vw;
   height: 100vh;
-  opacity: 0.58;
+  opacity: 0;
   filter: saturate(0.72) contrast(0.92) brightness(1.06);
   pointer-events: none;
+  transition: opacity 120ms ease-out;
+}
+
+.home-full-bg--active {
+  opacity: 0.58;
 }
 
 .menu-full-bg {
@@ -49,7 +54,13 @@ page {
   z-index: 0;
   width: 100vw;
   height: 100vh;
+  opacity: 0;
   pointer-events: none;
+  transition: opacity 120ms ease-out;
+}
+
+.menu-full-bg--active {
+  opacity: 1;
 }
 
 .menu-page {
@@ -4150,7 +4161,12 @@ page {
   z-index: 0;
   width: 100vw;
   height: 100vh;
+  opacity: 0;
   pointer-events: none;
+  transition: opacity 120ms ease-out;
+}
+.farm-full-bg--active {
+  opacity: 1;
 }
 .farm-page {
   position: relative;
@@ -4819,7 +4835,12 @@ page {
   z-index: 0;
   width: 100vw;
   height: 100vh;
+  opacity: 0;
   pointer-events: none;
+  transition: opacity 120ms ease-out;
+}
+.flower-full-bg--active {
+  opacity: 1;
 }
 .flower-page {
   position: relative;

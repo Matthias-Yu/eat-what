@@ -782,6 +782,7 @@ function isSameList(currentList, nextList) {
 Page({
   data: {
     activeTab: 'home',
+    visitedTabs: { home: true, menu: false, wishlist: false, farm: false, flower: false, todo: false, profile: false },
     scrollTop: 0,
     dateLabel: '',
     greeting: { text: '你好', icon: '☀️' },
@@ -1636,7 +1637,10 @@ Page({
   setTab(event) {
     const activeTab = event.detail.id
     const update = {}
-    if (this.data.activeTab !== activeTab) update.activeTab = activeTab
+    if (this.data.activeTab !== activeTab) {
+      update.activeTab = activeTab
+      update[`visitedTabs.${activeTab}`] = true
+    }
     if (this.data.showCart) update.showCart = false
     if (Object.keys(update).length) {
       this.setData(update, () => this.prefetchActiveTabImages(activeTab))
@@ -1653,7 +1657,7 @@ Page({
       return
     }
     if (target === this.data.activeTab) return
-    this.setData({ activeTab: target }, () => this.prefetchActiveTabImages(target))
+    this.setData({ activeTab: target, [`visitedTabs.${target}`]: true }, () => this.prefetchActiveTabImages(target))
     if (target === 'farm') this.refreshFarmView()
     if (target === 'flower') this.refreshFlowerView()
     this.resetScroll()
@@ -1688,11 +1692,13 @@ Page({
   },
 
   applyMenuFilter(currentCategory, searchKeyword, extraData = {}) {
-    this.setData(Object.assign({
+    const update = Object.assign({
       currentCategory,
       searchKeyword,
       filteredItems: getFilteredMenuItems(this.allMenuItems, currentCategory, searchKeyword)
-    }, extraData), () => this.prefetchActiveTabImages(this.data.activeTab))
+    }, extraData)
+    if (extraData.activeTab) update[`visitedTabs.${extraData.activeTab}`] = true
+    this.setData(update, () => this.prefetchActiveTabImages(this.data.activeTab))
   },
 
   addToCart(event) {
