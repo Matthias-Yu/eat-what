@@ -243,8 +243,8 @@
   <!-- 心愿单 -->
   <view wx:if="{{visitedTabs.wishlist}}" hidden="{{activeTab !== 'wishlist'}}" class="page wishlist-page stagger">
     <view class="wishlist-hero-card">
-      <text class="wishlist-sparkle sparkle-one">✦</text>
-      <text class="wishlist-sparkle sparkle-two">✦</text>
+      <image class="wishlist-hero-image" src="/assets/wishlist/wishlist-banner.jpg" mode="aspectFill"></image>
+      <view class="wishlist-hero-shade"></view>
       <view class="wishlist-hero-copy">
         <text class="page-kicker">OUR WISH LIST</text>
         <text class="wishlist-title">想一起做的事</text>
@@ -254,7 +254,6 @@
           <view class="wishlist-progress-track"><view style="width: {{wishStats.percent}}%;"></view></view>
         </view>
       </view>
-      <view class="wishlist-hero-mark"><text>☆</text><text>WISH</text></view>
     </view>
 
     <view class="wishlist-stats">
