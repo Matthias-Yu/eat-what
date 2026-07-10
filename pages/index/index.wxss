@@ -5345,3 +5345,44 @@ page {
 .ai-send.is-disabled {
   opacity: 0.5;
 }
+
+/* 卡片统一使用描边分层，不使用投影。 */
+.hero-card,
+.hero-card--new,
+.quick-item,
+.quick-item--pressed,
+.mini-food-card,
+.home-todo-card,
+.food-card,
+.progress-card,
+.todo-item,
+.wishlist-hero-card,
+.wish-card,
+.stats-card,
+.order-card,
+.settings-card,
+.flying-dish-card,
+.family-card,
+.success-card,
+.random-card,
+.anniversary-card,
+.messages-card,
+.home-letter-arrival,
+.letter-compose-card,
+.letter-paper-card,
+.farm-wallet,
+.farm-hero,
+.farm-panel,
+.farm-mood-strip,
+.farm-stats > view,
+.farm-crop-chip,
+.farm-field-shell,
+.farm-inventory-item,
+.farm-empty-visual,
+.flower-wallet,
+.flower-hero,
+.flower-panel,
+.flower-type-chip,
+.flower-garden-shell {
+  box-shadow: none;
+}

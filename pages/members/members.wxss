@@ -274,3 +274,9 @@ page {
   text-align: center;
   line-height: 1.4;
 }
+
+/* 卡片统一使用描边分层，不使用投影。 */
+.members-list,
+.visit-card {
+  box-shadow: none;
+}
