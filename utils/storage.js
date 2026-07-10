@@ -9,7 +9,8 @@ const KEYS = {
   anniversaryLastOpen: 'home_menu_anniversary_last_open_v1',
   messages: 'home_menu_messages_v1',
   letters: 'home_menu_letters_v1',
-  farm: 'home_menu_farm_v1'
+  farm: 'home_menu_farm_v1',
+  imageUrlCache: 'home_menu_image_url_cache_v1'
 }
 
 function read(key, fallback) {

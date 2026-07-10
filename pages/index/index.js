@@ -98,6 +98,22 @@ const LETTERS_LIMIT = 60
 const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
 // 云存储临时链接约 2 小时过期，留出裕量按 90 分钟刷新
 const IMAGE_URL_TTL_MS = 90 * 60 * 1000
+const IMAGE_URL_EXPIRY_MARGIN_MS = 2 * 60 * 1000
+
+function getValidImageUrlCache(value, now = Date.now()) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const result = {}
+  Object.keys(value).forEach((fileID) => {
+    const entry = value[fileID]
+    if (!entry || typeof entry.url !== 'string' || !/^https?:\/\//.test(entry.url)) return
+    if (Number(entry.expireAt) <= now + IMAGE_URL_EXPIRY_MARGIN_MS) return
+    result[fileID] = { url: entry.url, expireAt: Number(entry.expireAt) }
+  })
+  return result
+}
+
+// 模块初始化阶段先读缓存，让首屏直接拿到上次的稳定 https 地址。
+const INITIAL_IMAGE_URL_CACHE = getValidImageUrlCache(storage.read('imageUrlCache', {}))
 const MENU_CATEGORIES = categories.filter((item) => item.id !== 'recommend')
 const MENU_CATEGORY_MAP = MENU_CATEGORIES.reduce((map, item) => {
   map[item.id] = item
@@ -773,9 +789,9 @@ Page({
     menuCategories: MENU_CATEGORIES,
     customMenuItems: [],
     customMenuDisplayItems: [],
-    recommendedItems: getRecommendedMenuItems(menuItems),
-    bannerItems: getBannerItems(menuItems),
-    filteredItems: getRecommendedMenuItems(menuItems),
+    recommendedItems: applyImageCache(getRecommendedMenuItems(menuItems), INITIAL_IMAGE_URL_CACHE),
+    bannerItems: applyImageCache(getBannerItems(menuItems), INITIAL_IMAGE_URL_CACHE),
+    filteredItems: applyImageCache(getRecommendedMenuItems(menuItems), INITIAL_IMAGE_URL_CACHE),
     currentCategory: 'recommend',
     searchKeyword: '',
     cart: {},
@@ -811,18 +827,18 @@ Page({
     wishStats: { total: 0, completed: 0, pending: 0 },
     showWishComposer: false,
     wishDraft: createWishDraft(),
-    homeImages: getHomeImages(),
-    letterImages: LETTER_IMAGES,
-    menuImages: MENU_IMAGES,
-    farmImages: FARM_IMAGES,
-    farmCrops: FARM_CROPS,
+    homeImages: applyImageCacheToObject(getHomeImages(), INITIAL_IMAGE_URL_CACHE),
+    letterImages: applyImageCacheToObject(LETTER_IMAGES, INITIAL_IMAGE_URL_CACHE),
+    menuImages: applyImageCacheToObject(MENU_IMAGES, INITIAL_IMAGE_URL_CACHE),
+    farmImages: applyImageCacheToObject(FARM_IMAGES, INITIAL_IMAGE_URL_CACHE),
+    farmCrops: applyImageCache(FARM_CROPS, INITIAL_IMAGE_URL_CACHE),
     selectedFarmCrop: FARM_CROPS[0].id,
     farmState: createDefaultFarmState(),
     farmPlots: [],
     farmInventoryList: [],
     farmStats: { coins: 0, planted: 0, ready: 0, harvests: 0, dailyAvailable: false },
-    flowerImages: FLOWER_IMAGES,
-    flowerTypes: FLOWER_TYPES,
+    flowerImages: applyImageCacheToObject(FLOWER_IMAGES, INITIAL_IMAGE_URL_CACHE),
+    flowerTypes: applyImageCache(FLOWER_TYPES, INITIAL_IMAGE_URL_CACHE),
     selectedFlowerType: FLOWER_TYPES[0].id,
     flowerState: createDefaultFlowerState(),
     flowerPlots: [],
@@ -875,6 +891,7 @@ Page({
   },
 
   onLoad() {
+    this.imageUrlCache = Object.assign({}, INITIAL_IMAGE_URL_CACHE)
     const savedTodos = storage.read('todos', null)
     const cart = storage.read('cart', {})
     const orders = storage.read('orders', [])
@@ -886,7 +903,7 @@ Page({
     const customMenuItems = (Array.isArray(savedCustomMenuItems) ? savedCustomMenuItems : [])
       .map(normalizeCustomMenuItem)
       .slice(0, CUSTOM_MENU_LIMIT)
-    const allMenuItems = getAllMenuItems(customMenuItems)
+    const allMenuItems = applyImageCache(getAllMenuItems(customMenuItems), this.imageUrlCache)
     const todoView = getTodoView(savedTodos || DEFAULT_TODOS, this.data.todoFilter)
     const wishView = getWishView(Array.isArray(savedWishes) ? savedWishes : [])
     const cartView = getCartView(cart, allMenuItems)
@@ -902,11 +919,11 @@ Page({
       dateLabel: dateUtil.todayLabel(),
       greeting: dateUtil.greeting(),
       customMenuItems,
-      customMenuDisplayItems: customMenuItems,
+      customMenuDisplayItems: applyImageCache(customMenuItems, this.imageUrlCache),
       orderPushEnabled,
-      recommendedItems: getRecommendedMenuItems(allMenuItems),
-      bannerItems: getBannerItems(allMenuItems),
-      filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
+      recommendedItems: applyImageCache(getRecommendedMenuItems(allMenuItems), this.imageUrlCache),
+      bannerItems: applyImageCache(getBannerItems(allMenuItems), this.imageUrlCache),
+      filteredItems: applyImageCache(getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword), this.imageUrlCache),
       todos: todoView.todos,
       visibleTodos: todoView.visibleTodos,
       homeTodos: todoView.homeTodos,
@@ -986,14 +1003,17 @@ Page({
         }
       })
     }
-    collect(this.allMenuItems)
-    collect(this.data.flowerTypes)
+    collect(DECORATED_MENU_ITEMS)
+    collect(this.data.customMenuItems)
+    collect(FARM_CROPS)
+    collect(FLOWER_TYPES)
     collect(this.data.flowerInventoryList)
     collectFlowerPlots(this.data.flowerPlots)
-    collectValues(this.data.homeImages)
-    collectValues(this.data.letterImages)
-    collectValues(this.data.menuImages)
-    collectValues(this.data.flowerImages)
+    collectValues(HOME_IMAGES)
+    collectValues(LETTER_IMAGES)
+    collectValues(MENU_IMAGES)
+    collectValues(FARM_IMAGES)
+    collectValues(FLOWER_IMAGES)
     if (!pending.size || this.imageResolving) return
 
     this.imageResolving = true
@@ -1003,6 +1023,7 @@ Page({
       ;(res.fileList || []).forEach((f) => {
         if (f.fileID && f.tempFileURL) cache[f.fileID] = { url: f.tempFileURL, expireAt }
       })
+      storage.write('imageUrlCache', getValidImageUrlCache(cache))
       this.applyResolvedImages()
     } catch (error) {
       console.warn('菜品图片地址解析失败', error)
@@ -1034,6 +1055,10 @@ Page({
     if (letterImages !== this.data.letterImages) update.letterImages = letterImages
     const menuImages = applyImageCacheToObject(this.data.menuImages, cache)
     if (menuImages !== this.data.menuImages) update.menuImages = menuImages
+    const farmImages = applyImageCacheToObject(this.data.farmImages, cache)
+    if (farmImages !== this.data.farmImages) update.farmImages = farmImages
+    const farmCrops = applyImageCache(this.data.farmCrops, cache)
+    if (farmCrops !== this.data.farmCrops) update.farmCrops = farmCrops
     const flowerImages = applyImageCacheToObject(this.data.flowerImages, cache)
     if (flowerImages !== this.data.flowerImages) update.flowerImages = flowerImages
     const flowerTypes = applyImageCache(this.data.flowerTypes, cache)
@@ -1043,8 +1068,8 @@ Page({
     const flowerPlots = applyFlowerPlotImageCache(this.data.flowerPlots, cache)
     if (flowerPlots !== this.data.flowerPlots) update.flowerPlots = flowerPlots
     const finish = () => {
-      this.loadLetterHandwritingFont()
-      this.prefetchMenuImages()
+      if (this.data.showLetterComposer || this.data.showLetterViewer) this.loadLetterHandwritingFont()
+      this.prefetchActiveTabImages(this.data.activeTab)
     }
     if (Object.keys(update).length) this.setData(update, finish)
     else finish()
@@ -1071,20 +1096,35 @@ Page({
     })
   },
 
-  // 预下载全部菜品图片，让切换分类/打开点餐页时图片可直接命中缓存秒显示。
-  // 用 prefetchedImageUrls 去重，避免对同一临时链接重复发起下载。
-  prefetchMenuImages() {
-    const cache = this.imageUrlCache
-    if (!cache || !wx.getImageInfo) return
+  // 只预取当前页面首屏会出现的图片，避免冷启动把所有素材同时塞进下载队列。
+  prefetchActiveTabImages(activeTab) {
+    if (!wx.getImageInfo) return
     if (!this.prefetchedImageUrls) this.prefetchedImageUrls = new Set()
-    Object.keys(cache).forEach((fileID) => {
-      const entry = cache[fileID]
-      if (/\.(ttf|otf|woff2?)$/i.test(fileID)) return
-      if (!entry || !entry.url || this.prefetchedImageUrls.has(entry.url)) return
-      this.prefetchedImageUrls.add(entry.url)
+    const sources = []
+    if (activeTab === 'home') {
+      sources.push(
+        this.data.homeImages && this.data.homeImages.pageBg,
+        this.data.farmImages && this.data.farmImages.entry,
+        this.data.flowerImages && this.data.flowerImages.entry
+      )
+      if (this.data.latestLetter) sources.push(this.data.letterImages && this.data.letterImages.envelopeClosed)
+      ;(this.data.bannerItems || []).slice(0, 2).forEach((item) => sources.push(item.image))
+    } else if (activeTab === 'menu') {
+      sources.push(this.data.menuImages && this.data.menuImages.pageBg)
+      ;(this.data.filteredItems || []).slice(0, 6).forEach((item) => sources.push(item.image))
+    } else if (activeTab === 'farm') {
+      const images = this.data.farmImages || {}
+      sources.push(images.pageBg, images.hero, images.panelBg, images.field)
+    } else if (activeTab === 'flower') {
+      const images = this.data.flowerImages || {}
+      sources.push(images.pageBg, images.hero, images.garden)
+    }
+    sources.filter((url) => typeof url === 'string' && /^https?:\/\//.test(url)).forEach((url) => {
+      if (this.prefetchedImageUrls.has(url)) return
+      this.prefetchedImageUrls.add(url)
       wx.getImageInfo({
-        src: entry.url,
-        fail: () => this.prefetchedImageUrls.delete(entry.url)
+        src: url,
+        fail: () => this.prefetchedImageUrls.delete(url)
       })
     })
   },
@@ -1092,7 +1132,7 @@ Page({
   onShow() {
     const greeting = dateUtil.greeting()
     const dateLabel = dateUtil.todayLabel()
-    const homeImages = getHomeImages()
+    const homeImages = applyImageCacheToObject(getHomeImages(), this.imageUrlCache || {})
     const update = {}
     if (this.data.dateLabel !== dateLabel) update.dateLabel = dateLabel
     if (this.data.greeting.text !== greeting.text || this.data.greeting.icon !== greeting.icon) update.greeting = greeting
@@ -1113,6 +1153,7 @@ Page({
     this.startFarmTimer()
     this.refreshFamilySession()
     this.startCloudPolling()
+    this.resolveMenuImages()
   },
 
   refreshFamilySession() {
@@ -1598,7 +1639,7 @@ Page({
     if (this.data.activeTab !== activeTab) update.activeTab = activeTab
     if (this.data.showCart) update.showCart = false
     if (Object.keys(update).length) {
-      this.setData(update)
+      this.setData(update, () => this.prefetchActiveTabImages(activeTab))
       if (activeTab === 'farm') this.refreshFarmView()
       if (activeTab === 'flower') this.refreshFlowerView()
       if (update.activeTab) this.resetScroll()
@@ -1612,7 +1653,7 @@ Page({
       return
     }
     if (target === this.data.activeTab) return
-    this.setData({ activeTab: target })
+    this.setData({ activeTab: target }, () => this.prefetchActiveTabImages(target))
     if (target === 'farm') this.refreshFarmView()
     if (target === 'flower') this.refreshFlowerView()
     this.resetScroll()
@@ -1651,7 +1692,7 @@ Page({
       currentCategory,
       searchKeyword,
       filteredItems: getFilteredMenuItems(this.allMenuItems, currentCategory, searchKeyword)
-    }, extraData))
+    }, extraData), () => this.prefetchActiveTabImages(this.data.activeTab))
   },
 
   addToCart(event) {
@@ -2645,7 +2686,10 @@ Page({
       wx.showToast({ title: '先加入家庭云空间吧', icon: 'none' })
       return
     }
-    this.setData({ showFamilyPanel: false, showLetterComposer: true, familyError: '' })
+    this.setData({ showFamilyPanel: false, showLetterComposer: true, familyError: '' }, () => {
+      this.loadLetterHandwritingFont()
+      this.resolveMenuImages()
+    })
   },
 
   closeLetterComposer() {
@@ -2706,6 +2750,9 @@ Page({
       selectedLetter: letter,
       showLetterViewer: true,
       letterStage: 'reading'
+    }, () => {
+      this.loadLetterHandwritingFont()
+      this.resolveMenuImages()
     })
     if (this.data.familyStatus === 'active' && letter.isUnread) {
       cloudService.call('openLetter', { letterId: letter.id })
