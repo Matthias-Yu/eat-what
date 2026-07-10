@@ -4,6 +4,11 @@
 <image wx:if="{{visitedTabs.flower}}" class="flower-full-bg {{activeTab === 'flower' ? 'flower-full-bg--active' : ''}}" src="{{flowerImages.pageBg}}" mode="aspectFill"></image>
 <navigation-bar title="" back="{{false}}" color="#2f3c29" background="transparent"></navigation-bar>
 
+<!-- 使用真实 image 组件提前下载并解码，避免进入点餐页时才逐张刷新。 -->
+<view class="image-preload-bank" aria-hidden="true">
+  <image wx:for="{{preloadImageUrls}}" wx:key="*this" src="{{item}}" mode="aspectFit"></image>
+</view>
+
 <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" scroll-top="{{scrollTop}}" scroll-with-animation="{{false}}">
   <!-- 首页 -->
   <view wx:if="{{visitedTabs.home}}" hidden="{{activeTab !== 'home'}}" class="page home-page stagger">
@@ -210,11 +215,11 @@
       </view>
     </scroll-view>
 
-    <view wx:if="{{filteredItems.length}}" class="food-grid food-stagger">
-      <view wx:for="{{filteredItems}}" wx:key="viewKey" id="dish-card-{{item.id}}" class="food-card">
+    <view class="food-grid food-stagger food-grid--motion-{{menuMotion}}" hidden="{{!filteredItems.length}}">
+      <view wx:for="{{menuDisplayItems}}" wx:key="id" hidden="{{!item.menuVisible}}" id="dish-card-{{item.id}}" class="food-card">
         <view class="food-art tone-{{item.tone}}">
           <view class="food-art-glow"></view>
-          <image wx:if="{{item.image}}" class="food-image" src="{{item.image}}" mode="aspectFit" lazy-load="{{true}}"></image>
+          <image wx:if="{{item.image}}" class="food-image" src="{{item.image}}" mode="aspectFit"></image>
           <text wx:else class="food-emoji">{{item.emoji}}</text>
           <text wx:if="{{item.recommended}}" class="recommend-mark">今日推荐</text>
         </view>
@@ -226,7 +231,7 @@
         </view>
       </view>
     </view>
-    <view wx:else class="menu-empty">
+    <view wx:if="{{!filteredItems.length}}" class="menu-empty">
       <view class="empty-art">🍽️</view>
       <text class="empty-title">没找到这道菜</text>
       <text class="empty-subtitle">换个关键词试试吧</text>

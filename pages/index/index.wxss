@@ -26,6 +26,23 @@ page {
   height: calc(100vh - 44px - env(safe-area-inset-top));
 }
 
+.image-preload-bank {
+  position: fixed;
+  left: -20px;
+  top: -20px;
+  z-index: -2;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0.01;
+  pointer-events: none;
+}
+
+.image-preload-bank image {
+  width: 1px;
+  height: 1px;
+}
+
 .page {
   min-height: 100%;
   padding: 18rpx 30rpx calc(250rpx + env(safe-area-inset-bottom));
@@ -1032,12 +1049,19 @@ page {
   font-size: 22rpx;
   font-weight: 600;
   box-sizing: border-box;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
 }
 .category-pill.is-active {
   border-color: #ef684f;
   background: #ef684f;
   color: #fff;
   box-shadow: 0 8rpx 20rpx rgba(222, 92, 67, 0.2);
+  transform: translateY(-1rpx);
 }
 .food-grid {
   display: grid;
@@ -1054,6 +1078,25 @@ page {
     inset 0 1rpx 0 rgba(255, 255, 255, 0.9);
   transition: transform 0.2s ease;
 }
+
+.food-grid--motion-a {
+  animation: food-grid-enter-a 280ms cubic-bezier(0.2, 0.82, 0.28, 1) both;
+}
+
+.food-grid--motion-b {
+  animation: food-grid-enter-b 280ms cubic-bezier(0.2, 0.82, 0.28, 1) both;
+}
+
+@keyframes food-grid-enter-a {
+  from { opacity: 0.72; transform: translateY(8rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes food-grid-enter-b {
+  from { opacity: 0.72; transform: translateY(8rpx); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .food-card:active {
   transform: translateY(2rpx);
 }

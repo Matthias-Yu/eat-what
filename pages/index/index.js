@@ -456,8 +456,6 @@ function getBannerItems(items) {
 
 function getFilteredMenuItems(items, category, keyword) {
   const normalizedKeyword = String(keyword || '').toLowerCase()
-  // viewKey 带上当前分类与搜索词，切换筛选时让卡片视为新节点重建，从而重新触发入场动画
-  const viewTag = `${category}|${normalizedKeyword}`
   return items
     .filter((item) => {
       const categoryMatched = category === 'recommend' ? item.recommended : item.category === category
@@ -466,7 +464,12 @@ function getFilteredMenuItems(items, category, keyword) {
       const searchText = item.searchText || `${item.name}${item.description}${item.tags.join('')}`.toLowerCase()
       return searchText.includes(normalizedKeyword)
     })
-    .map((item) => Object.assign({}, item, { viewKey: `${item.id}-${viewTag}` }))
+}
+
+// 所有菜品节点常驻，仅更新可见状态，切换分类时不重新创建 image。
+function getMenuDisplayItems(items, category, keyword) {
+  const visibleIds = new Set(getFilteredMenuItems(items, category, keyword).map((item) => item.id))
+  return items.map((item) => Object.assign({}, item, { menuVisible: visibleIds.has(item.id) }))
 }
 
 function getCartView(cart, items) {
@@ -782,7 +785,9 @@ function isSameList(currentList, nextList) {
 Page({
   data: {
     activeTab: 'home',
-    visitedTabs: { home: true, menu: false, wishlist: false, farm: false, flower: false, todo: false, profile: false },
+    visitedTabs: { home: true, menu: true, wishlist: false, farm: false, flower: false, todo: false, profile: false },
+    preloadImageUrls: [],
+    menuMotion: 'a',
     scrollTop: 0,
     dateLabel: '',
     greeting: { text: '你好', icon: '☀️' },
@@ -793,6 +798,7 @@ Page({
     recommendedItems: applyImageCache(getRecommendedMenuItems(menuItems), INITIAL_IMAGE_URL_CACHE),
     bannerItems: applyImageCache(getBannerItems(menuItems), INITIAL_IMAGE_URL_CACHE),
     filteredItems: applyImageCache(getRecommendedMenuItems(menuItems), INITIAL_IMAGE_URL_CACHE),
+    menuDisplayItems: getMenuDisplayItems(applyImageCache(menuItems, INITIAL_IMAGE_URL_CACHE), 'recommend', ''),
     currentCategory: 'recommend',
     searchKeyword: '',
     cart: {},
@@ -925,6 +931,7 @@ Page({
       recommendedItems: applyImageCache(getRecommendedMenuItems(allMenuItems), this.imageUrlCache),
       bannerItems: applyImageCache(getBannerItems(allMenuItems), this.imageUrlCache),
       filteredItems: applyImageCache(getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword), this.imageUrlCache),
+      menuDisplayItems: getMenuDisplayItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
       todos: todoView.todos,
       visibleTodos: todoView.visibleTodos,
       homeTodos: todoView.homeTodos,
@@ -1046,6 +1053,8 @@ Page({
     if (bannerItems !== this.data.bannerItems) update.bannerItems = bannerItems
     const filteredItems = applyImageCache(this.data.filteredItems, cache)
     if (filteredItems !== this.data.filteredItems) update.filteredItems = filteredItems
+    const menuDisplayItems = getMenuDisplayItems(this.allMenuItems, this.data.currentCategory, this.data.searchKeyword)
+    if (!isSameList(menuDisplayItems, this.data.menuDisplayItems)) update.menuDisplayItems = menuDisplayItems
     const cartItems = applyImageCache(this.data.cartItems, cache)
     if (cartItems !== this.data.cartItems) update.cartItems = cartItems
     const customMenuDisplayItems = applyImageCache(this.data.customMenuItems, cache)
@@ -1068,6 +1077,13 @@ Page({
     if (flowerInventoryList !== this.data.flowerInventoryList) update.flowerInventoryList = flowerInventoryList
     const flowerPlots = applyFlowerPlotImageCache(this.data.flowerPlots, cache)
     if (flowerPlots !== this.data.flowerPlots) update.flowerPlots = flowerPlots
+    const preloadImageUrls = [...new Set(Object.keys(cache)
+      .filter((fileID) => !/\.(ttf|otf|woff2?)$/i.test(fileID))
+      .map((fileID) => cache[fileID] && cache[fileID].url)
+      .filter((url) => typeof url === 'string' && /^https?:\/\//.test(url)))]
+    if (preloadImageUrls.join('|') !== (this.data.preloadImageUrls || []).join('|')) {
+      update.preloadImageUrls = preloadImageUrls
+    }
     const finish = () => {
       if (this.data.showLetterComposer || this.data.showLetterViewer) this.loadLetterHandwritingFont()
       this.prefetchActiveTabImages(this.data.activeTab)
@@ -1110,38 +1126,7 @@ Page({
     })
   },
 
-  // 首页首屏稳定后，再把云端图片全部放进微信图片缓存。
-  schedulePrefetchAllImages() {
-    if (this.prefetchAllImagesTimer) clearTimeout(this.prefetchAllImagesTimer)
-    this.prefetchAllImagesTimer = setTimeout(() => {
-      this.prefetchAllImagesTimer = null
-      const cache = this.imageUrlCache || {}
-      const sources = Object.keys(cache)
-        .filter((fileID) => !/\.(ttf|otf|woff2?)$/i.test(fileID))
-        .map((fileID) => cache[fileID] && cache[fileID].url)
-      const collectItems = (items, key = 'image') => {
-        ;(items || []).forEach((item) => item && sources.push(item[key]))
-      }
-      const collectObject = (source, excludedKeys = []) => {
-        Object.keys(source || {}).forEach((key) => {
-          if (excludedKeys.indexOf(key) === -1) sources.push(source[key])
-        })
-      }
-      collectItems(this.allMenuItems)
-      collectItems(this.data.farmCrops)
-      collectItems(this.data.flowerTypes)
-      collectItems(this.data.flowerInventoryList)
-      collectItems(this.data.flowerPlots, 'flowerImage')
-      collectObject(this.data.homeImages, ['timeSlot'])
-      collectObject(this.data.letterImages, ['handwritingFont'])
-      collectObject(this.data.menuImages)
-      collectObject(this.data.farmImages)
-      collectObject(this.data.flowerImages)
-      this.prefetchImageUrls(sources)
-    }, 500)
-  },
-
-  // 当前页面关键图优先预取，首页出现后继续在后台预取全部图片。
+  // 当前页面关键图优先预取；其余图片由常驻预加载组件统一下载并解码。
   prefetchActiveTabImages(activeTab) {
     const sources = []
     if (activeTab === 'home') {
@@ -1163,7 +1148,6 @@ Page({
       sources.push(images.pageBg, images.hero, images.garden)
     }
     this.prefetchImageUrls(sources)
-    if (activeTab === 'home') this.schedulePrefetchAllImages()
   },
 
   onShow() {
@@ -1213,7 +1197,6 @@ Page({
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
-    if (this.prefetchAllImagesTimer) { clearTimeout(this.prefetchAllImagesTimer); this.prefetchAllImagesTimer = null }
     this.clearAnniversaryFlipTimer()
     this.stopFarmTimer()
     this.flushCloudSyncs()
@@ -1224,7 +1207,6 @@ Page({
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
-    if (this.prefetchAllImagesTimer) { clearTimeout(this.prefetchAllImagesTimer); this.prefetchAllImagesTimer = null }
     this.clearAnniversaryFlipTimer()
     this.stopFarmTimer()
     this.flushCloudSyncs()
@@ -1322,7 +1304,7 @@ Page({
     const farmView = getFarmView(data.farm, this.data.selectedFarmCrop)
     const flowerView = getFlowerView(data.flower, this.data.selectedFlowerType)
     const customMenuItems = Array.isArray(data.menus) ? data.menus.map(normalizeCustomMenuItem).slice(0, CUSTOM_MENU_LIMIT) : []
-    const menuItemsForView = getAllMenuItems(customMenuItems)
+    const menuItemsForView = applyImageCache(getAllMenuItems(customMenuItems), this.imageUrlCache || {})
     const cartView = getCartView(cart, menuItemsForView)
     const todoView = getTodoView(todos, this.data.todoFilter)
     const wishView = getWishView(wishes)
@@ -1342,9 +1324,10 @@ Page({
       Object.assign(update, {
         customMenuItems,
         customMenuDisplayItems: applyImageCache(customMenuItems, this.imageUrlCache || {}),
-        recommendedItems: getRecommendedMenuItems(menuItemsForView),
-        bannerItems: getBannerItems(menuItemsForView),
-        filteredItems: getFilteredMenuItems(menuItemsForView, this.data.currentCategory, this.data.searchKeyword)
+        recommendedItems: applyImageCache(getRecommendedMenuItems(menuItemsForView), this.imageUrlCache || {}),
+        bannerItems: applyImageCache(getBannerItems(menuItemsForView), this.imageUrlCache || {}),
+        filteredItems: applyImageCache(getFilteredMenuItems(menuItemsForView, this.data.currentCategory, this.data.searchKeyword), this.imageUrlCache || {}),
+        menuDisplayItems: getMenuDisplayItems(menuItemsForView, this.data.currentCategory, this.data.searchKeyword)
       })
     }
     if (cartChanged || menusChanged) {
@@ -1440,7 +1423,7 @@ Page({
 
   commitCustomMenuItems(customMenuItems, options = {}) {
     const normalizedMenuItems = customMenuItems.map(normalizeCustomMenuItem).slice(0, CUSTOM_MENU_LIMIT)
-    const allMenuItems = getAllMenuItems(normalizedMenuItems)
+    const allMenuItems = applyImageCache(getAllMenuItems(normalizedMenuItems), this.imageUrlCache || {})
     const cart = options.cart || this.data.cart
     const cartView = getCartView(cart, allMenuItems)
     this.allMenuItems = allMenuItems
@@ -1448,9 +1431,10 @@ Page({
     const update = Object.assign({
       customMenuItems: normalizedMenuItems,
       customMenuDisplayItems: applyImageCache(normalizedMenuItems, this.imageUrlCache || {}),
-      recommendedItems: getRecommendedMenuItems(allMenuItems),
-      bannerItems: getBannerItems(allMenuItems),
-      filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
+      recommendedItems: applyImageCache(getRecommendedMenuItems(allMenuItems), this.imageUrlCache || {}),
+      bannerItems: applyImageCache(getBannerItems(allMenuItems), this.imageUrlCache || {}),
+      filteredItems: applyImageCache(getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword), this.imageUrlCache || {}),
+      menuDisplayItems: getMenuDisplayItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
       cartItems: cartView.cartItems,
       cartCount: cartView.cartCount
     }, options.extraData || {})
@@ -1718,7 +1702,11 @@ Page({
     this.setData({ searchKeyword })
     if (this.searchTimer) clearTimeout(this.searchTimer)
     this.searchTimer = setTimeout(() => {
-      this.setData({ filteredItems: getFilteredMenuItems(this.allMenuItems, this.data.currentCategory, this.data.searchKeyword) })
+      this.setData({
+        filteredItems: getFilteredMenuItems(this.allMenuItems, this.data.currentCategory, this.data.searchKeyword),
+        menuDisplayItems: getMenuDisplayItems(this.allMenuItems, this.data.currentCategory, this.data.searchKeyword),
+        menuMotion: this.data.menuMotion === 'a' ? 'b' : 'a'
+      })
       this.searchTimer = null
     }, SEARCH_DEBOUNCE_MS)
   },
@@ -1733,7 +1721,9 @@ Page({
     const update = Object.assign({
       currentCategory,
       searchKeyword,
-      filteredItems: getFilteredMenuItems(this.allMenuItems, currentCategory, searchKeyword)
+      filteredItems: getFilteredMenuItems(this.allMenuItems, currentCategory, searchKeyword),
+      menuDisplayItems: getMenuDisplayItems(this.allMenuItems, currentCategory, searchKeyword),
+      menuMotion: this.data.menuMotion === 'a' ? 'b' : 'a'
     }, extraData)
     if (extraData.activeTab) update[`visitedTabs.${extraData.activeTab}`] = true
     this.setData(update, () => this.prefetchActiveTabImages(this.data.activeTab))
@@ -3154,7 +3144,7 @@ Page({
         const cart = {}
         const orders = []
         const customMenuItems = []
-        const allMenuItems = getAllMenuItems(customMenuItems)
+        const allMenuItems = applyImageCache(getAllMenuItems(customMenuItems), this.imageUrlCache || {})
         const cartView = getCartView(cart, allMenuItems)
         const todoView = getTodoView(DEFAULT_TODOS, this.data.todoFilter)
         const wishView = getWishView([])
@@ -3167,9 +3157,10 @@ Page({
           activeTab: 'home',
           customMenuItems,
           customMenuDisplayItems: customMenuItems,
-          recommendedItems: getRecommendedMenuItems(allMenuItems),
-          bannerItems: getBannerItems(allMenuItems),
-          filteredItems: getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
+          recommendedItems: applyImageCache(getRecommendedMenuItems(allMenuItems), this.imageUrlCache || {}),
+          bannerItems: applyImageCache(getBannerItems(allMenuItems), this.imageUrlCache || {}),
+          filteredItems: applyImageCache(getFilteredMenuItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword), this.imageUrlCache || {}),
+          menuDisplayItems: getMenuDisplayItems(allMenuItems, this.data.currentCategory, this.data.searchKeyword),
           cart,
           cartItems: cartView.cartItems,
           cartCount: cartView.cartCount,
