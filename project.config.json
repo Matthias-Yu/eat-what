@@ -41,6 +41,10 @@
       },
       {
         "type": "folder",
+        "value": "assets/todo"
+      },
+      {
+        "type": "folder",
         "value": "assets/font"
       }
     ],

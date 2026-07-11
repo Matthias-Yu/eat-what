@@ -40,9 +40,11 @@ const LETTER_IMAGES = {
   paperTexture: LETTER_IMG_BASE + 'letter-paper-v2.jpg',
   handwritingFont: LETTER_FONT_FILE
 }
-const MENU_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/menu/'
 const MENU_IMAGES = {
-  pageBg: MENU_IMG_BASE + 'menu-page-bg.jpg'
+  pageBg: 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/menu/menu-page-bg-v2.jpg'
+}
+const TODO_IMAGES = {
+  pageBg: 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/todo/todo-page-bg.jpg'
 }
 const WISHLIST_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/wishlist/'
 const WISHLIST_IMAGES = {
@@ -792,8 +794,8 @@ function isSameList(currentList, nextList) {
 Page({
   data: {
     activeTab: 'home',
-    visitedTabs: { home: true, menu: true, wishlist: false, farm: false, flower: false, todo: false, profile: false },
-    preloadImageUrls: [],
+    // 非首屏页面首次进入时再创建，避免启动阶段同时解码整份菜单图片。
+    visitedTabs: { home: true, menu: false, wishlist: false, farm: false, flower: false, todo: false, profile: false },
     menuMotion: 'a',
     scrollTop: 0,
     dateLabel: '',
@@ -844,6 +846,7 @@ Page({
     homeImages: applyImageCacheToObject(getHomeImages(), INITIAL_IMAGE_URL_CACHE),
     letterImages: applyImageCacheToObject(LETTER_IMAGES, INITIAL_IMAGE_URL_CACHE),
     menuImages: applyImageCacheToObject(MENU_IMAGES, INITIAL_IMAGE_URL_CACHE),
+    todoImages: TODO_IMAGES,
     wishlistImages: applyImageCacheToObject(WISHLIST_IMAGES, INITIAL_IMAGE_URL_CACHE),
     farmImages: applyImageCacheToObject(FARM_IMAGES, INITIAL_IMAGE_URL_CACHE),
     farmCrops: applyImageCache(FARM_CROPS, INITIAL_IMAGE_URL_CACHE),
@@ -1026,6 +1029,7 @@ Page({
     collectValues(HOME_IMAGES)
     collectValues(LETTER_IMAGES)
     collectValues(MENU_IMAGES)
+    collectValues(TODO_IMAGES)
     collectValues(WISHLIST_IMAGES)
     collectValues(FARM_IMAGES)
     collectValues(FLOWER_IMAGES)
@@ -1072,6 +1076,8 @@ Page({
     if (letterImages !== this.data.letterImages) update.letterImages = letterImages
     const menuImages = applyImageCacheToObject(this.data.menuImages, cache)
     if (menuImages !== this.data.menuImages) update.menuImages = menuImages
+    const todoImages = applyImageCacheToObject(this.data.todoImages, cache)
+    if (todoImages !== this.data.todoImages) update.todoImages = todoImages
     const wishlistImages = applyImageCacheToObject(this.data.wishlistImages, cache)
     if (wishlistImages !== this.data.wishlistImages) update.wishlistImages = wishlistImages
     const farmImages = applyImageCacheToObject(this.data.farmImages, cache)
@@ -1086,13 +1092,6 @@ Page({
     if (flowerInventoryList !== this.data.flowerInventoryList) update.flowerInventoryList = flowerInventoryList
     const flowerPlots = applyFlowerPlotImageCache(this.data.flowerPlots, cache)
     if (flowerPlots !== this.data.flowerPlots) update.flowerPlots = flowerPlots
-    const preloadImageUrls = [...new Set(Object.keys(cache)
-      .filter((fileID) => !/\.(ttf|otf|woff2?)$/i.test(fileID))
-      .map((fileID) => cache[fileID] && cache[fileID].url)
-      .filter((url) => typeof url === 'string' && /^https?:\/\//.test(url)))]
-    if (preloadImageUrls.join('|') !== (this.data.preloadImageUrls || []).join('|')) {
-      update.preloadImageUrls = preloadImageUrls
-    }
     const finish = () => {
       if (this.data.showLetterComposer || this.data.showLetterViewer) this.loadLetterHandwritingFont()
       this.prefetchActiveTabImages(this.data.activeTab)
@@ -1135,7 +1134,7 @@ Page({
     })
   },
 
-  // 当前页面关键图优先预取；其余图片由常驻预加载组件统一下载并解码。
+  // 只预取当前页面的关键图，避免全量图片争抢首屏网络和解码资源。
   prefetchActiveTabImages(activeTab) {
     const sources = []
     if (activeTab === 'home') {
@@ -1152,6 +1151,8 @@ Page({
     } else if (activeTab === 'wishlist') {
       const images = this.data.wishlistImages || {}
       sources.push(images.pageBg, images.banner)
+    } else if (activeTab === 'todo') {
+      sources.push(this.data.todoImages && this.data.todoImages.pageBg)
     } else if (activeTab === 'farm') {
       const images = this.data.farmImages || {}
       sources.push(images.pageBg, images.hero, images.panelBg, images.field)
