@@ -837,6 +837,7 @@ Page({
   data: {
     activeTab: 'home',
     imagesBooting: true,
+    tabImageReady: { home: false, menu: false, todo: false, wishlist: false, farm: false, flower: false, profile: true },
     tabPreloadUrls: [],
     // 非首屏页面首次进入时再创建，避免启动阶段同时解码整份菜单图片。
     visitedTabs: { home: true, menu: false, wishlist: false, farm: false, flower: false, todo: false, profile: false },
@@ -1120,6 +1121,22 @@ Page({
     })))
   },
 
+  onPageBackgroundSettled(event) {
+    const tab = event.currentTarget.dataset.tab
+    const imageGroups = {
+      home: this.data.homeImages,
+      menu: this.data.menuImages,
+      todo: this.data.todoImages,
+      wishlist: this.data.wishlistImages,
+      farm: this.data.farmImages,
+      flower: this.data.flowerImages
+    }
+    const source = imageGroups[tab] && imageGroups[tab].pageBg
+    // cloud:// 只是解析前的中间态，必须等稳定的 https/wxfile 地址加载完成。
+    if (!source || source.indexOf('cloud://') === 0) return
+    if (!this.data.tabImageReady[tab]) this.setData({ [`tabImageReady.${tab}`]: true })
+  },
+
   decodeInitialImages(cache) {
     return this.decodeImageSources(this.getInitialImageSources(cache))
   },
@@ -1306,7 +1323,10 @@ Page({
     const update = {}
     if (this.data.dateLabel !== dateLabel) update.dateLabel = dateLabel
     if (this.data.greeting.text !== greeting.text || this.data.greeting.icon !== greeting.icon) update.greeting = greeting
-    if (!this.data.homeImages || this.data.homeImages.timeSlot !== homeImages.timeSlot) update.homeImages = homeImages
+    if (!this.data.homeImages || this.data.homeImages.timeSlot !== homeImages.timeSlot) {
+      update.homeImages = homeImages
+      update['tabImageReady.home'] = false
+    }
     if (this.data.anniversary) {
       const anniversaryDays = getAnniversaryDays(this.data.anniversary.date)
       if (anniversaryDays !== this.data.anniversaryDays) {
