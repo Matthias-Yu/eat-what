@@ -21,31 +21,7 @@
     "ignore": [
       {
         "type": "folder",
-        "value": "assets/farm"
-      },
-      {
-        "type": "folder",
-        "value": "assets/flower"
-      },
-      {
-        "type": "folder",
-        "value": "assets/home"
-      },
-      {
-        "type": "folder",
-        "value": "assets/letter"
-      },
-      {
-        "type": "folder",
-        "value": "assets/menu"
-      },
-      {
-        "type": "folder",
-        "value": "assets/todo"
-      },
-      {
-        "type": "folder",
-        "value": "assets/font"
+        "value": "assets"
       }
     ],
     "include": []
