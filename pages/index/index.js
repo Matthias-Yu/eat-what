@@ -1133,7 +1133,8 @@ Page({
     }
     const source = imageGroups[tab] && imageGroups[tab].pageBg
     // cloud:// 只是解析前的中间态，必须等稳定的 https/wxfile 地址加载完成。
-    if (!source || source.indexOf('cloud://') === 0) return
+    if (!source) return
+    if (source.indexOf('cloud://') === 0 && this.imageResolving) return
     if (!this.data.tabImageReady[tab]) this.setData({ [`tabImageReady.${tab}`]: true })
   },
 
