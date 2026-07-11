@@ -1308,10 +1308,11 @@ page {
   font-size: 14rpx;
 }
 .progress-card {
-  padding: 28rpx;
-  border-radius: 31rpx;
-  background: linear-gradient(135deg, #fff0e6, #ffe4d7);
-  box-shadow: 0 10rpx 30rpx rgba(184, 104, 72, 0.09);
+  padding: 30rpx;
+  border: 1rpx solid rgba(171, 132, 104, 0.16);
+  border-radius: 28rpx;
+  background: rgba(255, 252, 245, 0.9);
+  box-shadow: none;
 }
 .progress-title {
   display: block;
@@ -1359,7 +1360,7 @@ page {
   gap: 8rpx;
   padding: 6rpx;
   border-radius: 24rpx;
-  background: #f5ede7;
+  background: rgba(246, 240, 233, 0.9);
 }
 .filter-tabs text {
   height: 51rpx;
@@ -1386,15 +1387,15 @@ page {
   gap: 16rpx;
 }
 .todo-item {
-  min-height: 142rpx;
+  min-height: 148rpx;
   display: flex;
   align-items: flex-start;
   padding: 24rpx 20rpx;
-  border: 1rpx solid #f0e5de;
-  border-radius: 27rpx;
+  border: 1rpx solid rgba(160, 127, 104, 0.16);
+  border-radius: 25rpx;
   box-sizing: border-box;
-  background: #fff;
-  box-shadow: 0 7rpx 22rpx rgba(75, 45, 34, 0.045);
+  background: rgba(255, 253, 248, 0.92);
+  box-shadow: none;
   transition: transform 0.15s ease;
 }
 .todo-item--pressed {
@@ -1461,12 +1462,13 @@ page {
   font-weight: 600;
 }
 .todo-more {
-  color: #8d7a72;
+  color: #b09e95;
   font-size: 27rpx;
   letter-spacing: 2rpx;
 }
 .todo-item.is-completed {
-  background: rgba(255, 255, 255, 0.58);
+  border-color: rgba(136, 164, 143, 0.13);
+  background: rgba(250, 252, 247, 0.68);
   box-shadow: none;
 }
 .todo-item.is-completed .todo-checkbox {
