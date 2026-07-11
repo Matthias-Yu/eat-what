@@ -107,6 +107,8 @@ const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
 const IMAGE_URL_TTL_MS = 90 * 60 * 1000
 const IMAGE_URL_EXPIRY_MARGIN_MS = 2 * 60 * 1000
 const PERSISTENT_IMAGE_EXPIRY = 4102444800000
+// 替换云端同名图片后递增此版本号，客户端会清理旧图片并重新缓存。
+const IMAGE_CACHE_VERSION = '2026.07.11.1'
 
 function getValidImageUrlCache(value, now = Date.now()) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
@@ -127,12 +129,40 @@ function getValidImageUrlCache(value, now = Date.now()) {
   return result
 }
 
-// 永久本地文件优先于会过期的 https 地址，二次启动无需再次刷新图片 URL。
-const INITIAL_IMAGE_URL_CACHE = Object.assign(
-  {},
-  getValidImageUrlCache(storage.read('imageUrlCache', {})),
-  getValidImageUrlCache(storage.read('persistentImageCache', {}))
-)
+function clearPersistentImageFiles(cache) {
+  if (!cache || typeof cache !== 'object') return
+  const fileSystem = wx.getFileSystemManager && wx.getFileSystemManager()
+  if (!fileSystem || !fileSystem.unlinkSync) return
+  Object.keys(cache).forEach((fileID) => {
+    const entry = cache[fileID]
+    if (!entry || typeof entry.url !== 'string' || entry.url.indexOf('wxfile://') !== 0) return
+    try {
+      fileSystem.unlinkSync(entry.url)
+    } catch (error) {
+      // 文件可能已被微信清理，无需额外处理。
+    }
+  })
+}
+
+function getInitialImageUrlCache() {
+  const storedVersion = storage.read('imageCacheVersion', '')
+  const persistentCache = storage.read('persistentImageCache', {})
+  if (storedVersion !== IMAGE_CACHE_VERSION) {
+    clearPersistentImageFiles(persistentCache)
+    storage.write('imageUrlCache', {})
+    storage.write('persistentImageCache', {})
+    storage.write('imageCacheVersion', IMAGE_CACHE_VERSION)
+    return {}
+  }
+  // 永久本地文件优先于会过期的 https 地址，二次启动无需刷新图片 URL。
+  return Object.assign(
+    {},
+    getValidImageUrlCache(storage.read('imageUrlCache', {})),
+    getValidImageUrlCache(persistentCache)
+  )
+}
+
+const INITIAL_IMAGE_URL_CACHE = getInitialImageUrlCache()
 const MENU_CATEGORIES = categories.filter((item) => item.id !== 'recommend')
 const MENU_CATEGORY_MAP = MENU_CATEGORIES.reduce((map, item) => {
   map[item.id] = item
@@ -807,6 +837,7 @@ Page({
   data: {
     activeTab: 'home',
     imagesBooting: true,
+    tabPreloadUrls: [],
     // 非首屏页面首次进入时再创建，避免启动阶段同时解码整份菜单图片。
     visitedTabs: { home: true, menu: false, wishlist: false, farm: false, flower: false, todo: false, profile: false },
     menuMotion: 'a',
@@ -1115,7 +1146,11 @@ Page({
       FLOWER_IMAGES.hero
     ]
     getRecommendedMenuItems(DECORATED_MENU_ITEMS).slice(0, 6).forEach((item) => fileIDs.push(item.image))
-    this.prefetchImageUrls(fileIDs.map((fileID) => cache[fileID] && cache[fileID].url))
+    const sources = [...new Set(fileIDs.map((fileID) => cache[fileID] && cache[fileID].url).filter(Boolean))]
+    this.prefetchImageUrls(sources)
+    if (sources.join('|') !== (this.data.tabPreloadUrls || []).join('|')) {
+      this.setData({ tabPreloadUrls: sources })
+    }
   },
 
   // 分两路低并发下载并保存到微信持久文件目录，避免抢占当前页面带宽。

@@ -11,7 +11,8 @@ const KEYS = {
   letters: 'home_menu_letters_v1',
   farm: 'home_menu_farm_v1',
   imageUrlCache: 'home_menu_image_url_cache_v1',
-  persistentImageCache: 'home_menu_persistent_image_cache_v1'
+  persistentImageCache: 'home_menu_persistent_image_cache_v1',
+  imageCacheVersion: 'home_menu_image_cache_version_v1'
 }
 
 function read(key, fallback) {

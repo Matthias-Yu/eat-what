@@ -60,6 +60,23 @@ page {
   50% { transform: scale(1.04); opacity: 1; }
 }
 
+.tab-image-preload-bank {
+  position: fixed;
+  top: -4rpx;
+  left: -4rpx;
+  z-index: -2;
+  width: 2rpx;
+  height: 2rpx;
+  overflow: hidden;
+  opacity: 0.01;
+  pointer-events: none;
+}
+
+.tab-image-preload-bank image {
+  width: 2rpx;
+  height: 2rpx;
+}
+
 .page {
   min-height: 100%;
   padding: 18rpx 30rpx calc(250rpx + env(safe-area-inset-bottom));
