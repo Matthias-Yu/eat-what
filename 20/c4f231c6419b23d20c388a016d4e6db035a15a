@@ -1,0 +1,31 @@
+docs/menu-cloud-assets.md
+  s_b2bfc21e5c592f::t_0184938003206c 6,12-15
+docs/todo-cloud-assets.md
+  s_b2bfc21e5c592f::t_059b4b51d42efe 1-13
+pages/index/index.js
+  s_b2bfc21e5c592f::t_5e70b0262cd97d 44-47,797-798,849,1032,1079-1080,1137,1154-1155
+pages/index/index.wxml
+  s_b2bfc21e5c592f::t_9d71c231583a32 3,219
+pages/index/index.wxss
+  s_b2bfc21e5c592f::t_c130759e03d556 51-52,64-65,90-94,1093,1095,1099-1100,1125-1128
+project.config.json
+  s_b2bfc21e5c592f::t_38363f62bb2563 42-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "20c4f231c6419b23d20c388a016d4e6db035a15a",
+  "prompts": {},
+  "sessions": {
+    "s_b2bfc21e5c592f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4f5d-3bbc-7561-90ef-9f3ffb717f5f",
+        "model": "unknown"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
