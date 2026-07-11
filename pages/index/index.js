@@ -44,6 +44,11 @@ const MENU_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ss
 const MENU_IMAGES = {
   pageBg: MENU_IMG_BASE + 'menu-page-bg.jpg'
 }
+const WISHLIST_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/wishlist/'
+const WISHLIST_IMAGES = {
+  pageBg: WISHLIST_IMG_BASE + 'wishlist-page-bg.jpg',
+  banner: WISHLIST_IMG_BASE + 'wishlist-banner.jpg'
+}
 const FARM_IMG_BASE = 'cloud://cloudbase-4gz52ssycf6b2383.636c-cloudbase-4gz52ssycf6b2383-1394602819/assets/farm/'
 const FARM_IMAGES = {
   pageBg: FARM_IMG_BASE + 'farm-page-clean-bg.jpg',
@@ -839,6 +844,7 @@ Page({
     homeImages: applyImageCacheToObject(getHomeImages(), INITIAL_IMAGE_URL_CACHE),
     letterImages: applyImageCacheToObject(LETTER_IMAGES, INITIAL_IMAGE_URL_CACHE),
     menuImages: applyImageCacheToObject(MENU_IMAGES, INITIAL_IMAGE_URL_CACHE),
+    wishlistImages: applyImageCacheToObject(WISHLIST_IMAGES, INITIAL_IMAGE_URL_CACHE),
     farmImages: applyImageCacheToObject(FARM_IMAGES, INITIAL_IMAGE_URL_CACHE),
     farmCrops: applyImageCache(FARM_CROPS, INITIAL_IMAGE_URL_CACHE),
     selectedFarmCrop: FARM_CROPS[0].id,
@@ -973,7 +979,7 @@ Page({
     this.resolveMenuImages()
   },
 
-  // 将菜品图片的 cloud:// fileID 换成 https 临时链接，避免 <image> 直接加载 cloud:// 时报 500。
+  // 将云图片的 cloud:// fileID 换成 https 临时链接，避免 <image> 直接加载 cloud:// 时报 500。
   // 借助 this.imageUrlCache 仅解析缺失/过期项，并用在途标志避免轮询与多入口并发重复请求。
   async resolveMenuImages() {
     if (!wx.cloud) return
@@ -1020,6 +1026,7 @@ Page({
     collectValues(HOME_IMAGES)
     collectValues(LETTER_IMAGES)
     collectValues(MENU_IMAGES)
+    collectValues(WISHLIST_IMAGES)
     collectValues(FARM_IMAGES)
     collectValues(FLOWER_IMAGES)
     if (!pending.size || this.imageResolving) return
@@ -1034,7 +1041,7 @@ Page({
       storage.write('imageUrlCache', getValidImageUrlCache(cache))
       this.applyResolvedImages()
     } catch (error) {
-      console.warn('菜品图片地址解析失败', error)
+      console.warn('云图片地址解析失败', error)
     } finally {
       this.imageResolving = false
     }
@@ -1065,6 +1072,8 @@ Page({
     if (letterImages !== this.data.letterImages) update.letterImages = letterImages
     const menuImages = applyImageCacheToObject(this.data.menuImages, cache)
     if (menuImages !== this.data.menuImages) update.menuImages = menuImages
+    const wishlistImages = applyImageCacheToObject(this.data.wishlistImages, cache)
+    if (wishlistImages !== this.data.wishlistImages) update.wishlistImages = wishlistImages
     const farmImages = applyImageCacheToObject(this.data.farmImages, cache)
     if (farmImages !== this.data.farmImages) update.farmImages = farmImages
     const farmCrops = applyImageCache(this.data.farmCrops, cache)
@@ -1140,6 +1149,9 @@ Page({
     } else if (activeTab === 'menu') {
       sources.push(this.data.menuImages && this.data.menuImages.pageBg)
       ;(this.data.filteredItems || []).slice(0, 6).forEach((item) => sources.push(item.image))
+    } else if (activeTab === 'wishlist') {
+      const images = this.data.wishlistImages || {}
+      sources.push(images.pageBg, images.banner)
     } else if (activeTab === 'farm') {
       const images = this.data.farmImages || {}
       sources.push(images.pageBg, images.hero, images.panelBg, images.field)

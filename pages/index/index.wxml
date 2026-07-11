@@ -1,6 +1,6 @@
 <image class="home-full-bg {{activeTab === 'home' ? 'home-full-bg--active' : ''}}" src="{{homeImages.pageBg}}" mode="aspectFill"></image>
 <image wx:if="{{visitedTabs.menu}}" class="menu-full-bg {{activeTab === 'menu' ? 'menu-full-bg--active' : ''}}" src="{{menuImages.pageBg}}" mode="aspectFill"></image>
-<image wx:if="{{visitedTabs.wishlist}}" class="wishlist-full-bg {{activeTab === 'wishlist' ? 'wishlist-full-bg--active' : ''}}" src="/assets/wishlist/wishlist-page-bg.jpg" mode="aspectFill"></image>
+<image wx:if="{{visitedTabs.wishlist}}" class="wishlist-full-bg {{activeTab === 'wishlist' ? 'wishlist-full-bg--active' : ''}}" src="{{wishlistImages.pageBg}}" mode="aspectFill"></image>
 <image wx:if="{{visitedTabs.farm}}" class="farm-full-bg {{activeTab === 'farm' ? 'farm-full-bg--active' : ''}}" src="{{farmImages.pageBg}}" mode="aspectFill"></image>
 <image wx:if="{{visitedTabs.flower}}" class="flower-full-bg {{activeTab === 'flower' ? 'flower-full-bg--active' : ''}}" src="{{flowerImages.pageBg}}" mode="aspectFill"></image>
 <navigation-bar title="" back="{{false}}" color="#2f3c29" background="transparent"></navigation-bar>
@@ -243,7 +243,7 @@
   <!-- 心愿单 -->
   <view wx:if="{{visitedTabs.wishlist}}" hidden="{{activeTab !== 'wishlist'}}" class="page wishlist-page stagger">
     <view class="wishlist-hero-card">
-      <image class="wishlist-hero-image" src="/assets/wishlist/wishlist-banner.jpg" mode="aspectFill"></image>
+      <image class="wishlist-hero-image" src="{{wishlistImages.banner}}" mode="aspectFill"></image>
       <view class="wishlist-hero-shade"></view>
       <view class="wishlist-hero-copy">
         <text class="page-kicker">OUR WISH LIST</text>
