@@ -26,6 +26,40 @@ page {
   height: calc(100vh - 44px - env(safe-area-inset-top));
 }
 
+.image-boot-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18rpx;
+  background: #fffaf2;
+  color: #8d7464;
+  font-size: 24rpx;
+  letter-spacing: 3rpx;
+}
+
+.image-boot-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 78rpx;
+  height: 78rpx;
+  border: 2rpx solid rgba(160, 119, 88, 0.22);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.72);
+  color: #d68468;
+  font-size: 40rpx;
+  animation: image-boot-breathe 1.3s ease-in-out infinite;
+}
+
+@keyframes image-boot-breathe {
+  0%, 100% { transform: scale(0.96); opacity: 0.66; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+
 .page {
   min-height: 100%;
   padding: 18rpx 30rpx calc(250rpx + env(safe-area-inset-bottom));

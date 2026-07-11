@@ -106,21 +106,33 @@ const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
 // 云存储临时链接约 2 小时过期，留出裕量按 90 分钟刷新
 const IMAGE_URL_TTL_MS = 90 * 60 * 1000
 const IMAGE_URL_EXPIRY_MARGIN_MS = 2 * 60 * 1000
+const PERSISTENT_IMAGE_EXPIRY = 4102444800000
 
 function getValidImageUrlCache(value, now = Date.now()) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   const result = {}
   Object.keys(value).forEach((fileID) => {
     const entry = value[fileID]
-    if (!entry || typeof entry.url !== 'string' || !/^https?:\/\//.test(entry.url)) return
+    if (!entry || typeof entry.url !== 'string' || !/^(https?:\/\/|wxfile:\/\/)/.test(entry.url)) return
     if (Number(entry.expireAt) <= now + IMAGE_URL_EXPIRY_MARGIN_MS) return
+    if (entry.url.indexOf('wxfile://') === 0) {
+      try {
+        wx.getFileSystemManager().accessSync(entry.url)
+      } catch (error) {
+        return
+      }
+    }
     result[fileID] = { url: entry.url, expireAt: Number(entry.expireAt) }
   })
   return result
 }
 
-// 模块初始化阶段先读缓存，让首屏直接拿到上次的稳定 https 地址。
-const INITIAL_IMAGE_URL_CACHE = getValidImageUrlCache(storage.read('imageUrlCache', {}))
+// 永久本地文件优先于会过期的 https 地址，二次启动无需再次刷新图片 URL。
+const INITIAL_IMAGE_URL_CACHE = Object.assign(
+  {},
+  getValidImageUrlCache(storage.read('imageUrlCache', {})),
+  getValidImageUrlCache(storage.read('persistentImageCache', {}))
+)
 const MENU_CATEGORIES = categories.filter((item) => item.id !== 'recommend')
 const MENU_CATEGORY_MAP = MENU_CATEGORIES.reduce((map, item) => {
   map[item.id] = item
@@ -794,6 +806,7 @@ function isSameList(currentList, nextList) {
 Page({
   data: {
     activeTab: 'home',
+    imagesBooting: true,
     // 非首屏页面首次进入时再创建，避免启动阶段同时解码整份菜单图片。
     visitedTabs: { home: true, menu: false, wishlist: false, farm: false, flower: false, todo: false, profile: false },
     menuMotion: 'a',
@@ -1033,7 +1046,10 @@ Page({
     collectValues(WISHLIST_IMAGES)
     collectValues(FARM_IMAGES)
     collectValues(FLOWER_IMAGES)
-    if (!pending.size || this.imageResolving) return
+    if (!pending.size || this.imageResolving) {
+      if (!this.imageResolving) this.finishInitialImageBoot()
+      return
+    }
 
     this.imageResolving = true
     try {
@@ -1043,12 +1059,97 @@ Page({
         if (f.fileID && f.tempFileURL) cache[f.fileID] = { url: f.tempFileURL, expireAt }
       })
       storage.write('imageUrlCache', getValidImageUrlCache(cache))
+      await this.decodeInitialImages(cache)
       this.applyResolvedImages()
+      this.setData({ imagesBooting: false })
+      this.prefetchAllTabEntrances(cache)
+      setTimeout(() => this.persistCloudImages(cache), 1200)
     } catch (error) {
       console.warn('云图片地址解析失败', error)
     } finally {
       this.imageResolving = false
+      if (this.data.imagesBooting) this.finishInitialImageBoot()
     }
+  },
+
+  getInitialImageSources(cache) {
+    const fileIDs = [
+      getHomeImages().pageBg,
+      FARM_IMAGES.entry,
+      FLOWER_IMAGES.entry
+    ]
+    getBannerItems(DECORATED_MENU_ITEMS).slice(0, 2).forEach((item) => fileIDs.push(item.image))
+    return fileIDs.map((fileID) => cache[fileID] && cache[fileID].url).filter(Boolean)
+  },
+
+  decodeImageSources(sources) {
+    if (!wx.getImageInfo) return Promise.resolve()
+    return Promise.all((sources || []).map((src) => new Promise((resolve) => {
+      wx.getImageInfo({ src, complete: resolve })
+    })))
+  },
+
+  decodeInitialImages(cache) {
+    return this.decodeImageSources(this.getInitialImageSources(cache))
+  },
+
+  async finishInitialImageBoot() {
+    if (!this.data.imagesBooting) return
+    await this.decodeInitialImages(this.imageUrlCache || {})
+    this.applyResolvedImages()
+    this.setData({ imagesBooting: false })
+    this.prefetchAllTabEntrances(this.imageUrlCache || {})
+    setTimeout(() => this.persistCloudImages(this.imageUrlCache || {}), 1200)
+  },
+
+  // 空闲时预解码各 Tab 的背景和首屏菜品，切换时 image 通常已命中微信缓存。
+  prefetchAllTabEntrances(cache) {
+    const fileIDs = [
+      MENU_IMAGES.pageBg,
+      TODO_IMAGES.pageBg,
+      WISHLIST_IMAGES.pageBg,
+      WISHLIST_IMAGES.banner,
+      FARM_IMAGES.pageBg,
+      FARM_IMAGES.hero,
+      FLOWER_IMAGES.pageBg,
+      FLOWER_IMAGES.hero
+    ]
+    getRecommendedMenuItems(DECORATED_MENU_ITEMS).slice(0, 6).forEach((item) => fileIDs.push(item.image))
+    this.prefetchImageUrls(fileIDs.map((fileID) => cache[fileID] && cache[fileID].url))
+  },
+
+  // 分两路低并发下载并保存到微信持久文件目录，避免抢占当前页面带宽。
+  async persistCloudImages(cache) {
+    if (!wx.downloadFile || !wx.saveFile || this.persistingImages) return
+    const saved = getValidImageUrlCache(storage.read('persistentImageCache', {}))
+    const queue = Object.keys(cache).filter((fileID) => {
+      const entry = cache[fileID]
+      return !saved[fileID] && entry && /^https?:\/\//.test(entry.url) && !/\.(ttf|otf|woff2?)$/i.test(fileID)
+    })
+    if (!queue.length) return
+    this.persistingImages = true
+    const saveOne = (fileID) => new Promise((resolve) => {
+      wx.downloadFile({
+        url: cache[fileID].url,
+        success: (download) => {
+          if (download.statusCode !== 200 || !download.tempFilePath) return resolve()
+          wx.saveFile({
+            tempFilePath: download.tempFilePath,
+            success: (result) => {
+              saved[fileID] = { url: result.savedFilePath, expireAt: PERSISTENT_IMAGE_EXPIRY }
+              storage.write('persistentImageCache', saved)
+            },
+            complete: resolve
+          })
+        },
+        fail: resolve
+      })
+    })
+    const worker = async () => {
+      while (queue.length) await saveOne(queue.shift())
+    }
+    await Promise.all([worker(), worker()])
+    this.persistingImages = false
   },
 
   // 把缓存中的链接套用到内存数据与视图字段，仅在发生替换时才 setData
@@ -1124,7 +1225,7 @@ Page({
   prefetchImageUrls(sources) {
     if (!wx.getImageInfo) return
     if (!this.prefetchedImageUrls) this.prefetchedImageUrls = new Set()
-    ;(sources || []).filter((url) => typeof url === 'string' && /^https?:\/\//.test(url)).forEach((url) => {
+    ;(sources || []).filter((url) => typeof url === 'string' && /^(https?:\/\/|wxfile:\/\/)/.test(url)).forEach((url) => {
       if (this.prefetchedImageUrls.has(url)) return
       this.prefetchedImageUrls.add(url)
       wx.getImageInfo({

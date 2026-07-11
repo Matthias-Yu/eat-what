@@ -6,6 +6,11 @@
 <image wx:if="{{visitedTabs.flower}}" class="flower-full-bg {{activeTab === 'flower' ? 'flower-full-bg--active' : ''}}" src="{{flowerImages.pageBg}}" mode="aspectFill"></image>
 <navigation-bar title="" back="{{false}}" color="#2f3c29" background="transparent"></navigation-bar>
 
+<view wx:if="{{imagesBooting}}" class="image-boot-screen">
+  <view class="image-boot-mark">⌂</view>
+  <text>正在布置小家…</text>
+</view>
+
 <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" scroll-top="{{scrollTop}}" scroll-with-animation="{{false}}">
   <!-- 首页 -->
   <view wx:if="{{visitedTabs.home}}" hidden="{{activeTab !== 'home'}}" class="page home-page stagger">
