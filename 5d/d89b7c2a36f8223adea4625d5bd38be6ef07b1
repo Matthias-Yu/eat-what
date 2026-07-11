@@ -1,0 +1,21 @@
+pages/index/index.js
+  s_b2bfc21e5c592f::t_36a29d556b6859 1096,1148-1149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5dd89b7c2a36f8223adea4625d5bd38be6ef07b1",
+  "prompts": {},
+  "sessions": {
+    "s_b2bfc21e5c592f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4f5d-3bbc-7561-90ef-9f3ffb717f5f",
+        "model": "unknown"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
