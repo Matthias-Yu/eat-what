@@ -1093,7 +1093,7 @@ Page({
       storage.write('imageUrlCache', getValidImageUrlCache(cache))
       await this.decodeInitialImages(cache)
       this.applyResolvedImages()
-      this.setData({ imagesBooting: false })
+      this.setData({ imagesBooting: false, 'tabImageReady.home': true })
       this.prefetchAllTabEntrances(cache)
       setTimeout(() => this.persistCloudImages(cache), 1200)
     } catch (error) {
@@ -1145,7 +1145,8 @@ Page({
     if (!this.data.imagesBooting) return
     await this.decodeInitialImages(this.imageUrlCache || {})
     this.applyResolvedImages()
-    this.setData({ imagesBooting: false })
+    // getImageInfo 已完成即代表首页关键图已进入缓存；不再依赖 image 重复触发 bindload。
+    this.setData({ imagesBooting: false, 'tabImageReady.home': true })
     this.prefetchAllTabEntrances(this.imageUrlCache || {})
     setTimeout(() => this.persistCloudImages(this.imageUrlCache || {}), 1200)
   },
