@@ -1051,9 +1051,8 @@ Page({
         if (f.fileID && f.tempFileURL) cache[f.fileID] = { url: f.tempFileURL, expireAt }
       })
       storage.write('imageUrlCache', getValidImageUrlCache(cache))
-      await this.persistCloudImages(cache, true)
       this.applyResolvedImages()
-      this.beginFullImagePreload(cache)
+      this.beginHomeImagePreload(cache)
     } catch (error) {
       console.warn('云图片地址解析失败', error)
     } finally {
@@ -1102,17 +1101,32 @@ Page({
 
   async finishInitialImageBoot() {
     if (!this.data.imagesBooting || this.imagePreloadStarted) return
-    await this.persistCloudImages(this.imageUrlCache || {}, true)
     this.applyResolvedImages()
-    this.beginFullImagePreload(this.imageUrlCache || {})
+    this.beginHomeImagePreload(this.imageUrlCache || {})
   },
 
-  // 所有业务图片都通过真实 image 节点下载/解码；全部结束后才关闭 loading。
-  beginFullImagePreload(cache) {
-    const sources = [...new Set(Object.keys(cache || {})
-      .filter((fileID) => !/\.(ttf|otf|woff2?)$/i.test(fileID))
-      .map((fileID) => cache[fileID] && cache[fileID].url)
+  getHomePreloadFileIDs() {
+    const fileIDs = [
+      getHomeImages().pageBg,
+      FARM_IMAGES.entry,
+      FLOWER_IMAGES.entry
+    ]
+    if (this.data.latestLetter) fileIDs.push(LETTER_IMAGES.envelopeClosed)
+    ;(this.data.bannerItems || []).slice(0, 2).forEach((item) => fileIDs.push(item.image))
+    ;(this.data.recommendedItems || []).forEach((item) => fileIDs.push(item.image))
+    return [...new Set(fileIDs.filter(Boolean))]
+  },
+
+  getPreloadSources(cache, fileIDs) {
+    return [...new Set((fileIDs || [])
+      .map((fileID) => /^(https?:\/\/|wxfile:\/\/)/.test(fileID) ? fileID : (cache[fileID] && cache[fileID].url))
       .filter((url) => typeof url === 'string' && /^(https?:\/\/|wxfile:\/\/)/.test(url)))]
+  },
+
+  // Loading 只阻塞首页资源；其余 Tab 在进入首页后后台加载。
+  beginHomeImagePreload(cache) {
+    this.fullImageCacheForPreload = cache
+    const sources = this.getPreloadSources(cache, this.getHomePreloadFileIDs())
     this.preloadedImageIndexes = new Set()
     this.imagePreloadStarted = true
     clearTimeout(this.imagePreloadWatchdog)
@@ -1147,8 +1161,21 @@ Page({
     this.setData({
       imagesBooting: false,
       imagePreloadProgress: 100,
-      tabImageReady: { home: true, menu: true, todo: true, wishlist: true, farm: true, flower: true, profile: true }
+      tabImageReady: { home: true, menu: false, todo: false, wishlist: false, farm: false, flower: false, profile: true }
+    }, () => {
+      const cache = this.fullImageCacheForPreload || {}
+      this.beginBackgroundTabPreload(cache)
+      setTimeout(() => this.persistCloudImages(cache), 300)
     })
+  },
+
+  beginBackgroundTabPreload(cache) {
+    const homeFileIDs = new Set(this.getHomePreloadFileIDs())
+    const sources = [...new Set(Object.keys(cache || {})
+      .filter((fileID) => !homeFileIDs.has(fileID) && !/\.(ttf|otf|woff2?)$/i.test(fileID))
+      .map((fileID) => cache[fileID] && cache[fileID].url)
+      .filter((url) => typeof url === 'string' && /^(https?:\/\/|wxfile:\/\/)/.test(url)))]
+    this.setData({ tabPreloadUrls: sources })
   },
 
   // 分两路低并发下载并保存到微信持久文件目录，避免抢占当前页面带宽。

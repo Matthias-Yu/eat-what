@@ -14,7 +14,7 @@
     <text class="home-loader-spark home-loader-spark--one">✦</text>
     <text class="home-loader-spark home-loader-spark--two">✦</text>
   </view>
-  <text class="image-boot-copy">正在布置小家 {{imagePreloadProgress}}%</text>
+  <text class="image-boot-copy">正在加载首页 {{imagePreloadProgress}}%</text>
   <view class="image-boot-dots"><text></text><text></text><text></text></view>
 </view>
 
