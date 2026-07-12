@@ -1,5 +1,6 @@
 const { categories, menuItems } = require('../../data/menu')
 const storage = require('../../utils/storage')
+const imageCache = require('../../utils/image-cache')
 const dateUtil = require('../../utils/date')
 const cloudService = require('../../utils/cloud')
 
@@ -110,59 +111,8 @@ const PERSISTENT_IMAGE_EXPIRY = 4102444800000
 // 替换云端同名图片后递增此版本号，客户端会清理旧图片并重新缓存。
 const IMAGE_CACHE_VERSION = '2026.07.11.1'
 
-function getValidImageUrlCache(value, now = Date.now()) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
-  const result = {}
-  Object.keys(value).forEach((fileID) => {
-    const entry = value[fileID]
-    if (!entry || typeof entry.url !== 'string' || !/^(https?:\/\/|wxfile:\/\/)/.test(entry.url)) return
-    if (Number(entry.expireAt) <= now + IMAGE_URL_EXPIRY_MARGIN_MS) return
-    if (entry.url.indexOf('wxfile://') === 0) {
-      try {
-        wx.getFileSystemManager().accessSync(entry.url)
-      } catch (error) {
-        return
-      }
-    }
-    result[fileID] = { url: entry.url, expireAt: Number(entry.expireAt) }
-  })
-  return result
-}
-
-function clearPersistentImageFiles(cache) {
-  if (!cache || typeof cache !== 'object') return
-  const fileSystem = wx.getFileSystemManager && wx.getFileSystemManager()
-  if (!fileSystem || !fileSystem.unlinkSync) return
-  Object.keys(cache).forEach((fileID) => {
-    const entry = cache[fileID]
-    if (!entry || typeof entry.url !== 'string' || entry.url.indexOf('wxfile://') !== 0) return
-    try {
-      fileSystem.unlinkSync(entry.url)
-    } catch (error) {
-      // 文件可能已被微信清理，无需额外处理。
-    }
-  })
-}
-
-function getInitialImageUrlCache() {
-  const storedVersion = storage.read('imageCacheVersion', '')
-  const persistentCache = storage.read('persistentImageCache', {})
-  if (storedVersion !== IMAGE_CACHE_VERSION) {
-    clearPersistentImageFiles(persistentCache)
-    storage.write('imageUrlCache', {})
-    storage.write('persistentImageCache', {})
-    storage.write('imageCacheVersion', IMAGE_CACHE_VERSION)
-    return {}
-  }
-  // 永久本地文件优先于会过期的 https 地址，二次启动无需刷新图片 URL。
-  return Object.assign(
-    {},
-    getValidImageUrlCache(storage.read('imageUrlCache', {})),
-    getValidImageUrlCache(persistentCache)
-  )
-}
-
-const INITIAL_IMAGE_URL_CACHE = getInitialImageUrlCache()
+const getValidImageUrlCache = (value, now) => imageCache.getValid(value, IMAGE_URL_EXPIRY_MARGIN_MS, now)
+const INITIAL_IMAGE_URL_CACHE = imageCache.initialize(storage, IMAGE_CACHE_VERSION, IMAGE_URL_EXPIRY_MARGIN_MS)
 const MENU_CATEGORIES = categories.filter((item) => item.id !== 'recommend')
 const MENU_CATEGORY_MAP = MENU_CATEGORIES.reduce((map, item) => {
   map[item.id] = item
@@ -1031,7 +981,10 @@ Page({
   // 将云图片的 cloud:// fileID 换成 https 临时链接，避免 <image> 直接加载 cloud:// 时报 500。
   // 借助 this.imageUrlCache 仅解析缺失/过期项，并用在途标志避免轮询与多入口并发重复请求。
   async resolveMenuImages() {
-    if (!wx.cloud) return
+    if (!wx.cloud) {
+      this.finishFullImagePreload()
+      return
+    }
     if (!this.imageUrlCache) this.imageUrlCache = {}
     const cache = this.imageUrlCache
     const now = Date.now()
@@ -1098,10 +1051,9 @@ Page({
         if (f.fileID && f.tempFileURL) cache[f.fileID] = { url: f.tempFileURL, expireAt }
       })
       storage.write('imageUrlCache', getValidImageUrlCache(cache))
-      await this.decodeInitialImages(cache)
+      await this.persistCloudImages(cache, true)
       this.applyResolvedImages()
       this.beginFullImagePreload(cache)
-      setTimeout(() => this.persistCloudImages(cache), 1200)
     } catch (error) {
       console.warn('云图片地址解析失败', error)
     } finally {
@@ -1150,10 +1102,9 @@ Page({
 
   async finishInitialImageBoot() {
     if (!this.data.imagesBooting || this.imagePreloadStarted) return
-    await this.decodeInitialImages(this.imageUrlCache || {})
+    await this.persistCloudImages(this.imageUrlCache || {}, true)
     this.applyResolvedImages()
     this.beginFullImagePreload(this.imageUrlCache || {})
-    setTimeout(() => this.persistCloudImages(this.imageUrlCache || {}), 1200)
   },
 
   // 所有业务图片都通过真实 image 节点下载/解码；全部结束后才关闭 loading。
@@ -1164,6 +1115,11 @@ Page({
       .filter((url) => typeof url === 'string' && /^(https?:\/\/|wxfile:\/\/)/.test(url)))]
     this.preloadedImageIndexes = new Set()
     this.imagePreloadStarted = true
+    clearTimeout(this.imagePreloadWatchdog)
+    this.imagePreloadWatchdog = setTimeout(() => {
+      console.warn('图片预加载超时，已进入降级模式')
+      this.finishFullImagePreload()
+    }, 30000)
     if (!sources.length) {
       this.finishFullImagePreload()
       return
@@ -1177,7 +1133,8 @@ Page({
     this.preloadedImageIndexes.add(Number(event.currentTarget.dataset.index))
     const total = (this.data.tabPreloadUrls || []).length
     const progress = total ? Math.round(this.preloadedImageIndexes.size / total * 100) : 100
-    if (progress !== this.data.imagePreloadProgress) this.setData({ imagePreloadProgress: progress })
+    const displayProgress = progress >= 100 ? 100 : Math.floor(progress / 5) * 5
+    if (displayProgress !== this.data.imagePreloadProgress) this.setData({ imagePreloadProgress: displayProgress })
     if (this.preloadedImageIndexes.size >= total) {
       this.finishFullImagePreload()
     }
@@ -1185,6 +1142,8 @@ Page({
 
   finishFullImagePreload() {
     if (!this.data.imagesBooting) return
+    clearTimeout(this.imagePreloadWatchdog)
+    this.imagePreloadWatchdog = null
     this.setData({
       imagesBooting: false,
       imagePreloadProgress: 100,
@@ -1193,7 +1152,7 @@ Page({
   },
 
   // 分两路低并发下载并保存到微信持久文件目录，避免抢占当前页面带宽。
-  async persistCloudImages(cache) {
+  async persistCloudImages(cache, useLocalImmediately = false) {
     if (!wx.downloadFile || !wx.saveFile || this.persistingImages) return
     const saved = getValidImageUrlCache(storage.read('persistentImageCache', {}))
     const queue = Object.keys(cache).filter((fileID) => {
@@ -1203,26 +1162,35 @@ Page({
     if (!queue.length) return
     this.persistingImages = true
     const saveOne = (fileID) => new Promise((resolve) => {
+      let settled = false
+      const finish = () => {
+        if (settled) return
+        settled = true
+        clearTimeout(timeout)
+        resolve()
+      }
+      const timeout = setTimeout(finish, 12000)
       wx.downloadFile({
         url: cache[fileID].url,
         success: (download) => {
-          if (download.statusCode !== 200 || !download.tempFilePath) return resolve()
+          if (download.statusCode !== 200 || !download.tempFilePath) return finish()
           wx.saveFile({
             tempFilePath: download.tempFilePath,
             success: (result) => {
               saved[fileID] = { url: result.savedFilePath, expireAt: PERSISTENT_IMAGE_EXPIRY }
-              storage.write('persistentImageCache', saved)
+              if (useLocalImmediately) cache[fileID] = saved[fileID]
             },
-            complete: resolve
+            complete: finish
           })
         },
-        fail: resolve
+        fail: finish
       })
     })
     const worker = async () => {
       while (queue.length) await saveOne(queue.shift())
     }
     await Promise.all([worker(), worker()])
+    storage.write('persistentImageCache', saved)
     this.persistingImages = false
   },
 
@@ -1392,6 +1360,8 @@ Page({
   },
 
   cleanupPageTasks() {
+    clearTimeout(this.imagePreloadWatchdog)
+    this.imagePreloadWatchdog = null
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
     if (this.searchTimer) { clearTimeout(this.searchTimer); this.searchTimer = null }
@@ -1485,6 +1455,7 @@ Page({
   },
 
   applyCloudData(data) {
+    this.resourceVersions = data.resourceVersions && typeof data.resourceVersions === 'object' ? data.resourceVersions : {}
     const cart = data.cart || {}
     const todos = Array.isArray(data.todos) ? data.todos : []
     const orders = Array.isArray(data.orders) ? data.orders : []
@@ -1648,13 +1619,25 @@ Page({
   writeCloudResource(resource, value) {
     if (this.data.familyStatus !== 'active') return Promise.resolve()
     this.cloudWritePending = (this.cloudWritePending || 0) + 1
-    return cloudService.call('updateResource', { resource, value })
+    const version = Math.max(0, Number((this.resourceVersions || {})[resource]) || 0)
+    return cloudService.call('updateResource', { resource, value, version })
+      .then((result) => {
+        if (!this.resourceVersions) this.resourceVersions = {}
+        if (result && Number.isFinite(Number(result.version))) this.resourceVersions[resource] = Number(result.version)
+        return result
+      })
       .catch((error) => {
         console.warn(`同步 ${resource} 失败`, error)
-        wx.showToast({ title: `云端同步失败：${error.message || resource}`, icon: 'none' })
+        const conflict = String(error && error.message).includes('DATA_CONFLICT')
+        wx.showToast({ title: conflict ? '数据已被家人更新，正在刷新' : `云端同步失败：${error.message || resource}`, icon: 'none' })
+        if (conflict) this.cloudConflictPending = true
       })
       .finally(() => {
         this.cloudWritePending = Math.max(0, (this.cloudWritePending || 1) - 1)
+        if (this.cloudConflictPending && this.cloudWritePending === 0) {
+          this.cloudConflictPending = false
+          setTimeout(() => this.pullCloudData(), 0)
+        }
       })
   },
 
@@ -1695,7 +1678,7 @@ Page({
 
   startCloudPolling() {
     if (this.data.familyStatus !== 'active' || this.cloudPollTimer) return
-    this.cloudPollTimer = setInterval(() => this.pullCloudData(), 12000)
+    this.cloudPollTimer = setInterval(() => this.pullCloudData(), 30000)
   },
 
   stopCloudPolling() {

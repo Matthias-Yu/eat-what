@@ -5,7 +5,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 const db = cloud.database()
 const command = db.command
-const COLLECTIONS = ['family_users', 'family_households', 'family_data', 'family_visits']
+const COLLECTIONS = ['family_users', 'family_households', 'family_data', 'family_visits', 'family_ai_usage']
 let collectionsReady = false
 const RESOURCE_LIMITS = {
   todos: 500,
@@ -29,6 +29,8 @@ const GLM_PATH = '/api/paas/v4/chat/completions'
 const GLM_MODEL = process.env.GLM_MODEL || 'glm-5.2'
 const AI_MAX_HISTORY = 12
 const AI_MAX_CONTENT = 800
+const AI_DAILY_LIMIT = 50
+const AI_MIN_INTERVAL_MS = 3000
 const CATEGORY_TONE = {
   main: 'honey',
   dish: 'sunset',
@@ -118,6 +120,7 @@ function emptySharedData(householdId) {
     anniversary: null,
     messages: [],
     letters: [],
+    resourceVersions: {},
     updatedAt: db.serverDate()
   }
 }
@@ -275,18 +278,19 @@ async function getSharedData(openid) {
   }
   return success({
     openid,
-    cart: data.cart || {},
-    todos: Array.isArray(data.todos) ? data.todos : [],
-    orders: Array.isArray(data.orders) ? data.orders : [],
-    wishes: Array.isArray(data.wishes) ? data.wishes : [],
-    menus: Array.isArray(data.menus) ? data.menus : [],
+    cart: sanitizeResource('cart', data.cart || {}),
+    todos: sanitizeResource('todos', data.todos || []),
+    orders: sanitizeResource('orders', data.orders || []),
+    wishes: sanitizeResource('wishes', data.wishes || []),
+    menus: sanitizeResource('menus', data.menus || []),
     farm: sanitizeFarmState(data.farm),
     flower: sanitizeFlowerState(data.flower),
-    places: Array.isArray(data.places) ? data.places : [],
+    places: sanitizeResource('places', data.places || []),
     orderNotices: getVisibleOrderNotices(data, openid),
-    anniversary: data.anniversary || null,
-    messages: Array.isArray(data.messages) ? data.messages : [],
-    letters: Array.isArray(data.letters) ? data.letters : [],
+    anniversary: sanitizeResource('anniversary', data.anniversary || null),
+    messages: sanitizeResource('messages', data.messages || []),
+    letters: sanitizeResource('letters', data.letters || []),
+    resourceVersions: data.resourceVersions && typeof data.resourceVersions === 'object' ? data.resourceVersions : {},
     updatedAt: data.updatedAt || null
   })
 }
@@ -327,6 +331,64 @@ function sanitizeWishItem(item, index) {
     note: textSlice(source.note, 40),
     completed: !!source.completed,
     createdAt
+  }
+}
+
+function sanitizeCart(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const cart = {}
+  Object.keys(value).slice(0, 100).forEach((id) => {
+    const safeId = textSlice(id, 48)
+    const quantity = Math.min(99, Math.max(0, Math.floor(Number(value[id]) || 0)))
+    if (safeId && quantity) cart[safeId] = quantity
+  })
+  return cart
+}
+
+function sanitizeTodoItem(item, index) {
+  const source = item && typeof item === 'object' && !Array.isArray(item) ? item : {}
+  return {
+    id: textSlice(source.id, 48) || `todo-${Date.now()}-${index}`,
+    title: textSlice(source.title, 40) || '一件小事',
+    note: textSlice(source.note, 100),
+    category: ['生活', '家务', '采购', '工作'].includes(source.category) ? source.category : '生活',
+    due: textSlice(source.due, 16) || '今天',
+    completed: !!source.completed
+  }
+}
+
+function sanitizeOrderItem(item) {
+  const source = item && typeof item === 'object' && !Array.isArray(item) ? item : {}
+  return {
+    id: textSlice(source.id, 48),
+    name: textSlice(source.name, 30) || '菜品',
+    emoji: textSlice(source.emoji, 2),
+    image: textSlice(source.image, 300),
+    quantity: Math.min(99, Math.max(1, Math.floor(Number(source.quantity) || 1)))
+  }
+}
+
+function sanitizeOrder(item, index) {
+  const source = item && typeof item === 'object' && !Array.isArray(item) ? item : {}
+  const items = (Array.isArray(source.items) ? source.items : []).slice(0, 100).map(sanitizeOrderItem)
+  return {
+    id: textSlice(source.id, 48) || `order-${Date.now()}-${index}`,
+    createdAt: textSlice(source.createdAt, 40),
+    items,
+    itemSummary: textSlice(source.itemSummary, 300),
+    remark: textSlice(source.remark, 100),
+    status: textSlice(source.status, 30) || '等你开饭'
+  }
+}
+
+function sanitizePlace(item, index) {
+  const source = item && typeof item === 'object' && !Array.isArray(item) ? item : {}
+  return {
+    id: textSlice(source.id, 48) || `place-${Date.now()}-${index}`,
+    name: textSlice(source.name, 40),
+    address: textSlice(source.address, 120),
+    latitude: Math.max(-90, Math.min(90, Number(source.latitude) || 0)),
+    longitude: Math.max(-180, Math.min(180, Number(source.longitude) || 0))
   }
 }
 
@@ -489,8 +551,7 @@ function sanitizeFlowerState(value) {
 
 function sanitizeResource(resource, value) {
   if (resource === 'cart') {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
-    return value
+    return sanitizeCart(value)
   }
   if (resource === 'anniversary') {
     return sanitizeAnniversary(value)
@@ -517,6 +578,9 @@ function sanitizeResource(resource, value) {
       .map(sanitizeLetterItem)
       .filter((item) => item.text)
   }
+  if (resource === 'todos') return value.slice(0, RESOURCE_LIMITS.todos).map(sanitizeTodoItem)
+  if (resource === 'orders') return value.slice(0, RESOURCE_LIMITS.orders).map(sanitizeOrder)
+  if (resource === 'places') return value.slice(0, RESOURCE_LIMITS.places).map(sanitizePlace)
   return value.slice(0, RESOURCE_LIMITS[resource])
 }
 
@@ -630,20 +694,34 @@ async function updateResource(openid, event) {
   const { household } = await requireMembership(openid)
   const resource = String(event.resource || '')
   const value = sanitizeResource(resource, event.value)
-  const update = {
-    updatedAt: db.serverDate(),
-    updatedBy: openid
-  }
-  // 用 command.set 强制整字段替换：空对象 {} 直接 update 时 MongoDB 不会清空原字段（无子键即无操作），会导致清空购物车失效
-  update[resource] = command.set(value)
+  const expectedVersion = Math.max(0, Number(event.version) || 0)
+  let nextVersion = expectedVersion + 1
   try {
-    await db.collection('family_data').doc(household._id).update({ data: update })
+    await db.runTransaction(async (transaction) => {
+      const document = transaction.collection('family_data').doc(household._id)
+      const response = await document.get()
+      const data = response.data || emptySharedData(household._id)
+      const versions = data.resourceVersions && typeof data.resourceVersions === 'object' ? data.resourceVersions : {}
+      const currentVersion = Math.max(0, Number(versions[resource]) || 0)
+      if (currentVersion !== expectedVersion) throw new Error('DATA_CONFLICT: 数据已被其他成员更新')
+      nextVersion = currentVersion + 1
+      const update = { updatedAt: db.serverDate(), updatedBy: openid }
+      update[resource] = command.set(value)
+      update[`resourceVersions.${resource}`] = nextVersion
+      await document.update({ data: update })
+    })
   } catch (error) {
-    // 文档不存在或更新失败时，确保有基础文档后重试，避免数据写丢
+    const detail = String(error && (error.errMsg || error.message || error))
+    if (!/not\s*exist|not\s*found|DATABASE_DOCUMENT_NOT_EXIST/i.test(detail)) throw error
     const base = emptySharedData(household._id)
-    await db.collection('family_data').doc(household._id).set({ data: Object.assign(base, { [resource]: value, updatedAt: db.serverDate(), updatedBy: openid }) })
+    base[resource] = value
+    base.resourceVersions = { [resource]: 1 }
+    base.updatedAt = db.serverDate()
+    base.updatedBy = openid
+    await db.collection('family_data').doc(household._id).set({ data: base })
+    nextVersion = 1
   }
-  return success({ resource, updated: true })
+  return success({ resource, updated: true, version: nextVersion })
 }
 
 async function migrateLocal(openid, event) {
@@ -938,6 +1016,7 @@ async function aiChat(openid, event) {
   if (!history.length || history[history.length - 1].role !== 'user') {
     throw new Error('请先说点什么')
   }
+  await consumeAiQuota(household._id, openid)
   const messages = [{ role: 'system', content: buildAiSystemPrompt(event.context) }].concat(history)
   const { statusCode, json } = await requestGlm(apiKey, {
     model: GLM_MODEL,
@@ -956,6 +1035,40 @@ async function aiChat(openid, event) {
   const reply = choice && choice.message ? textSlice(choice.message.content, AI_MAX_CONTENT) : ''
   if (!reply) throw new Error(`${AI_NAME}没有返回内容`)
   return success({ reply })
+}
+
+function aiUsageDate() {
+  const now = new Date(Date.now() + 8 * 60 * 60 * 1000)
+  return now.toISOString().slice(0, 10).replace(/-/g, '')
+}
+
+async function consumeAiQuota(householdId, openid) {
+  const documentId = `${householdId}_${openid}_${aiUsageDate()}`
+  await db.runTransaction(async (transaction) => {
+    const document = transaction.collection('family_ai_usage').doc(documentId)
+    let usage = null
+    try {
+      const response = await document.get()
+      usage = response.data || null
+    } catch (error) {
+      usage = null
+    }
+    const now = Date.now()
+    const count = Math.max(0, Number(usage && usage.count) || 0)
+    const lastAt = Math.max(0, Number(usage && usage.lastAt) || 0)
+    if (count >= AI_DAILY_LIMIT) throw new Error(`今天的 ${AI_NAME} 次数已经用完啦`)
+    if (lastAt && now - lastAt < AI_MIN_INTERVAL_MS) throw new Error('说得太快啦，稍等几秒再试')
+    await document.set({
+      data: {
+        householdId,
+        openid,
+        date: aiUsageDate(),
+        count: count + 1,
+        lastAt: now,
+        updatedAt: db.serverDate()
+      }
+    })
+  })
 }
 
 async function setMemberNickname(openid, event) {
