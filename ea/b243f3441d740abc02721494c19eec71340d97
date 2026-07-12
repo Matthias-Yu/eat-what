@@ -1,0 +1,31 @@
+.gitignore
+  s_b2bfc21e5c592f::t_3b5f7ed7cd017f 1-4
+cloudfunctions/familyApi/index.js
+  s_b2bfc21e5c592f::t_877a5827a9d076 8,32-33,123,281-285,288,290-293,337-394,554,581-583,697-698,700-712,714-715,717-722,724,1019,1040-1073
+package.json
+  s_b2bfc21e5c592f::t_63cc843a929ec8 1-9
+pages/index/index.js
+  s_b2bfc21e5c592f::t_e22eb261d13b4e 3,114-115,984-987,1054,1105,1118-1122,1136-1137,1145-1146,1155,1165-1172,1176,1181,1183,1186,1193,1363-1364,1458,1622-1628,1631-1633,1637-1640,1681
+tests/regression.test.js
+  s_b2bfc21e5c592f::t_fb6972e6b83e7c 1-55
+utils/image-cache.js
+  s_b2bfc21e5c592f::t_7ed7a0b66400b8 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "eab243f3441d740abc02721494c19eec71340d97",
+  "prompts": {},
+  "sessions": {
+    "s_b2bfc21e5c592f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f4f5d-3bbc-7561-90ef-9f3ffb717f5f",
+        "model": "unknown"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
