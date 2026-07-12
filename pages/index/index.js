@@ -837,6 +837,7 @@ Page({
   data: {
     activeTab: 'home',
     imagesBooting: true,
+    imagePreloadProgress: 0,
     tabImageReady: { home: false, menu: false, todo: false, wishlist: false, farm: false, flower: false, profile: true },
     tabPreloadUrls: [],
     // 非首屏页面首次进入时再创建，避免启动阶段同时解码整份菜单图片。
@@ -1085,22 +1086,27 @@ Page({
 
     this.imageResolving = true
     try {
-      const res = await wx.cloud.getTempFileURL({ fileList: [...pending] })
+      const pendingList = [...pending]
+      const resolvedFiles = []
+      // 云存储接口按批解析，避免图片较多时单次 fileList 超限。
+      for (let index = 0; index < pendingList.length; index += 50) {
+        const res = await wx.cloud.getTempFileURL({ fileList: pendingList.slice(index, index + 50) })
+        resolvedFiles.push(...(res.fileList || []))
+      }
       const expireAt = Date.now() + IMAGE_URL_TTL_MS
-      ;(res.fileList || []).forEach((f) => {
+      resolvedFiles.forEach((f) => {
         if (f.fileID && f.tempFileURL) cache[f.fileID] = { url: f.tempFileURL, expireAt }
       })
       storage.write('imageUrlCache', getValidImageUrlCache(cache))
       await this.decodeInitialImages(cache)
       this.applyResolvedImages()
-      this.setData({ imagesBooting: false, 'tabImageReady.home': true })
-      this.prefetchAllTabEntrances(cache)
+      this.beginFullImagePreload(cache)
       setTimeout(() => this.persistCloudImages(cache), 1200)
     } catch (error) {
       console.warn('云图片地址解析失败', error)
     } finally {
       this.imageResolving = false
-      if (this.data.imagesBooting) this.finishInitialImageBoot()
+      if (this.data.imagesBooting && !this.imagePreloadStarted) this.finishInitialImageBoot()
     }
   },
 
@@ -1143,33 +1149,47 @@ Page({
   },
 
   async finishInitialImageBoot() {
-    if (!this.data.imagesBooting) return
+    if (!this.data.imagesBooting || this.imagePreloadStarted) return
     await this.decodeInitialImages(this.imageUrlCache || {})
     this.applyResolvedImages()
-    // getImageInfo 已完成即代表首页关键图已进入缓存；不再依赖 image 重复触发 bindload。
-    this.setData({ imagesBooting: false, 'tabImageReady.home': true })
-    this.prefetchAllTabEntrances(this.imageUrlCache || {})
+    this.beginFullImagePreload(this.imageUrlCache || {})
     setTimeout(() => this.persistCloudImages(this.imageUrlCache || {}), 1200)
   },
 
-  // 空闲时预解码各 Tab 的背景和首屏菜品，切换时 image 通常已命中微信缓存。
-  prefetchAllTabEntrances(cache) {
-    const fileIDs = [
-      MENU_IMAGES.pageBg,
-      TODO_IMAGES.pageBg,
-      WISHLIST_IMAGES.pageBg,
-      WISHLIST_IMAGES.banner,
-      FARM_IMAGES.pageBg,
-      FARM_IMAGES.hero,
-      FLOWER_IMAGES.pageBg,
-      FLOWER_IMAGES.hero
-    ]
-    getRecommendedMenuItems(DECORATED_MENU_ITEMS).slice(0, 6).forEach((item) => fileIDs.push(item.image))
-    const sources = [...new Set(fileIDs.map((fileID) => cache[fileID] && cache[fileID].url).filter(Boolean))]
-    this.prefetchImageUrls(sources)
-    if (sources.join('|') !== (this.data.tabPreloadUrls || []).join('|')) {
-      this.setData({ tabPreloadUrls: sources })
+  // 所有业务图片都通过真实 image 节点下载/解码；全部结束后才关闭 loading。
+  beginFullImagePreload(cache) {
+    const sources = [...new Set(Object.keys(cache || {})
+      .filter((fileID) => !/\.(ttf|otf|woff2?)$/i.test(fileID))
+      .map((fileID) => cache[fileID] && cache[fileID].url)
+      .filter((url) => typeof url === 'string' && /^(https?:\/\/|wxfile:\/\/)/.test(url)))]
+    this.preloadedImageIndexes = new Set()
+    this.imagePreloadStarted = true
+    if (!sources.length) {
+      this.finishFullImagePreload()
+      return
     }
+    this.setData({ tabPreloadUrls: sources, imagePreloadProgress: 0 })
+  },
+
+  onPreloadImageSettled(event) {
+    if (!this.data.imagesBooting) return
+    if (!this.preloadedImageIndexes) this.preloadedImageIndexes = new Set()
+    this.preloadedImageIndexes.add(Number(event.currentTarget.dataset.index))
+    const total = (this.data.tabPreloadUrls || []).length
+    const progress = total ? Math.round(this.preloadedImageIndexes.size / total * 100) : 100
+    if (progress !== this.data.imagePreloadProgress) this.setData({ imagePreloadProgress: progress })
+    if (this.preloadedImageIndexes.size >= total) {
+      this.finishFullImagePreload()
+    }
+  },
+
+  finishFullImagePreload() {
+    if (!this.data.imagesBooting) return
+    this.setData({
+      imagesBooting: false,
+      imagePreloadProgress: 100,
+      tabImageReady: { home: true, menu: true, todo: true, wishlist: true, farm: true, flower: true, profile: true }
+    })
   },
 
   // 分两路低并发下载并保存到微信持久文件目录，避免抢占当前页面带宽。

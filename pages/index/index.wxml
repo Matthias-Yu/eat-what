@@ -14,13 +14,13 @@
     <text class="home-loader-spark home-loader-spark--one">✦</text>
     <text class="home-loader-spark home-loader-spark--two">✦</text>
   </view>
-  <text class="image-boot-copy">正在布置小家</text>
+  <text class="image-boot-copy">正在布置小家 {{imagePreloadProgress}}%</text>
   <view class="image-boot-dots"><text></text><text></text><text></text></view>
 </view>
 
 <!-- 首屏稳定后，用真实 image 节点预下载并解码各 Tab 的入口图片。 -->
-<view wx:if="{{!imagesBooting && tabPreloadUrls.length}}" class="tab-image-preload-bank" aria-hidden="true">
-  <image wx:for="{{tabPreloadUrls}}" wx:key="*this" src="{{item}}" mode="aspectFit"></image>
+<view wx:if="{{tabPreloadUrls.length}}" class="tab-image-preload-bank" aria-hidden="true">
+  <image wx:for="{{tabPreloadUrls}}" wx:for-index="preloadIndex" wx:key="*this" src="{{item}}" mode="aspectFit" data-index="{{preloadIndex}}" bindload="onPreloadImageSettled" binderror="onPreloadImageSettled"></image>
 </view>
 
 <scroll-view class="page-scroll" scroll-y enhanced show-scrollbar="{{false}}" scroll-top="{{scrollTop}}" scroll-with-animation="{{false}}">
