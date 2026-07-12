@@ -1392,109 +1392,122 @@ page {
 
 /* Todo */
 .todo-date-icon {
-  width: 76rpx;
-  height: 76rpx;
-  border-radius: 50%;
-  border: 8rpx solid #f6c7b9;
-  background: #fff;
-  color: #e86149;
-  font-size: 25rpx;
-  line-height: 62rpx;
-  text-align: center;
-  font-weight: 800;
+  min-width: 92rpx;
+  height: 54rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16rpx;
+  border: 1rpx solid rgba(102, 116, 99, 0.18);
+  border-radius: 18rpx;
   box-sizing: border-box;
+  background: rgba(255, 255, 252, 0.76);
+  color: #536254;
 }
-.todo-date-icon text {
-  font-size: 14rpx;
+.todo-count-label {
+  display: block;
+  width: 100%;
+  color: #536254;
+  font-size: 22rpx;
+  font-weight: 700;
+  line-height: 54rpx;
+  text-align: center;
+  white-space: nowrap;
 }
 .progress-card {
-  padding: 30rpx;
-  border: 1rpx solid rgba(171, 132, 104, 0.16);
-  border-radius: 28rpx;
-  background: rgba(255, 252, 245, 0.9);
+  padding: 30rpx 30rpx 27rpx;
+  border: 1rpx solid rgba(116, 126, 111, 0.16);
+  border-radius: 26rpx;
+  background: rgba(255, 254, 249, 0.86);
   box-shadow: none;
 }
 .progress-title {
   display: block;
-  color: #533b32;
-  font-size: 27rpx;
-  font-weight: 750;
+  color: #303932;
+  font-size: 28rpx;
+  font-weight: 720;
 }
 .progress-copy {
   display: block;
   margin-top: 7rpx;
-  color: #835447;
-  font-size: 20rpx;
-  font-weight: 600;
+  color: #7b827b;
+  font-size: 19rpx;
+  font-weight: 500;
 }
-.progress-sun {
-  width: 58rpx;
-  height: 58rpx;
-  border-radius: 20rpx;
-  background: rgba(255, 255, 255, 0.6);
-  color: #e98158;
-  font-size: 30rpx;
-  line-height: 58rpx;
-  text-align: center;
+.progress-value {
+  display: flex;
+  align-items: baseline;
+  color: #d8775d;
+}
+.progress-value text:first-child {
+  font-size: 38rpx;
+  font-weight: 760;
+  letter-spacing: -1rpx;
+}
+.progress-value text:last-child {
+  margin-left: 2rpx;
+  font-size: 16rpx;
+  font-weight: 650;
 }
 .progress-track {
-  height: 12rpx;
+  height: 8rpx;
   overflow: hidden;
   margin-top: 24rpx;
-  border-radius: 6rpx;
-  background: rgba(219, 142, 111, 0.2);
+  border-radius: 4rpx;
+  background: rgba(110, 126, 111, 0.12);
 }
 .progress-fill {
   height: 100%;
   min-width: 2%;
-  border-radius: 6rpx;
-  background: linear-gradient(90deg, #f1845e, #eb5f49);
+  border-radius: 4rpx;
+  background: #df8368;
   transition: width 0.35s ease;
 }
 .todo-toolbar {
-  margin: 33rpx 0 20rpx;
+  margin: 30rpx 0 18rpx;
 }
 .filter-tabs {
   display: flex;
   align-items: center;
-  gap: 8rpx;
-  padding: 6rpx;
-  border-radius: 24rpx;
-  background: rgba(246, 240, 233, 0.9);
+  gap: 4rpx;
+  padding: 5rpx;
+  border: 1rpx solid rgba(112, 123, 108, 0.1);
+  border-radius: 19rpx;
+  background: rgba(241, 242, 237, 0.82);
 }
 .filter-tabs text {
-  height: 51rpx;
-  padding: 0 17rpx;
-  border-radius: 19rpx;
-  color: #74645c;
-  font-size: 19rpx;
-  line-height: 51rpx;
-  font-weight: 600;
+  height: 48rpx;
+  padding: 0 18rpx;
+  border-radius: 15rpx;
+  color: #7d847c;
+  font-size: 18rpx;
+  line-height: 48rpx;
+  font-weight: 550;
 }
 .filter-tabs text.is-active {
-  background: #fff;
-  color: #e8664d;
-  box-shadow: 0 4rpx 13rpx rgba(80, 46, 32, 0.08);
+  background: rgba(255, 255, 252, 0.96);
+  color: #3f4b41;
+  box-shadow: none;
 }
 .toolbar-hint {
-  color: #806f67;
-  font-size: 18rpx;
-  font-weight: 600;
+  color: #9a9f98;
+  font-size: 17rpx;
+  font-weight: 550;
 }
 .todo-list {
   display: flex;
   flex-direction: column;
-  gap: 16rpx;
+  gap: 13rpx;
 }
 .todo-item {
-  min-height: 148rpx;
+  min-height: 138rpx;
   display: flex;
   align-items: flex-start;
-  padding: 24rpx 20rpx;
-  border: 1rpx solid rgba(160, 127, 104, 0.16);
-  border-radius: 25rpx;
+  padding: 23rpx 21rpx;
+  border: 1rpx solid rgba(113, 124, 109, 0.14);
+  border-radius: 22rpx;
   box-sizing: border-box;
-  background: rgba(255, 253, 248, 0.92);
+  background: rgba(255, 255, 252, 0.88);
   box-shadow: none;
   transition: transform 0.15s ease;
 }
@@ -1502,14 +1515,14 @@ page {
   transform: scale(0.985);
 }
 .todo-checkbox {
-  width: 42rpx;
-  height: 42rpx;
+  width: 40rpx;
+  height: 40rpx;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-top: 2rpx;
-  border: 3rpx solid #e9a08c;
+  border: 2rpx solid #c8a394;
   border-radius: 50%;
   box-sizing: border-box;
   color: #fff;
@@ -1522,14 +1535,15 @@ page {
   margin: 0 17rpx;
 }
 .todo-title {
-  font-size: 25rpx;
-  font-weight: 700;
+  color: #303833;
+  font-size: 24rpx;
+  font-weight: 650;
 }
 .todo-note {
   margin-top: 6rpx;
-  color: #74635b;
-  font-size: 19rpx;
-  font-weight: 600;
+  color: #858a84;
+  font-size: 18rpx;
+  font-weight: 500;
 }
 .todo-meta {
   display: flex;
@@ -1538,8 +1552,8 @@ page {
   margin-top: 13rpx;
 }
 .todo-category {
-  padding: 4rpx 11rpx;
-  border-radius: 11rpx;
+  padding: 4rpx 10rpx;
+  border-radius: 9rpx;
   background: #f2edfb;
   color: #836bb7;
   font-size: 17rpx;
@@ -1557,18 +1571,20 @@ page {
   color: #6681a5;
 }
 .todo-due {
-  color: #7d6a62;
+  color: #939891;
   font-size: 17rpx;
   font-weight: 600;
 }
 .todo-more {
-  color: #b09e95;
-  font-size: 27rpx;
-  letter-spacing: 2rpx;
+  align-self: center;
+  color: #b1b6ae;
+  font-size: 36rpx;
+  line-height: 1;
 }
 .todo-item.is-completed {
-  border-color: rgba(136, 164, 143, 0.13);
-  background: rgba(250, 252, 247, 0.68);
+  border-color: rgba(128, 153, 133, 0.1);
+  background: rgba(249, 251, 247, 0.64);
+  opacity: 0.78;
   box-shadow: none;
 }
 .todo-item.is-completed .todo-checkbox {
@@ -1585,20 +1601,30 @@ page {
 .todo-empty {
   min-height: 450rpx;
 }
+.todo-empty-art {
+  width: 108rpx;
+  height: 108rpx;
+  border: 1rpx solid rgba(103, 124, 106, 0.16);
+  background: rgba(245, 248, 241, 0.84);
+  color: #7c9b82;
+  font-size: 45rpx;
+  line-height: 108rpx;
+}
 .new-todo-button {
-  height: 82rpx;
+  height: 76rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 28rpx 0 0;
   padding: 0;
-  border-radius: 27rpx;
-  background: linear-gradient(135deg, #f17a5d, #e95e48);
+  border: 0;
+  border-radius: 22rpx;
+  background: #3f4d43;
   color: #fff;
-  font-size: 24rpx;
+  font-size: 22rpx;
   line-height: 1;
   font-weight: 700;
-  box-shadow: 0 13rpx 28rpx rgba(218, 87, 62, 0.2);
+  box-shadow: none;
 }
 .new-todo-button text {
   margin-right: 8rpx;

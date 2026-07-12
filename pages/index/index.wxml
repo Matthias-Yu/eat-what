@@ -534,13 +534,15 @@
   <view wx:if="{{visitedTabs.todo}}" hidden="{{activeTab !== 'todo'}}" class="page todo-page stagger">
     <view class="page-header todo-page-header">
       <view><text class="page-kicker">LITTLE THINGS</text><text class="page-title">生活待办</text></view>
-      <view class="todo-date-icon">{{todoStats.percent}}<text>%</text></view>
+      <view class="todo-date-icon">
+        <text class="todo-count-label">{{todoStats.completed}} / {{todoStats.total}}</text>
+      </view>
     </view>
 
     <view class="progress-card">
       <view class="progress-top">
         <view><text class="progress-title">今天也在认真生活</text><text class="progress-copy">已完成 {{todoStats.completed}} 件，还有 {{todoStats.pending}} 件小事</text></view>
-        <view class="progress-sun">☀</view>
+        <view class="progress-value"><text>{{todoStats.percent}}</text><text>%</text></view>
       </view>
       <view class="progress-track"><view class="progress-fill" style="width: {{todoStats.percent}}%"></view></view>
     </view>
@@ -551,7 +553,7 @@
         <text class="{{todoFilter === 'pending' ? 'is-active' : ''}}" data-filter="pending" bindtap="setTodoFilter">进行中</text>
         <text class="{{todoFilter === 'completed' ? 'is-active' : ''}}" data-filter="completed" bindtap="setTodoFilter">已完成</text>
       </view>
-      <text class="toolbar-hint">长按删除</text>
+      <text class="toolbar-hint">{{visibleTodos.length}} 项</text>
     </view>
 
     <view wx:if="{{visibleTodos.length}}" class="todo-list">
@@ -570,15 +572,15 @@
           <text wx:if="{{item.note}}" class="todo-note">{{item.note}}</text>
           <view class="todo-meta"><text class="todo-category category-{{item.categoryClass}}">{{item.category}}</text><text class="todo-due">◷ {{item.due}}</text></view>
         </view>
-        <text class="todo-more">···</text>
+        <text class="todo-more">›</text>
       </view>
     </view>
     <view wx:else class="todo-empty">
-      <view class="empty-art">🫶</view>
+      <view class="empty-art todo-empty-art">✓</view>
       <text class="empty-title">这里空空的</text>
       <text class="empty-subtitle">给今天加一件值得期待的小事吧</text>
     </view>
-    <button class="new-todo-button" bindtap="openTodoComposer" hover-class="button-pressed"><text>＋</text> 新建待办</button>
+    <button class="new-todo-button" bindtap="openTodoComposer" hover-class="button-pressed"><text>＋</text> 添加待办</button>
   </view>
 
   <!-- 我的 -->
