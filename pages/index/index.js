@@ -1,6 +1,7 @@
 const { categories, menuItems } = require('../../data/menu')
 const storage = require('../../utils/storage')
 const imageCache = require('../../utils/image-cache')
+const conflict = require('../../utils/conflict')
 const dateUtil = require('../../utils/date')
 const cloudService = require('../../utils/cloud')
 
@@ -788,6 +789,7 @@ Page({
     activeTab: 'home',
     imagesBooting: true,
     imagePreloadProgress: 0,
+    imageLoadingSlow: false,
     tabImageReady: { home: false, menu: false, todo: false, wishlist: false, farm: false, flower: false, profile: true },
     tabPreloadUrls: [],
     // 非首屏页面首次进入时再创建，避免启动阶段同时解码整份菜单图片。
@@ -1130,10 +1132,14 @@ Page({
     this.preloadedImageIndexes = new Set()
     this.imagePreloadStarted = true
     clearTimeout(this.imagePreloadWatchdog)
+    clearTimeout(this.imageLoadingSlowTimer)
+    this.imageLoadingSlowTimer = setTimeout(() => {
+      if (this.data.imagesBooting) this.setData({ imageLoadingSlow: true })
+    }, 8000)
     this.imagePreloadWatchdog = setTimeout(() => {
       console.warn('图片预加载超时，已进入降级模式')
       this.finishFullImagePreload()
-    }, 30000)
+    }, 15000)
     if (!sources.length) {
       this.finishFullImagePreload()
       return
@@ -1157,43 +1163,61 @@ Page({
   finishFullImagePreload() {
     if (!this.data.imagesBooting) return
     clearTimeout(this.imagePreloadWatchdog)
+    clearTimeout(this.imageLoadingSlowTimer)
     this.imagePreloadWatchdog = null
+    this.imageLoadingSlowTimer = null
     this.setData({
       imagesBooting: false,
       imagePreloadProgress: 100,
+      imageLoadingSlow: false,
       tabImageReady: { home: true, menu: false, todo: false, wishlist: false, farm: false, flower: false, profile: true }
     }, () => {
       const cache = this.fullImageCacheForPreload || {}
       this.beginBackgroundTabPreload(cache)
-      setTimeout(() => this.persistCloudImages(cache), 300)
     })
   },
 
   beginBackgroundTabPreload(cache) {
-    const homeFileIDs = new Set(this.getHomePreloadFileIDs())
-    const sources = [...new Set(Object.keys(cache || {})
-      .filter((fileID) => !homeFileIDs.has(fileID) && !/\.(ttf|otf|woff2?)$/i.test(fileID))
-      .map((fileID) => cache[fileID] && cache[fileID].url)
-      .filter((url) => typeof url === 'string' && /^(https?:\/\/|wxfile:\/\/)/.test(url)))]
-    this.setData({ tabPreloadUrls: sources })
+    this.setData({ tabPreloadUrls: [] })
+    setTimeout(async () => {
+      const result = await this.persistCloudImages(cache)
+      if (!result || !(result.failed || []).length) {
+        this.setData({
+          tabImageReady: { home: true, menu: true, todo: true, wishlist: true, farm: true, flower: true, profile: true }
+        })
+      }
+    }, 300)
+  },
+
+  retryImageLoading() {
+    clearTimeout(this.imagePreloadWatchdog)
+    clearTimeout(this.imageLoadingSlowTimer)
+    this.imagePreloadStarted = false
+    this.preloadedImageIndexes = new Set()
+    this.setData({ imageLoadingSlow: false, imagePreloadProgress: 0, tabPreloadUrls: [] }, () => {
+      this.resolveMenuImages()
+    })
   },
 
   // 分两路低并发下载并保存到微信持久文件目录，避免抢占当前页面带宽。
   async persistCloudImages(cache, useLocalImmediately = false) {
-    if (!wx.downloadFile || !wx.saveFile || this.persistingImages) return
+    if (!wx.downloadFile || !wx.saveFile || this.persistingImages) return { skipped: true, failed: [] }
     const saved = getValidImageUrlCache(storage.read('persistentImageCache', {}))
     const queue = Object.keys(cache).filter((fileID) => {
       const entry = cache[fileID]
       return !saved[fileID] && entry && /^https?:\/\//.test(entry.url) && !/\.(ttf|otf|woff2?)$/i.test(fileID)
     })
-    if (!queue.length) return
+    if (!queue.length) return { failed: [] }
     this.persistingImages = true
+    const failed = new Set()
     const saveOne = (fileID) => new Promise((resolve) => {
       let settled = false
+      let savedOk = false
       const finish = () => {
         if (settled) return
         settled = true
         clearTimeout(timeout)
+        if (!savedOk) failed.add(fileID)
         resolve()
       }
       const timeout = setTimeout(finish, 12000)
@@ -1204,6 +1228,7 @@ Page({
           wx.saveFile({
             tempFilePath: download.tempFilePath,
             success: (result) => {
+              savedOk = true
               saved[fileID] = { url: result.savedFilePath, expireAt: PERSISTENT_IMAGE_EXPIRY }
               if (useLocalImmediately) cache[fileID] = saved[fileID]
             },
@@ -1219,6 +1244,7 @@ Page({
     await Promise.all([worker(), worker()])
     storage.write('persistentImageCache', saved)
     this.persistingImages = false
+    return { failed: [...failed] }
   },
 
   // 把缓存中的链接套用到内存数据与视图字段，仅在发生替换时才 setData
@@ -1388,6 +1414,7 @@ Page({
 
   cleanupPageTasks() {
     clearTimeout(this.imagePreloadWatchdog)
+    clearTimeout(this.imageLoadingSlowTimer)
     this.imagePreloadWatchdog = null
     this.clearRollTimer()
     if (this.flyTimer) { clearTimeout(this.flyTimer); this.flyTimer = null }
@@ -1483,6 +1510,16 @@ Page({
 
   applyCloudData(data) {
     this.resourceVersions = data.resourceVersions && typeof data.resourceVersions === 'object' ? data.resourceVersions : {}
+    const conflictRetries = []
+    if (this.cloudConflicts) {
+      Object.keys(this.cloudConflicts).forEach((resource) => {
+        const pending = this.cloudConflicts[resource]
+        const merged = conflict.merge(resource, pending.base, pending.value, data[resource])
+        data[resource] = merged
+        conflictRetries.push({ resource, value: merged })
+      })
+      this.cloudConflicts = {}
+    }
     const cart = data.cart || {}
     const todos = Array.isArray(data.todos) ? data.todos : []
     const orders = Array.isArray(data.orders) ? data.orders : []
@@ -1605,6 +1642,10 @@ Page({
     }
     if (menusChanged) this.resolveMenuImages()
     this.cloudDataReady = true
+    const snapshotResources = ['cart', 'todos', 'orders', 'wishes', 'menus', 'farm', 'flower', 'anniversary', 'messages', 'letters']
+    if (!this.cloudResourceSnapshots) this.cloudResourceSnapshots = {}
+    snapshotResources.forEach((resource) => { this.cloudResourceSnapshots[resource] = conflict.clone(data[resource]) })
+    conflictRetries.forEach(({ resource, value }) => setTimeout(() => this.syncCloudResource(resource, value), 0))
   },
 
   commitCustomMenuItems(customMenuItems, options = {}) {
@@ -1655,9 +1696,16 @@ Page({
       })
       .catch((error) => {
         console.warn(`同步 ${resource} 失败`, error)
-        const conflict = String(error && error.message).includes('DATA_CONFLICT')
-        wx.showToast({ title: conflict ? '数据已被家人更新，正在刷新' : `云端同步失败：${error.message || resource}`, icon: 'none' })
-        if (conflict) this.cloudConflictPending = true
+        const isConflict = String(error && error.message).includes('DATA_CONFLICT')
+        wx.showToast({ title: isConflict ? '数据已被家人更新，正在合并' : `云端同步失败：${error.message || resource}`, icon: 'none' })
+        if (isConflict) {
+          if (!this.cloudConflicts) this.cloudConflicts = {}
+          this.cloudConflicts[resource] = {
+            value: conflict.clone(value),
+            base: conflict.clone((this.cloudResourceSnapshots || {})[resource])
+          }
+          this.cloudConflictPending = true
+        }
       })
       .finally(() => {
         this.cloudWritePending = Math.max(0, (this.cloudWritePending || 1) - 1)

@@ -46,6 +46,11 @@ function failure(message) {
   return { ok: false, message }
 }
 
+function isDocumentNotFoundError(error) {
+  const detail = String(error && (error.errMsg || error.message || error))
+  return /not\s*exist|not\s*found|DATABASE_DOCUMENT_NOT_EXIST/i.test(detail)
+}
+
 async function ensureCollections() {
   if (collectionsReady) return
   if (typeof db.createCollection !== 'function') {
@@ -602,7 +607,7 @@ async function sendLetter(openid, event) {
     await db.runTransaction(async (transaction) => {
       const document = transaction.collection('family_data').doc(household._id)
       const response = await document.get()
-      const data = response.data || emptySharedData(household._id)
+      const data = response.data || {}
       letters = [letter].concat(Array.isArray(data.letters) ? data.letters.map(sanitizeLetterItem) : [])
         .slice(0, RESOURCE_LIMITS.letters)
       await document.update({
@@ -700,7 +705,7 @@ async function updateResource(openid, event) {
     await db.runTransaction(async (transaction) => {
       const document = transaction.collection('family_data').doc(household._id)
       const response = await document.get()
-      const data = response.data || emptySharedData(household._id)
+      const data = response.data || {}
       const versions = data.resourceVersions && typeof data.resourceVersions === 'object' ? data.resourceVersions : {}
       const currentVersion = Math.max(0, Number(versions[resource]) || 0)
       if (currentVersion !== expectedVersion) throw new Error('DATA_CONFLICT: 数据已被其他成员更新')
@@ -711,15 +716,8 @@ async function updateResource(openid, event) {
       await document.update({ data: update })
     })
   } catch (error) {
-    const detail = String(error && (error.errMsg || error.message || error))
-    if (!/not\s*exist|not\s*found|DATABASE_DOCUMENT_NOT_EXIST/i.test(detail)) throw error
-    const base = emptySharedData(household._id)
-    base[resource] = value
-    base.resourceVersions = { [resource]: 1 }
-    base.updatedAt = db.serverDate()
-    base.updatedBy = openid
-    await db.collection('family_data').doc(household._id).set({ data: base })
-    nextVersion = 1
+    if (isDocumentNotFoundError(error)) throw new Error('家庭数据尚未初始化，请重新进入云空间')
+    throw error
   }
   return success({ resource, updated: true, version: nextVersion })
 }
@@ -1051,6 +1049,7 @@ async function consumeAiQuota(householdId, openid) {
       const response = await document.get()
       usage = response.data || null
     } catch (error) {
+      if (!isDocumentNotFoundError(error)) throw error
       usage = null
     }
     const now = Date.now()
@@ -1069,6 +1068,13 @@ async function consumeAiQuota(householdId, openid) {
       }
     })
   })
+  if (Math.random() < 0.02) cleanupOldAiUsage().catch((error) => console.warn('清理 AI 用量记录失败', error))
+}
+
+async function cleanupOldAiUsage() {
+  const cutoff = new Date(Date.now() - 90 * 86400000 + 8 * 60 * 60 * 1000).toISOString().slice(0, 10).replace(/-/g, '')
+  const response = await db.collection('family_ai_usage').where({ date: command.lt(cutoff) }).limit(20).get()
+  await Promise.all((response.data || []).map((item) => db.collection('family_ai_usage').doc(item._id).remove()))
 }
 
 async function setMemberNickname(openid, event) {

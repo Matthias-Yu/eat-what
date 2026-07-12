@@ -14,8 +14,9 @@
     <text class="home-loader-spark home-loader-spark--one">✦</text>
     <text class="home-loader-spark home-loader-spark--two">✦</text>
   </view>
-  <text class="image-boot-copy">正在加载首页 {{imagePreloadProgress}}%</text>
+  <text class="image-boot-copy">{{imageLoadingSlow ? '网络有点慢，再等一下' : '正在加载首页'}} {{imagePreloadProgress}}%</text>
   <view class="image-boot-dots"><text></text><text></text><text></text></view>
+  <button wx:if="{{imageLoadingSlow}}" class="image-boot-retry" bindtap="retryImageLoading">重新加载</button>
 </view>
 
 <!-- 首屏稳定后，用真实 image 节点预下载并解码各 Tab 的入口图片。 -->

@@ -111,6 +111,17 @@ page {
 }
 .image-boot-dots text:nth-child(2) { animation-delay: 0.14s; }
 .image-boot-dots text:nth-child(3) { animation-delay: 0.28s; }
+.image-boot-retry {
+  height: 58rpx;
+  margin-top: 24rpx;
+  padding: 0 28rpx;
+  border: 1rpx solid rgba(192, 125, 98, 0.24);
+  border-radius: 29rpx;
+  background: rgba(255, 255, 255, 0.72);
+  color: #b66f58;
+  font-size: 21rpx;
+  line-height: 58rpx;
+}
 @keyframes home-loader-orbit {
   to { transform: rotate(360deg); }
 }
