@@ -1,0 +1,23 @@
+cloudbaserc.json
+  s_17e29d032aba5a::t_8ce17adccddc4f 10
+pages/index/index.wxml
+  s_17e29d032aba5a::t_4e8b861d03e3e8 854
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0daacc2b6a0aaaed262843679af513acc7f7b58d",
+  "prompts": {},
+  "sessions": {
+    "s_17e29d032aba5a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5ae4-7bdf-7f71-82dc-21993e3fe114",
+        "model": "unknown"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
