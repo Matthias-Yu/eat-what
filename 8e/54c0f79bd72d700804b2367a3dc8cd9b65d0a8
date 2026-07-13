@@ -1,0 +1,23 @@
+pages/members/members.js
+  s_17e29d032aba5a::t_296076059fc17e 34,176
+utils/sync.js
+  s_17e29d032aba5a::t_59e95c5192cdae 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8e54c0f79bd72d700804b2367a3dc8cd9b65d0a8",
+  "prompts": {},
+  "sessions": {
+    "s_17e29d032aba5a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5ae4-7bdf-7f71-82dc-21993e3fe114",
+        "model": "unknown"
+      },
+      "human_author": "Yanfei <Matthias.Yu@outlook.com>"
+    }
+  },
+  "attestation_metadata": {},
+  "remote_transcripts": {}
+}
