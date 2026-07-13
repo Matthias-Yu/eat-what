@@ -7,6 +7,7 @@ const root = path.resolve(__dirname, '..')
 const pageSource = fs.readFileSync(path.join(root, 'pages/index/index.js'), 'utf8')
 const apiSource = fs.readFileSync(path.join(root, 'cloudfunctions/familyApi/index.js'), 'utf8')
 const projectConfig = JSON.parse(fs.readFileSync(path.join(root, 'project.config.json'), 'utf8'))
+const cloudbaseConfig = JSON.parse(fs.readFileSync(path.join(root, 'cloudbaserc.json'), 'utf8'))
 const imageCache = require('../utils/image-cache')
 const conflict = require('../utils/conflict')
 const storageModule = require('../utils/storage')
@@ -120,6 +121,7 @@ test('首页数据模型会清洗留言、信件和纪念日', () => {
   assert.equal(model.normalizeAnniversary({ title: '纪念日', date: 'bad' }), null)
   assert.equal(model.normalizeMessages([{ text: '' }, { text: '你好', reactions: { '❤️': ['u', 'u'] } }]).length, 1)
   assert.deepEqual(model.normalizeLetters([{ text: '信', openedBy: ['u'] }])[0].openedBy, ['u'])
+  assert.equal(model.normalizeLetters([{ text: '字'.repeat(4001) }])[0].text.length, 4000)
 })
 
 test('农场与花园模型限制非法库存和地块', () => {
@@ -159,4 +161,47 @@ test('访问记录具备留存限制且不向管理页返回完整 OpenID', () =
   assert.match(visitSource, /openidMasked: maskOpenid/)
   assert.doesNotMatch(visitSource, /openid: actorOpenid/)
   assert.match(apiSource, /JOIN_ATTEMPT_LIMIT/)
+})
+
+test('分片迁移通过事务逐项更新版本，不整体覆盖版本表', () => {
+  const source = apiSource.slice(apiSource.indexOf('async function loadShardedResources'), apiSource.indexOf('function createDefaultFarmPlots'))
+  assert.match(source, /db\.runTransaction/)
+  assert.match(source, /metadata\[`resourceVersions\.\$\{resource\}`\]/)
+  assert.doesNotMatch(source, /resourceVersions:\s*versions/)
+})
+
+test('同一资源的客户端写入会串行排空且纪念日进入持久同步队列', () => {
+  assert.match(pageSource, /cloudSyncInFlight/)
+  assert.match(pageSource, /async drainCloudResourceSync\(resource\)/)
+  assert.match(pageSource, /syncCloudResource\('anniversary', anniversary\)/)
+  assert.match(pageSource, /syncCloudResource\('anniversary', null\)/)
+  assert.doesNotMatch(pageSource, /writeCloudResource\('anniversary'/)
+})
+
+test('留言表情变更同步递增并返回 messages 版本', () => {
+  const source = apiSource.slice(apiSource.indexOf('async function toggleMessageReaction'), apiSource.indexOf('async function listMembers'))
+  assert.match(source, /resourceVersions\.messages/)
+  assert.match(source, /version: nextVersion/)
+  assert.match(pageSource, /this\.resourceVersions\.messages = Number\(result\.version\)/)
+})
+
+test('家庭创建和成员退出的关联文档使用事务更新', () => {
+  for (const operation of ['createHousehold', 'removeMember', 'leaveHousehold']) {
+    const start = apiSource.indexOf(`async function ${operation}`)
+    const next = apiSource.indexOf('\nasync function ', start + 1)
+    assert.match(apiSource.slice(start, next < 0 ? undefined : next), /db\.runTransaction/)
+  }
+  assert.match(apiSource, /dissolving: true, inviteActive: false/)
+})
+
+test('清理任务会分页处理过期访问记录和 AI 用量', () => {
+  const source = apiSource.slice(apiSource.indexOf('async function cleanupExpiredVisits'), apiSource.indexOf('async function listVisitRecords'))
+  assert.match(source, /enteredAtMs: command\.lt\(cutoff\)/)
+  assert.ok((source.match(/for \(let guard = 0;/g) || []).length >= 3)
+})
+
+test('云函数超时覆盖 AI 上游请求时限', () => {
+  const familyApi = cloudbaseConfig.functions.find((item) => item.name === 'familyApi')
+  assert.ok(familyApi)
+  assert.ok(familyApi.timeout > 20)
 })

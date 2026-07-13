@@ -7,6 +7,8 @@
 1. 部署最新版 `familyApi` 云函数及依赖，并保留现有 `ORDER_NOTICE_TEMPLATE_ID`、`GLM_MODEL` 等变量。
 2. 首次请求会自动创建 `family_resources`、`family_rate_limits` 等集合；如果生产环境禁止自动建集合，请提前在云开发控制台创建。
 3. 已有家庭第一次调用 `getData` 时，会将 `todos`、`orders`、`wishes`、`menus`、`places` 写入独立资源文档，并从主文档移除对应字段。
+4. 为 `family_visits` 建立联合索引：`householdId` 升序、`enteredAtMs` 升序。该索引用于按家庭分页清理 90 天前的进入记录。
+5. 云函数超时需保持为 30 秒或更高，确保覆盖 AI 上游 20 秒请求时限。
 
 ## 回滚与兼容
 

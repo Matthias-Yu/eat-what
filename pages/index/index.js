@@ -109,13 +109,15 @@ const FLOWER_TYPE_MAP = FLOWER_TYPES.reduce((map, item) => {
 const CUSTOM_MENU_LIMIT = 100
 const MESSAGES_LIMIT = 200
 const LETTERS_LIMIT = 60
+const LETTER_TEXT_LIMIT = 4000
 const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
 const homeModel = createHomeModels({
   storage,
   homeImages: HOME_IMAGES,
   reactionEmojis: MESSAGE_REACTION_EMOJIS,
   messagesLimit: MESSAGES_LIMIT,
-  lettersLimit: LETTERS_LIMIT
+  lettersLimit: LETTERS_LIMIT,
+  letterTextLimit: LETTER_TEXT_LIMIT
 })
 const {
   textSlice, todayDateString, getHomeTimeSlot, getHomeImages, getAnniversaryDays,
@@ -593,6 +595,7 @@ Page({
     this.cloudSyncQueue = storage.read('pendingCloudSyncs', {}) || {}
     this.pendingCloudHouseholdId = storage.read('pendingCloudHouseholdId', '') || ''
     this.cloudSyncTimers = {}
+    this.cloudSyncInFlight = {}
     this.imageUrlCache = Object.assign({}, INITIAL_IMAGE_URL_CACHE)
     const savedTodos = storage.read('todos', null)
     const cart = storage.read('cart', {})
@@ -1384,7 +1387,7 @@ Page({
     if (!this.cloudSyncQueue) this.cloudSyncQueue = {}
     this.cloudSyncQueue[resource] = value
     this.persistCloudSyncQueue()
-    return this.flushCloudResourceSync(resource)
+    return this.drainCloudResourceSync(resource)
   },
 
   writeCloudResource(resource, value) {
@@ -1403,8 +1406,11 @@ Page({
         wx.showToast({ title: isConflict ? '数据已被家人更新，正在合并' : `云端同步失败：${error.message || resource}`, icon: 'none' })
         if (isConflict) {
           if (!this.cloudConflicts) this.cloudConflicts = {}
+          const queuedValue = this.cloudSyncQueue && Object.prototype.hasOwnProperty.call(this.cloudSyncQueue, resource)
+            ? this.cloudSyncQueue[resource]
+            : value
           this.cloudConflicts[resource] = {
-            value: conflict.clone(value),
+            value: conflict.clone(queuedValue),
             base: conflict.clone((this.cloudResourceSnapshots || {})[resource])
           }
           this.cloudConflictPending = true
@@ -1466,26 +1472,50 @@ Page({
     if (!this.cloudSyncQueue || !Object.prototype.hasOwnProperty.call(this.cloudSyncQueue, resource)) {
       return Promise.resolve()
     }
+    if (!this.cloudSyncInFlight) this.cloudSyncInFlight = {}
+    if (this.cloudSyncInFlight[resource]) return this.cloudSyncInFlight[resource]
     const value = this.cloudSyncQueue[resource]
     if (this.cloudSyncTimers && this.cloudSyncTimers[resource]) {
       clearTimeout(this.cloudSyncTimers[resource])
       delete this.cloudSyncTimers[resource]
     }
-    return this.writeCloudResource(resource, value).then((result) => {
-      if (!result || result.failed) return result
-      if (this.cloudSyncQueue && this.cloudSyncQueue[resource] === value) {
-        delete this.cloudSyncQueue[resource]
-        this.persistCloudSyncQueue()
-      }
-      return result
-    })
+    const task = this.writeCloudResource(resource, value)
+      .then((result) => {
+        if (!result || result.failed) return result
+        if (this.cloudSyncQueue && this.cloudSyncQueue[resource] === value) {
+          delete this.cloudSyncQueue[resource]
+          this.persistCloudSyncQueue()
+        }
+        return result
+      })
+      .finally(() => {
+        delete this.cloudSyncInFlight[resource]
+        if (this.cloudSyncQueue && Object.prototype.hasOwnProperty.call(this.cloudSyncQueue, resource)) {
+          const nextValue = this.cloudSyncQueue[resource]
+          if (nextValue !== value) this.flushCloudResourceSync(resource)
+        }
+      })
+    this.cloudSyncInFlight[resource] = task
+    return task
   },
 
   async replayPendingCloudSyncs() {
     const resources = Object.keys(this.cloudSyncQueue || {})
     if (!resources.length) return
-    await Promise.all(resources.map((resource) => this.flushCloudResourceSync(resource)))
+    await Promise.all(resources.map((resource) => this.drainCloudResourceSync(resource)))
     if (!this.hasQueuedCloudSync()) await this.pullCloudData({ force: true })
+  },
+
+  async drainCloudResourceSync(resource) {
+    while ((this.cloudSyncQueue && Object.prototype.hasOwnProperty.call(this.cloudSyncQueue, resource))
+      || (this.cloudSyncInFlight && this.cloudSyncInFlight[resource])) {
+      const task = this.cloudSyncInFlight && this.cloudSyncInFlight[resource]
+        ? this.cloudSyncInFlight[resource]
+        : this.flushCloudResourceSync(resource)
+      const result = await task
+      if (result && result.failed) return result
+    }
+    return { drained: true }
   },
 
   flushCloudSyncs() {
@@ -1543,7 +1573,19 @@ Page({
       })
       this.preparePendingCloudSyncs(result.household.id)
       const data = await cloudService.call('migrateLocal', {
-        data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, wishes: this.data.wishes, menus: this.data.customMenuItems, farm: this.data.farmState, flower: this.data.flowerState, places: [] }
+        data: {
+          cart: this.data.cart,
+          todos: this.data.todos,
+          orders: this.data.orders,
+          wishes: this.data.wishes,
+          menus: this.data.customMenuItems,
+          farm: this.data.farmState,
+          flower: this.data.flowerState,
+          anniversary: this.data.anniversary,
+          messages: this.data.messages,
+          letters: this.data.letters,
+          places: []
+        }
       })
       this.applyCloudData(data)
       this.startCloudPolling()
@@ -2665,7 +2707,7 @@ Page({
       showAnniversarySheet: false
     })
     this.startAnniversaryFlip(this.data.anniversaryDisplayDays || anniversaryDays, anniversaryDays, anniversary)
-    await this.writeCloudResource('anniversary', anniversary)
+    await this.syncCloudResource('anniversary', anniversary)
     await this.pullCloudData()
     wx.showToast({ title: '已记下这个日子', icon: 'success' })
   },
@@ -2682,7 +2724,7 @@ Page({
       anniversaryFlipFrame: 0,
       showAnniversarySheet: false
     })
-    await this.writeCloudResource('anniversary', null)
+    await this.syncCloudResource('anniversary', null)
     wx.showToast({ title: '已清除纪念日', icon: 'success' })
   },
 
@@ -2754,7 +2796,11 @@ Page({
     // 云空间模式：交给云函数用服务端 openid 增删，避免多成员并发覆盖
     if (this.data.familyStatus === 'active') {
       try {
+        const syncResult = await this.drainCloudResourceSync('messages')
+        if (syncResult && syncResult.failed) throw new Error('留言正在同步，请稍后再试')
         const result = await cloudService.call('toggleMessageReaction', { messageId, emoji })
+        if (!this.resourceVersions) this.resourceVersions = {}
+        if (Number.isFinite(Number(result.version))) this.resourceVersions.messages = Number(result.version)
         this.commitMessages(result.messages || this.data.messages)
       } catch (error) {
         wx.showToast({ title: error.message || '操作失败', icon: 'none' })
@@ -2816,11 +2862,11 @@ Page({
   },
 
   onLetterDraftInput(event) {
-    this.setData({ letterDraft: event.detail.value })
+    this.setData({ letterDraft: textSlice(event.detail.value, LETTER_TEXT_LIMIT) })
   },
 
   sendLetter() {
-    const text = String(this.data.letterDraft || '')
+    const text = textSlice(this.data.letterDraft, LETTER_TEXT_LIMIT)
     if (!text.trim()) {
       wx.showToast({ title: '先写下想说的话吧', icon: 'none' })
       return
@@ -3228,6 +3274,9 @@ Page({
         const flowerView = getFlowerView(createDefaultFlowerState(), FLOWER_TYPES[0].id)
         this.allMenuItems = allMenuItems
         this.menuItemMap = getMenuItemMap(allMenuItems)
+        Object.keys(this.cloudSyncTimers || {}).forEach((resource) => clearTimeout(this.cloudSyncTimers[resource]))
+        this.cloudSyncTimers = {}
+        this.cloudSyncQueue = {}
         storage.clear()
         this.setData({
           activeTab: 'home',

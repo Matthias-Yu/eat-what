@@ -3,7 +3,8 @@ function createHomeModels({
   homeImages: HOME_IMAGES,
   reactionEmojis: MESSAGE_REACTION_EMOJIS,
   messagesLimit: MESSAGES_LIMIT,
-  lettersLimit: LETTERS_LIMIT
+  lettersLimit: LETTERS_LIMIT,
+  letterTextLimit: LETTER_TEXT_LIMIT = 4000
 }) {
   function textSlice(value, length) {
     return Array.from(String(value || '').trim()).slice(0, length).join('')
@@ -131,7 +132,7 @@ function createHomeModels({
     return (Array.isArray(letters) ? letters : [])
       .map((item, index) => ({
         id: textSlice(item && item.id, 48) || `letter-${Date.now()}-${index}`,
-        text: String((item && item.text) || ''),
+        text: textSlice(item && item.text, LETTER_TEXT_LIMIT),
         authorOpenid: textSlice(item && item.authorOpenid, 60),
         authorName: textSlice(item && item.authorName, 12) || '小家成员',
         createdAt: Number(item && item.createdAt) || Date.now(),
