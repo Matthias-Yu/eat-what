@@ -5,7 +5,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 const db = cloud.database()
 const command = db.command
-const COLLECTIONS = ['family_users', 'family_households', 'family_data', 'family_visits', 'family_ai_usage']
+const COLLECTIONS = ['family_users', 'family_households', 'family_data', 'family_resources', 'family_visits', 'family_ai_usage', 'family_rate_limits']
 let collectionsReady = false
 const RESOURCE_LIMITS = {
   todos: 500,
@@ -16,6 +16,7 @@ const RESOURCE_LIMITS = {
   messages: 200,
   letters: 60
 }
+const SHARDED_RESOURCES = ['todos', 'orders', 'wishes', 'menus', 'places']
 const MENU_CATEGORIES = ['main', 'dish', 'light', 'drink']
 const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
 const MESSAGE_REACTION_USER_LIMIT = 50
@@ -31,6 +32,9 @@ const AI_MAX_HISTORY = 12
 const AI_MAX_CONTENT = 800
 const AI_DAILY_LIMIT = 50
 const AI_MIN_INTERVAL_MS = 3000
+const VISIT_RETENTION_DAYS = 90
+const JOIN_ATTEMPT_LIMIT = 12
+const JOIN_ATTEMPT_WINDOW_MS = 10 * 60 * 1000
 const CATEGORY_TONE = {
   main: 'honey',
   dish: 'sunset',
@@ -73,7 +77,8 @@ async function getUser(openid) {
     const response = await db.collection('family_users').doc(openid).get()
     return response.data || null
   } catch (error) {
-    return null
+    if (isDocumentNotFoundError(error)) return null
+    throw error
   }
 }
 
@@ -83,7 +88,8 @@ async function getHousehold(householdId) {
     const response = await db.collection('family_households').doc(householdId).get()
     return response.data || null
   } catch (error) {
-    return null
+    if (isDocumentNotFoundError(error)) return null
+    throw error
   }
 }
 
@@ -128,6 +134,39 @@ function emptySharedData(householdId) {
     resourceVersions: {},
     updatedAt: db.serverDate()
   }
+}
+
+function resourceDocumentId(householdId, resource) {
+  return `${householdId}_${resource}`
+}
+
+async function loadShardedResources(householdId, legacyData) {
+  const values = {}
+  const versions = Object.assign({}, legacyData.resourceVersions || {})
+  const migrated = []
+  await Promise.all(SHARDED_RESOURCES.map(async (resource) => {
+    const document = db.collection('family_resources').doc(resourceDocumentId(householdId, resource))
+    try {
+      const response = await document.get()
+      values[resource] = sanitizeResource(resource, response.data && response.data.value)
+      versions[resource] = Math.max(0, Number(response.data && response.data.version) || 0)
+    } catch (error) {
+      if (!isDocumentNotFoundError(error)) throw error
+      const value = sanitizeResource(resource, legacyData[resource] || [])
+      const version = Math.max(0, Number(versions[resource]) || 0)
+      await document.set({
+        data: { householdId, resource, value, version, updatedAt: db.serverDate() }
+      })
+      values[resource] = value
+      migrated.push(resource)
+    }
+  }))
+  if (migrated.length) {
+    const update = { resourceSchemaVersion: 1, resourceVersions: versions, updatedAt: db.serverDate() }
+    migrated.forEach((resource) => { update[resource] = command.remove() })
+    await db.collection('family_data').doc(householdId).update({ data: update })
+  }
+  return { values, versions }
 }
 
 function createDefaultFarmPlots() {
@@ -206,6 +245,7 @@ async function createHousehold(openid, event) {
     const existing = await getHousehold(currentUser.householdId)
     if (existing) return success({ household: publicHousehold(existing, openid) })
   }
+  await acquireOperationLock(openid, 'create_household')
   const inviteCode = await uniqueInviteCode()
   const response = await db.collection('family_households').add({
     data: {
@@ -236,22 +276,79 @@ async function joinHousehold(openid, event) {
   if (inviteCode.length !== 6) throw new Error('请输入邀请码')
   const currentUser = await getUser(openid)
   if (currentUser && currentUser.householdId) throw new Error('你已经加入了一个家庭')
+  await consumeJoinAttempt(openid)
   const response = await db.collection('family_households').where({ inviteCode, inviteActive: true }).limit(1).get()
   const household = response.data[0]
   if (!household) throw new Error('没有找到这个邀请码')
-  await Promise.all([
-    db.collection('family_households').doc(household._id).update({
-      data: {
-        members: command.addToSet(openid),
-        updatedAt: db.serverDate()
-      }
-    }),
-    db.collection('family_users').doc(openid).set({
+  await db.runTransaction(async (transaction) => {
+    const householdDocument = transaction.collection('family_households').doc(household._id)
+    const userDocument = transaction.collection('family_users').doc(openid)
+    const householdResponse = await householdDocument.get()
+    const latestHousehold = householdResponse.data
+    if (!latestHousehold || !latestHousehold.inviteActive || latestHousehold.inviteCode !== inviteCode) {
+      throw new Error('这个邀请码已失效')
+    }
+    let latestUser = null
+    try {
+      const userResponse = await userDocument.get()
+      latestUser = userResponse.data || null
+    } catch (error) {
+      if (!isDocumentNotFoundError(error)) throw error
+    }
+    if (latestUser && latestUser.householdId) throw new Error('你已经加入了一个家庭')
+    await householdDocument.update({ data: { members: command.addToSet(openid), updatedAt: db.serverDate() } })
+    await userDocument.set({
       data: { openid, householdId: household._id, nickname: textSlice(event.nickname, 12) || '成员', joinedAt: db.serverDate() }
     })
-  ])
+  })
   const updated = await getHousehold(household._id)
+  await db.collection('family_rate_limits').doc(`${openid}_join`).remove().catch(() => {})
   return success({ household: publicHousehold(updated, openid) })
+}
+
+async function consumeJoinAttempt(openid) {
+  const documentId = `${openid}_join`
+  await db.runTransaction(async (transaction) => {
+    const document = transaction.collection('family_rate_limits').doc(documentId)
+    let current = null
+    try {
+      const response = await document.get()
+      current = response.data || null
+    } catch (error) {
+      if (!isDocumentNotFoundError(error)) throw error
+    }
+    const now = Date.now()
+    const windowStartedAt = Number(current && current.windowStartedAt) || now
+    const inWindow = now - windowStartedAt < JOIN_ATTEMPT_WINDOW_MS
+    const count = inWindow ? Math.max(0, Number(current && current.count) || 0) : 0
+    if (count >= JOIN_ATTEMPT_LIMIT) throw new Error('邀请码尝试过于频繁，请稍后再试')
+    await document.set({
+      data: {
+        type: 'join',
+        openid,
+        count: count + 1,
+        windowStartedAt: inWindow ? windowStartedAt : now,
+        updatedAt: db.serverDate()
+      }
+    })
+  })
+}
+
+async function acquireOperationLock(openid, type) {
+  const documentId = `${openid}_${type}`
+  await db.runTransaction(async (transaction) => {
+    const document = transaction.collection('family_rate_limits').doc(documentId)
+    let current = null
+    try {
+      const response = await document.get()
+      current = response.data || null
+    } catch (error) {
+      if (!isDocumentNotFoundError(error)) throw error
+    }
+    const now = Date.now()
+    if (current && now - Number(current.lockedAt || 0) < 10000) throw new Error('操作正在处理中，请勿重复提交')
+    await document.set({ data: { type, openid, lockedAt: now, updatedAt: db.serverDate() } })
+  })
 }
 
 function getVisibleOrderNotices(data, openid) {
@@ -278,26 +375,43 @@ async function getSharedData(openid) {
     const response = await db.collection('family_data').doc(household._id).get()
     data = response.data
   } catch (error) {
+    if (!isDocumentNotFoundError(error)) throw error
     data = emptySharedData(household._id)
     await db.collection('family_data').doc(household._id).set({ data })
   }
+  const sharded = await loadShardedResources(household._id, data)
   return success({
     openid,
     cart: sanitizeResource('cart', data.cart || {}),
-    todos: sanitizeResource('todos', data.todos || []),
-    orders: sanitizeResource('orders', data.orders || []),
-    wishes: sanitizeResource('wishes', data.wishes || []),
-    menus: sanitizeResource('menus', data.menus || []),
+    todos: sharded.values.todos,
+    orders: sharded.values.orders,
+    wishes: sharded.values.wishes,
+    menus: sharded.values.menus,
     farm: sanitizeFarmState(data.farm),
     flower: sanitizeFlowerState(data.flower),
-    places: sanitizeResource('places', data.places || []),
+    places: sharded.values.places,
     orderNotices: getVisibleOrderNotices(data, openid),
     anniversary: sanitizeResource('anniversary', data.anniversary || null),
     messages: sanitizeResource('messages', data.messages || []),
     letters: sanitizeResource('letters', data.letters || []),
-    resourceVersions: data.resourceVersions && typeof data.resourceVersions === 'object' ? data.resourceVersions : {},
+    resourceVersions: Object.assign({}, data.resourceVersions || {}, sharded.versions),
     updatedAt: data.updatedAt || null
   })
+}
+
+async function getDataMeta(openid) {
+  const { household } = await requireMembership(openid)
+  try {
+    const response = await db.collection('family_data').doc(household._id).get()
+    const data = response.data || {}
+    return success({
+      updatedAt: data.updatedAt || null,
+      resourceVersions: data.resourceVersions && typeof data.resourceVersions === 'object' ? data.resourceVersions : {}
+    })
+  } catch (error) {
+    if (isDocumentNotFoundError(error)) return success({ updatedAt: null, resourceVersions: {} })
+    throw error
+  }
 }
 
 function textSlice(value, length) {
@@ -619,29 +733,14 @@ async function sendLetter(openid, event) {
       })
     })
   } catch (error) {
-    let data
-    try {
-      const response = await db.collection('family_data').doc(household._id).get()
-      data = response.data || emptySharedData(household._id)
-    } catch (missingError) {
-      letters = [letter]
-      await db.collection('family_data').doc(household._id).set({
-        data: Object.assign(emptySharedData(household._id), {
-          letters,
-          updatedAt: db.serverDate(),
-          updatedBy: openid
-        })
-      })
-      return success({ letter, letters })
-    }
-    letters = [letter].concat(Array.isArray(data.letters) ? data.letters.map(sanitizeLetterItem) : [])
-      .slice(0, RESOURCE_LIMITS.letters)
-    await db.collection('family_data').doc(household._id).update({
-      data: {
-        letters: command.set(letters),
+    if (!isDocumentNotFoundError(error)) throw error
+    letters = [letter]
+    await db.collection('family_data').doc(household._id).set({
+      data: Object.assign(emptySharedData(household._id), {
+        letters,
         updatedAt: db.serverDate(),
         updatedBy: openid
-      }
+      })
     })
   }
   return success({ letter, letters })
@@ -651,23 +750,18 @@ async function openLetter(openid, event) {
   const { household } = await requireMembership(openid)
   const letterId = textSlice(event.letterId, 48)
   if (!letterId) throw new Error('没有找到这封信')
-  const response = await db.collection('family_data').doc(household._id).get()
-  const data = response.data || emptySharedData(household._id)
-  const letters = (Array.isArray(data.letters) ? data.letters : []).map(sanitizeLetterItem)
-  const targetIndex = letters.findIndex((item) => item.id === letterId)
-  if (targetIndex === -1) throw new Error('这封信已经不在了')
-  if (letters[targetIndex].openedBy.indexOf(openid) === -1) {
-    const update = {
-      updatedAt: db.serverDate(),
-      updatedBy: openid
-    }
-    update[`letters.${targetIndex}.openedBy`] = command.addToSet(openid)
-    await db.collection('family_data').doc(household._id).update({ data: update })
-  }
-  const updated = await db.collection('family_data').doc(household._id).get()
-  return success({
-    letters: (Array.isArray(updated.data.letters) ? updated.data.letters : []).map(sanitizeLetterItem)
+  let letters = []
+  await db.runTransaction(async (transaction) => {
+    const document = transaction.collection('family_data').doc(household._id)
+    const response = await document.get()
+    const data = response.data || emptySharedData(household._id)
+    letters = (Array.isArray(data.letters) ? data.letters : []).map(sanitizeLetterItem)
+    const target = letters.find((item) => item.id === letterId)
+    if (!target) throw new Error('这封信已经不在了')
+    if (!target.openedBy.includes(openid)) target.openedBy.push(openid)
+    await document.update({ data: { letters: command.set(letters), updatedAt: db.serverDate(), updatedBy: openid } })
   })
+  return success({ letters })
 }
 
 async function withdrawLetter(openid, event) {
@@ -702,6 +796,33 @@ async function updateResource(openid, event) {
   const expectedVersion = Math.max(0, Number(event.version) || 0)
   let nextVersion = expectedVersion + 1
   try {
+    if (SHARDED_RESOURCES.includes(resource)) {
+      await db.runTransaction(async (transaction) => {
+        const sharedDocument = transaction.collection('family_data').doc(household._id)
+        const resourceDocument = transaction.collection('family_resources').doc(resourceDocumentId(household._id, resource))
+        const sharedResponse = await sharedDocument.get()
+        const shared = sharedResponse.data || {}
+        let current = null
+        try {
+          const resourceResponse = await resourceDocument.get()
+          current = resourceResponse.data || null
+        } catch (error) {
+          if (!isDocumentNotFoundError(error)) throw error
+        }
+        const versions = shared.resourceVersions && typeof shared.resourceVersions === 'object' ? shared.resourceVersions : {}
+        const currentVersion = Math.max(0, Number(current ? current.version : versions[resource]) || 0)
+        if (currentVersion !== expectedVersion) throw new Error('DATA_CONFLICT: 数据已被其他成员更新')
+        nextVersion = currentVersion + 1
+        await resourceDocument.set({
+          data: { householdId: household._id, resource, value, version: nextVersion, updatedAt: db.serverDate(), updatedBy: openid }
+        })
+        const metadata = { updatedAt: db.serverDate(), updatedBy: openid, resourceSchemaVersion: 1 }
+        metadata[resource] = command.remove()
+        metadata[`resourceVersions.${resource}`] = nextVersion
+        await sharedDocument.update({ data: metadata })
+      })
+      return success({ resource, updated: true, version: nextVersion })
+    }
     await db.runTransaction(async (transaction) => {
       const document = transaction.collection('family_data').doc(household._id)
       const response = await document.get()
@@ -724,19 +845,31 @@ async function updateResource(openid, event) {
 
 async function migrateLocal(openid, event) {
   const { household } = await requireMembership(openid)
+  await getSharedData(openid)
   const response = await db.collection('family_data').doc(household._id).get()
   const current = response.data || emptySharedData(household._id)
   const local = event.data || {}
   const update = { updatedAt: db.serverDate(), updatedBy: openid }
   if (!Object.keys(current.cart || {}).length) update.cart = sanitizeResource('cart', local.cart || {})
-  if (!(current.todos || []).length) update.todos = sanitizeResource('todos', local.todos || [])
-  if (!(current.orders || []).length) update.orders = sanitizeResource('orders', local.orders || [])
-  if (!(current.wishes || []).length) update.wishes = sanitizeResource('wishes', local.wishes || [])
-  if (!(current.menus || []).length) update.menus = sanitizeResource('menus', local.menus || [])
   if (!current.farm) update.farm = sanitizeResource('farm', local.farm || null)
   if (!current.flower) update.flower = sanitizeResource('flower', local.flower || null)
-  if (!(current.places || []).length) update.places = sanitizeResource('places', local.places || [])
   await db.collection('family_data').doc(household._id).update({ data: update })
+  const seededResources = (await Promise.all(SHARDED_RESOURCES.map(async (resource) => {
+    const candidate = sanitizeResource(resource, local[resource] || [])
+    if (!candidate.length) return ''
+    const document = db.collection('family_resources').doc(resourceDocumentId(household._id, resource))
+    const existing = await document.get()
+    if (existing.data && Array.isArray(existing.data.value) && existing.data.value.length) return ''
+    await document.set({
+      data: { householdId: household._id, resource, value: candidate, version: 1, updatedAt: db.serverDate(), updatedBy: openid }
+    })
+    return resource
+  }))).filter(Boolean)
+  if (seededResources.length) {
+    const metadata = { updatedAt: db.serverDate(), updatedBy: openid }
+    seededResources.forEach((resource) => { metadata[`resourceVersions.${resource}`] = 1 })
+    await db.collection('family_data').doc(household._id).update({ data: metadata })
+  }
   return getSharedData(openid)
 }
 
@@ -764,21 +897,14 @@ async function notifyOrderAdmin(openid, event) {
     receiverOpenid: primaryAdminOpenid
   }
 
-  let data
-  try {
-    const response = await db.collection('family_data').doc(household._id).get()
-    data = response.data || emptySharedData(household._id)
-  } catch (error) {
-    data = emptySharedData(household._id)
-    await db.collection('family_data').doc(household._id).set({ data })
-  }
-  const orderNotices = [notice].concat(Array.isArray(data.orderNotices) ? data.orderNotices : []).slice(0, 50)
-  await db.collection('family_data').doc(household._id).update({
-    data: {
-      orderNotices,
-      updatedAt: db.serverDate(),
-      updatedBy: openid
-    }
+  await db.runTransaction(async (transaction) => {
+    const document = transaction.collection('family_data').doc(household._id)
+    const response = await document.get()
+    const data = response.data || emptySharedData(household._id)
+    const orderNotices = [notice].concat(Array.isArray(data.orderNotices) ? data.orderNotices : []).slice(0, 50)
+    await document.update({
+      data: { orderNotices: command.set(orderNotices), updatedAt: db.serverDate(), updatedBy: openid }
+    })
   })
   const push = await trySendOrderSubscribeMessage(primaryAdminOpenid, notice)
   return success({ notified: true, pushed: push.sent, notice: { id: notice.id, orderId: notice.orderId } })
@@ -786,18 +912,15 @@ async function notifyOrderAdmin(openid, event) {
 
 async function markOrderNoticesRead(openid) {
   const { household } = await requireMembership(openid)
-  const response = await db.collection('family_data').doc(household._id).get()
-  const data = response.data || emptySharedData(household._id)
-  const orderNotices = (Array.isArray(data.orderNotices) ? data.orderNotices : []).map((notice) => {
-    if (notice && notice.receiverOpenid === openid) return Object.assign({}, notice, { read: true })
-    return notice
-  })
-  await db.collection('family_data').doc(household._id).update({
-    data: {
-      orderNotices,
-      updatedAt: db.serverDate(),
-      updatedBy: openid
-    }
+  await db.runTransaction(async (transaction) => {
+    const document = transaction.collection('family_data').doc(household._id)
+    const response = await document.get()
+    const data = response.data || emptySharedData(household._id)
+    const orderNotices = (Array.isArray(data.orderNotices) ? data.orderNotices : []).map((notice) => {
+      if (notice && notice.receiverOpenid === openid) return Object.assign({}, notice, { read: true })
+      return notice
+    })
+    await document.update({ data: { orderNotices: command.set(orderNotices), updatedAt: db.serverDate(), updatedBy: openid } })
   })
   return success({ updated: true })
 }
@@ -808,27 +931,25 @@ async function toggleMessageReaction(openid, event) {
   const emoji = String(event.emoji || '')
   if (!messageId) throw new Error('缺少消息标识')
   if (!MESSAGE_REACTION_EMOJIS.includes(emoji)) throw new Error('不支持的表情')
-  const response = await db.collection('family_data').doc(household._id).get()
-  const data = response.data || emptySharedData(household._id)
-  const messages = Array.isArray(data.messages) ? data.messages.map(sanitizeMessageItem) : []
-  const target = messages.find((item) => item.id === messageId)
-  if (!target) throw new Error('这条悄悄话不存在了')
-  const reactions = target.reactions || {}
-  const users = Array.isArray(reactions[emoji]) ? reactions[emoji] : []
-  if (users.includes(openid)) {
-    const next = users.filter((u) => u !== openid)
-    if (next.length) reactions[emoji] = next
-    else delete reactions[emoji]
-  } else {
-    reactions[emoji] = users.concat(openid).slice(0, MESSAGE_REACTION_USER_LIMIT)
-  }
-  target.reactions = reactions
-  await db.collection('family_data').doc(household._id).update({
-    data: {
-      messages: command.set(messages),
-      updatedAt: db.serverDate(),
-      updatedBy: openid
+  let messages = []
+  await db.runTransaction(async (transaction) => {
+    const document = transaction.collection('family_data').doc(household._id)
+    const response = await document.get()
+    const data = response.data || emptySharedData(household._id)
+    messages = Array.isArray(data.messages) ? data.messages.map(sanitizeMessageItem) : []
+    const target = messages.find((item) => item.id === messageId)
+    if (!target) throw new Error('这条悄悄话不存在了')
+    const reactions = target.reactions || {}
+    const users = Array.isArray(reactions[emoji]) ? reactions[emoji] : []
+    if (users.includes(openid)) {
+      const next = users.filter((u) => u !== openid)
+      if (next.length) reactions[emoji] = next
+      else delete reactions[emoji]
+    } else {
+      reactions[emoji] = users.concat(openid).slice(0, MESSAGE_REACTION_USER_LIMIT)
     }
+    target.reactions = reactions
+    await document.update({ data: { messages: command.set(messages), updatedAt: db.serverDate(), updatedBy: openid } })
   })
   return success({ messages })
 }
@@ -868,7 +989,39 @@ async function recordVisit(openid, event) {
       enteredAt: db.serverDate()
     }
   })
+  if (Math.random() < 0.05) cleanupExpiredVisits(household._id).catch((error) => console.warn('清理过期访问记录失败', error))
   return success({ recorded: true })
+}
+
+function maskOpenid(openid) {
+  const value = String(openid || '')
+  if (value.length <= 8) return value ? `${value.slice(0, 2)}***` : ''
+  return `${value.slice(0, 4)}****${value.slice(-4)}`
+}
+
+async function cleanupExpiredVisits(householdId) {
+  const cutoff = Date.now() - VISIT_RETENTION_DAYS * 86400000
+  const response = await db.collection('family_visits')
+    .where({ householdId })
+    .limit(100)
+    .get()
+  const expired = (response.data || []).filter((item) => Number(item.enteredAtMs) < cutoff)
+  await Promise.all(expired.map((item) => db.collection('family_visits').doc(item._id).remove()))
+}
+
+async function cleanupHouseholdAuxiliaryData(householdId) {
+  await Promise.all(SHARDED_RESOURCES.map((resource) => (
+    db.collection('family_resources').doc(resourceDocumentId(householdId, resource)).remove().catch(() => {})
+  )))
+  for (let guard = 0; guard < 20; guard += 1) {
+    const response = await db.collection('family_visits').where({ householdId }).limit(100).get()
+    const records = response.data || []
+    if (!records.length) break
+    await Promise.all(records.map((item) => db.collection('family_visits').doc(item._id).remove().catch(() => {})))
+    if (records.length < 100) break
+  }
+  const usage = await db.collection('family_ai_usage').where({ householdId }).limit(100).get()
+  await Promise.all((usage.data || []).map((item) => db.collection('family_ai_usage').doc(item._id).remove().catch(() => {})))
 }
 
 async function listVisitRecords(openid, event = {}) {
@@ -900,7 +1053,7 @@ async function listVisitRecords(openid, event = {}) {
     const isAdmin = actorOpenid === primaryAdminOpenid
     return {
       id: record._id,
-      openid: actorOpenid,
+      openidMasked: maskOpenid(actorOpenid),
       nickname: nicknameMap[actorOpenid] || '已退出成员',
       isAdmin,
       isSelf: actorOpenid === openid,
@@ -1153,7 +1306,8 @@ async function leaveHousehold(openid) {
     )))
     await Promise.all([
       db.collection('family_households').doc(household._id).remove().catch(() => {}),
-      db.collection('family_data').doc(household._id).remove().catch(() => {})
+      db.collection('family_data').doc(household._id).remove().catch(() => {}),
+      cleanupHouseholdAuxiliaryData(household._id)
     ])
     return success({ active: false, dissolved: true })
   }
@@ -1188,6 +1342,7 @@ exports.main = async (event) => {
       case 'createHousehold': return createHousehold(OPENID, event)
       case 'joinHousehold': return joinHousehold(OPENID, event)
       case 'getData': return getSharedData(OPENID)
+      case 'getDataMeta': return getDataMeta(OPENID)
       case 'updateResource': return updateResource(OPENID, event)
       case 'migrateLocal': return migrateLocal(OPENID, event)
       case 'notifyOrderAdmin': return notifyOrderAdmin(OPENID, event)

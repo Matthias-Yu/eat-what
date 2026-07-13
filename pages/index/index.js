@@ -4,6 +4,9 @@ const imageCache = require('../../utils/image-cache')
 const conflict = require('../../utils/conflict')
 const dateUtil = require('../../utils/date')
 const cloudService = require('../../utils/cloud')
+const syncUtil = require('../../utils/sync')
+const { createHomeModels } = require('../../utils/home-model')
+const { createGardenModels } = require('../../utils/garden-model')
 
 const SEARCH_DEBOUNCE_MS = 120
 const CLOUD_SYNC_DEBOUNCE_MS = 800
@@ -107,6 +110,37 @@ const CUSTOM_MENU_LIMIT = 100
 const MESSAGES_LIMIT = 200
 const LETTERS_LIMIT = 60
 const MESSAGE_REACTION_EMOJIS = ['❤️', '😂', '👍', '🎉', '😢']
+const homeModel = createHomeModels({
+  storage,
+  homeImages: HOME_IMAGES,
+  reactionEmojis: MESSAGE_REACTION_EMOJIS,
+  messagesLimit: MESSAGES_LIMIT,
+  lettersLimit: LETTERS_LIMIT
+})
+const {
+  textSlice, todayDateString, getHomeTimeSlot, getHomeImages, getAnniversaryDays,
+  getAnniversaryDisplayStart, normalizeAnniversary, formatRelativeTime,
+  normalizeMessageReactions, normalizeMessages, buildReactionList, getMessagesView,
+  normalizeLetters, getLettersView
+} = homeModel
+const gardenModel = createGardenModels({
+  farmPlotCount: FARM_PLOT_COUNT,
+  farmCrops: FARM_CROPS,
+  farmCropMap: FARM_CROP_MAP,
+  farmImages: FARM_IMAGES,
+  flowerPlotCount: FLOWER_PLOT_COUNT,
+  flowerTypes: FLOWER_TYPES,
+  flowerTypeMap: FLOWER_TYPE_MAP,
+  flowerImages: FLOWER_IMAGES,
+  textSlice,
+  todayDateString
+})
+const {
+  createFarmPlots, createDefaultFarmState, createFlowerPlots, createDefaultFlowerState,
+  normalizeFarmState, formatFarmRemaining, getFarmGrowMs, getFarmGrowthStage,
+  getFarmPlotView, getFarmView, normalizeFlowerState, getFlowerStage,
+  getFlowerPlotView, getFlowerView
+} = gardenModel
 // 云存储临时链接约 2 小时过期，留出裕量按 90 分钟刷新
 const IMAGE_URL_TTL_MS = 90 * 60 * 1000
 const IMAGE_URL_EXPIRY_MARGIN_MS = 2 * 60 * 1000
@@ -141,196 +175,7 @@ function getMenuItemMap(items) {
   }, {})
 }
 
-function textSlice(value, length) {
-  return Array.from(String(value || '').trim()).slice(0, length).join('')
-}
-
-function todayDateString() {
-  const now = new Date()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${month}-${day}`
-}
-
-function createFarmPlots() {
-  return Array.from({ length: FARM_PLOT_COUNT }).map((_, index) => ({
-    id: index + 1,
-    cropId: '',
-    plantedAt: 0,
-    wateredAt: 0
-  }))
-}
-
-function createDefaultFarmState() {
-  return {
-    coins: 30,
-    lastBonusDate: '',
-    inventory: {},
-    plots: createFarmPlots()
-  }
-}
-
-function createFlowerPlots() {
-  return Array.from({ length: FLOWER_PLOT_COUNT }).map((_, index) => ({
-    id: index + 1,
-    flowerId: '',
-    plantedAt: 0,
-    caredAt: 0
-  }))
-}
-
-function createDefaultFlowerState() {
-  return {
-    nectar: 36,
-    lastBonusDate: '',
-    inventory: {},
-    plots: createFlowerPlots()
-  }
-}
-
-function getHomeTimeSlot(date = new Date()) {
-  const hour = date.getHours()
-  if (hour >= 5 && hour < 11) return 'morning'
-  if (hour >= 11 && hour < 14) return 'noon'
-  if (hour >= 14 && hour < 18) return 'afternoon'
-  return 'night'
-}
-
-function getHomeImages(date = new Date()) {
-  const timeSlot = getHomeTimeSlot(date)
-  return Object.assign({}, HOME_IMAGES, {
-    pageBg: HOME_IMAGES[timeSlot] || HOME_IMAGES.morning,
-    timeSlot
-  })
-}
-
-function getAnniversaryDays(date) {
-  if (!date) return 0
-  const parts = String(date).split('-').map(Number)
-  if (parts.length !== 3 || parts.some((part) => !part && part !== 0)) return 0
-  const start = new Date(parts[0], parts[1] - 1, parts[2])
-  if (isNaN(start.getTime())) return 0
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const diff = Math.floor((today.getTime() - start.getTime()) / 86400000)
-  return diff >= 0 ? diff + 1 : 0
-}
-
-function getAnniversaryDisplayStart(anniversary, currentDays) {
-  if (!anniversary || !currentDays) return currentDays
-  const lastOpen = storage.read('anniversaryLastOpen', null)
-  if (!lastOpen || lastOpen.date !== anniversary.date) return currentDays
-  const lastDays = Number(lastOpen.days) || 0
-  if (lastDays <= 0 || lastDays === currentDays) return currentDays
-  return lastDays
-}
-
-function normalizeAnniversary(value) {
-  if (!value || typeof value !== 'object') return null
-  const date = textSlice(value.date, 10)
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
-  return {
-    title: textSlice(value.title, 12) || '在一起',
-    date
-  }
-}
-
-function formatRelativeTime(ts) {
-  const time = Number(ts)
-  if (!time) return ''
-  const diff = Date.now() - time
-  if (diff < 60000) return '刚刚'
-  if (diff < 3600000) return `${Math.floor(diff / 60000)} 分钟前`
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)} 小时前`
-  if (diff < 7 * 86400000) return `${Math.floor(diff / 86400000)} 天前`
-  const date = new Date(time)
-  return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-}
-
-function normalizeMessageReactions(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
-  const result = {}
-  MESSAGE_REACTION_EMOJIS.forEach((emoji) => {
-    const users = value[emoji]
-    if (Array.isArray(users) && users.length) {
-      result[emoji] = users.filter(Boolean)
-    }
-  })
-  return result
-}
-
-function normalizeMessages(messages) {
-  return (Array.isArray(messages) ? messages : [])
-    .map((item) => ({
-      id: item && item.id ? item.id : Date.now(),
-      text: textSlice(item && item.text, 80),
-      authorOpenid: (item && item.authorOpenid) || '',
-      authorName: textSlice(item && item.authorName, 12) || '小家成员',
-      createdAt: Number(item && item.createdAt) || Date.now(),
-      reactions: normalizeMessageReactions(item && item.reactions)
-    }))
-    .filter((item) => item.text)
-    .slice(0, MESSAGES_LIMIT)
-}
-
 // 基于 reactions 与自身 openid 生成每条消息的表情展示列表：全部固定表情都展示，count 为 0 不显数字，mine 高亮
-function buildReactionList(reactions, myOpenid) {
-  const source = reactions || {}
-  return MESSAGE_REACTION_EMOJIS.map((emoji) => {
-    const users = Array.isArray(source[emoji]) ? source[emoji] : []
-    return {
-      emoji,
-      count: users.length,
-      mine: !!myOpenid && users.indexOf(myOpenid) !== -1
-    }
-  })
-}
-
-function getMessagesView(messages, myOpenid) {
-  const normalized = normalizeMessages(messages)
-  const messagesDisplay = normalized.map((item) => Object.assign({}, item, {
-    timeText: formatRelativeTime(item.createdAt),
-    reactionList: buildReactionList(item.reactions, myOpenid),
-    isMine: !!myOpenid && item.authorOpenid === myOpenid
-  }))
-  return {
-    messages: normalized,
-    messagesDisplay,
-    recentMessages: messagesDisplay.slice(0, 2)
-  }
-}
-
-function normalizeLetters(letters) {
-  return (Array.isArray(letters) ? letters : [])
-    .map((item, index) => ({
-      id: textSlice(item && item.id, 48) || `letter-${Date.now()}-${index}`,
-      text: String((item && item.text) || ''),
-      authorOpenid: textSlice(item && item.authorOpenid, 60),
-      authorName: textSlice(item && item.authorName, 12) || '小家成员',
-      createdAt: Number(item && item.createdAt) || Date.now(),
-      openedBy: Array.isArray(item && item.openedBy) ? item.openedBy.filter(Boolean) : []
-    }))
-    .filter((item) => item.text)
-    .slice(0, LETTERS_LIMIT)
-}
-
-function getLettersView(letters, myOpenid) {
-  const normalized = normalizeLetters(letters)
-  const lettersDisplay = normalized.map((item) => {
-    const date = new Date(item.createdAt)
-    return Object.assign({}, item, {
-      isMine: !!myOpenid && item.authorOpenid === myOpenid,
-      isUnread: !!myOpenid && item.openedBy.indexOf(myOpenid) === -1,
-      dateText: `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
-    })
-  })
-  return {
-    letters: normalized,
-    lettersDisplay,
-    latestLetter: lettersDisplay[0] || null,
-    hasUnreadLetter: lettersDisplay.some((item) => item.isUnread)
-  }
-}
 
 function parseMenuTags(value, category) {
   const tags = String(value || '')
@@ -542,197 +387,6 @@ function getWishView(wishes) {
   }
 }
 
-function normalizeFarmState(value) {
-  const fallback = createDefaultFarmState()
-  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
-  const inventory = {}
-  if (source.inventory && typeof source.inventory === 'object' && !Array.isArray(source.inventory)) {
-    Object.keys(source.inventory).forEach((id) => {
-      if (FARM_CROP_MAP[id]) inventory[id] = Math.max(0, Number(source.inventory[id]) || 0)
-    })
-  }
-  const rawPlots = Array.isArray(source.plots) ? source.plots : []
-  const plots = fallback.plots.map((plot, index) => {
-    const raw = rawPlots[index] || {}
-    const cropId = FARM_CROP_MAP[raw.cropId] ? raw.cropId : ''
-    return {
-      id: plot.id,
-      cropId,
-      plantedAt: cropId ? Number(raw.plantedAt) || Date.now() : 0,
-      wateredAt: cropId ? Number(raw.wateredAt) || 0 : 0
-    }
-  })
-  return {
-    coins: Object.prototype.hasOwnProperty.call(source, 'coins') ? Math.max(0, Number(source.coins) || 0) : fallback.coins,
-    lastBonusDate: textSlice(source.lastBonusDate, 10),
-    inventory,
-    plots
-  }
-}
-
-function formatFarmRemaining(ms) {
-  const days = Math.max(1, Math.ceil(ms / 86400000))
-  return `${days} 天`
-}
-
-function getFarmGrowMs(crop) {
-  if (crop.growDays) return crop.growDays * 86400000
-  return Math.max(1, Number(crop.growMinutes) || 1) * 60000
-}
-
-function getFarmGrowthStage(progress, ready) {
-  if (ready) return 'ready'
-  if (progress >= 62) return 'growing'
-  if (progress >= 28) return 'seedling'
-  return 'sprout'
-}
-
-function getFarmPlotView(plot, now) {
-  const crop = FARM_CROP_MAP[plot.cropId]
-  if (!crop) {
-    return Object.assign({}, plot, {
-      empty: true,
-      ready: false,
-      progress: 0,
-      stageText: '空地',
-      actionText: '播种',
-      cropName: '',
-      cropEmoji: '＋',
-      tone: 'mint'
-    })
-  }
-  const growMs = getFarmGrowMs(crop)
-  const wateredBoost = plot.wateredAt ? 0.18 : 0
-  const elapsed = Math.max(0, now - Number(plot.plantedAt || now))
-  const boostedElapsed = elapsed * (1 + wateredBoost)
-  const progress = Math.min(100, Math.floor(boostedElapsed / growMs * 100))
-  const ready = progress >= 100
-  const growthStage = getFarmGrowthStage(progress, ready)
-  return Object.assign({}, plot, {
-    empty: false,
-    ready,
-    progress,
-    growthStage,
-    cropName: crop.name,
-    cropEmoji: crop.emoji,
-    tone: crop.tone,
-    stageText: ready ? '可以收获' : `${formatFarmRemaining(growMs - boostedElapsed)}后成熟`,
-    actionText: ready ? '收获' : (plot.wateredAt ? '已浇水' : '浇水')
-  })
-}
-
-function getFarmView(farmState, selectedCropId) {
-  const state = normalizeFarmState(farmState)
-  const now = Date.now()
-  const plots = state.plots.map((plot) => getFarmPlotView(plot, now))
-  const inventoryList = FARM_CROPS
-    .map((crop) => Object.assign({}, crop, { count: Number(state.inventory[crop.id]) || 0 }))
-    .filter((item) => item.count > 0)
-  const selectedCrop = FARM_CROP_MAP[selectedCropId] || FARM_CROPS[0]
-  return {
-    farmState: state,
-    farmPlots: plots,
-    farmInventoryList: inventoryList,
-    selectedFarmCrop: selectedCrop.id,
-    farmStats: {
-      coins: state.coins,
-      planted: plots.filter((item) => !item.empty).length,
-      ready: plots.filter((item) => item.ready).length,
-      harvests: inventoryList.reduce((sum, item) => sum + item.count, 0),
-      dailyAvailable: state.lastBonusDate !== todayDateString()
-    }
-  }
-}
-
-function normalizeFlowerState(value) {
-  const fallback = createDefaultFlowerState()
-  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {}
-  const inventory = {}
-  if (source.inventory && typeof source.inventory === 'object' && !Array.isArray(source.inventory)) {
-    Object.keys(source.inventory).forEach((id) => {
-      if (FLOWER_TYPE_MAP[id]) inventory[id] = Math.max(0, Number(source.inventory[id]) || 0)
-    })
-  }
-  const rawPlots = Array.isArray(source.plots) ? source.plots : []
-  const plots = fallback.plots.map((plot, index) => {
-    const raw = rawPlots[index] || {}
-    const flowerId = FLOWER_TYPE_MAP[raw.flowerId] ? raw.flowerId : ''
-    return {
-      id: plot.id,
-      flowerId,
-      plantedAt: flowerId ? Number(raw.plantedAt) || Date.now() : 0,
-      caredAt: flowerId ? Number(raw.caredAt) || 0 : 0
-    }
-  })
-  return {
-    nectar: Object.prototype.hasOwnProperty.call(source, 'nectar') ? Math.max(0, Number(source.nectar) || 0) : fallback.nectar,
-    lastBonusDate: textSlice(source.lastBonusDate, 10),
-    inventory,
-    plots
-  }
-}
-
-function getFlowerStage(progress, ready) {
-  if (ready) return 'ready'
-  if (progress >= 64) return 'blooming'
-  if (progress >= 32) return 'bud'
-  return 'sprout'
-}
-
-function getFlowerPlotView(plot, now) {
-  const flower = FLOWER_TYPE_MAP[plot.flowerId]
-  if (!flower) {
-    return Object.assign({}, plot, {
-      empty: true,
-      ready: false,
-      progress: 0,
-      stage: 'empty',
-      flowerName: '',
-      flowerImage: '',
-      actionText: '种花'
-    })
-  }
-  const growMs = flower.growDays * 86400000
-  const careBoost = plot.caredAt ? 0.16 : 0
-  const elapsed = Math.max(0, now - Number(plot.plantedAt || now))
-  const boostedElapsed = elapsed * (1 + careBoost)
-  const progress = Math.min(100, Math.floor(boostedElapsed / growMs * 100))
-  const ready = progress >= 100
-  return Object.assign({}, plot, {
-    empty: false,
-    ready,
-    progress,
-    stage: getFlowerStage(progress, ready),
-    flowerName: flower.name,
-    flowerImage: flower.image,
-    tone: flower.tone,
-    actionText: ready ? '收花' : (plot.caredAt ? '已照料' : '照料')
-  })
-}
-
-function getFlowerView(flowerState, selectedFlowerId) {
-  const state = normalizeFlowerState(flowerState)
-  const now = Date.now()
-  const plots = state.plots.map((plot) => getFlowerPlotView(plot, now))
-  const inventoryList = FLOWER_TYPES
-    .map((flower) => Object.assign({}, flower, { count: Number(state.inventory[flower.id]) || 0 }))
-    .filter((item) => item.count > 0)
-  const selectedFlower = FLOWER_TYPE_MAP[selectedFlowerId] || FLOWER_TYPES[0]
-  return {
-    flowerState: state,
-    flowerPlots: plots,
-    flowerInventoryList: inventoryList,
-    selectedFlowerType: selectedFlower.id,
-    flowerStats: {
-      nectar: state.nectar,
-      planted: plots.filter((item) => !item.empty).length,
-      ready: plots.filter((item) => item.ready).length,
-      materials: inventoryList.reduce((sum, item) => sum + item.count, 0),
-      dailyAvailable: state.lastBonusDate !== todayDateString()
-    }
-  }
-}
-
 function getProfileStats(todos, orders) {
   const completedTodos = todos.filter((item) => item.completed).length
   return {
@@ -936,6 +590,9 @@ Page({
   },
 
   onLoad() {
+    this.cloudSyncQueue = storage.read('pendingCloudSyncs', {}) || {}
+    this.pendingCloudHouseholdId = storage.read('pendingCloudHouseholdId', '') || ''
+    this.cloudSyncTimers = {}
     this.imageUrlCache = Object.assign({}, INITIAL_IMAGE_URL_CACHE)
     const savedTodos = storage.read('todos', null)
     const cart = storage.read('cart', {})
@@ -1500,7 +1157,9 @@ Page({
         family: session.household,
         familyError: ''
       })
-      await this.pullCloudData()
+      this.preparePendingCloudSyncs(session.household.id)
+      await this.pullCloudData({ force: true })
+      await this.replayPendingCloudSyncs()
       this.startCloudPolling()
     } catch (error) {
       console.warn('云端初始化失败', error)
@@ -1511,12 +1170,12 @@ Page({
     }
   },
 
-  async pullCloudData() {
-    if (this.data.familyStatus !== 'active' || this.cloudWritePending > 0 || this.hasQueuedCloudSync()) return
+  async pullCloudData(options = {}) {
+    if (this.data.familyStatus !== 'active' || this.cloudWritePending > 0 || (!options.force && this.hasQueuedCloudSync())) return
     try {
       const data = await cloudService.call('getData')
       // 拉取期间若又产生了本地写入/排队同步，丢弃这次结果，避免用旧云端数据覆盖更新的本地操作
-      if (this.cloudWritePending > 0 || this.hasQueuedCloudSync()) return
+      if (this.cloudWritePending > 0 || (!options.force && this.hasQueuedCloudSync())) return
       this.applyCloudData(data)
     } catch (error) {
       console.warn('拉取家庭数据失败', error)
@@ -1524,6 +1183,16 @@ Page({
       if (message.includes('权限') || message.includes('请先创建或加入')) {
         this.handleFamilyRemoved()
       }
+    }
+  },
+
+  async pollCloudData() {
+    if (this.data.familyStatus !== 'active' || this.cloudWritePending > 0 || this.hasQueuedCloudSync()) return
+    try {
+      const meta = await cloudService.call('getDataMeta')
+      if (syncUtil.shouldPull(this.cloudRevision, meta)) await this.pullCloudData()
+    } catch (error) {
+      console.warn('检查家庭数据更新失败', error)
     }
   },
 
@@ -1540,6 +1209,7 @@ Page({
   },
 
   applyCloudData(data) {
+    this.cloudRevision = syncUtil.revisionKey(data)
     this.resourceVersions = data.resourceVersions && typeof data.resourceVersions === 'object' ? data.resourceVersions : {}
     const conflictRetries = []
     if (this.cloudConflicts) {
@@ -1711,8 +1381,10 @@ Page({
   syncCloudResource(resource, value, options = {}) {
     if (this.data.familyStatus !== 'active') return Promise.resolve()
     if (options.debounce) return this.queueCloudResourceSync(resource, value)
-    this.cancelQueuedCloudSync(resource)
-    return this.writeCloudResource(resource, value)
+    if (!this.cloudSyncQueue) this.cloudSyncQueue = {}
+    this.cloudSyncQueue[resource] = value
+    this.persistCloudSyncQueue()
+    return this.flushCloudResourceSync(resource)
   },
 
   writeCloudResource(resource, value) {
@@ -1736,7 +1408,14 @@ Page({
             base: conflict.clone((this.cloudResourceSnapshots || {})[resource])
           }
           this.cloudConflictPending = true
+          if (this.cloudSyncQueue) delete this.cloudSyncQueue[resource]
+          this.persistCloudSyncQueue()
+        } else {
+          if (!this.cloudSyncTimers) this.cloudSyncTimers = {}
+          clearTimeout(this.cloudSyncTimers[resource])
+          this.cloudSyncTimers[resource] = setTimeout(() => this.flushCloudResourceSync(resource), 5000)
         }
+        return { failed: true, conflict: isConflict }
       })
       .finally(() => {
         this.cloudWritePending = Math.max(0, (this.cloudWritePending || 1) - 1)
@@ -1751,6 +1430,7 @@ Page({
     if (!this.cloudSyncQueue) this.cloudSyncQueue = {}
     if (!this.cloudSyncTimers) this.cloudSyncTimers = {}
     this.cloudSyncQueue[resource] = value
+    this.persistCloudSyncQueue()
     if (this.cloudSyncTimers[resource]) clearTimeout(this.cloudSyncTimers[resource])
     this.cloudSyncTimers[resource] = setTimeout(() => {
       this.flushCloudResourceSync(resource)
@@ -1764,6 +1444,22 @@ Page({
       delete this.cloudSyncTimers[resource]
     }
     if (this.cloudSyncQueue) delete this.cloudSyncQueue[resource]
+    this.persistCloudSyncQueue()
+  },
+
+  persistCloudSyncQueue() {
+    storage.write('pendingCloudSyncs', this.cloudSyncQueue || {})
+    const householdId = this.data.family && this.data.family.id
+    if (householdId) {
+      this.pendingCloudHouseholdId = householdId
+      storage.write('pendingCloudHouseholdId', householdId)
+    }
+  },
+
+  preparePendingCloudSyncs(householdId) {
+    if (!this.pendingCloudHouseholdId || this.pendingCloudHouseholdId === householdId) return
+    this.cloudSyncQueue = {}
+    this.persistCloudSyncQueue()
   },
 
   flushCloudResourceSync(resource) {
@@ -1771,8 +1467,25 @@ Page({
       return Promise.resolve()
     }
     const value = this.cloudSyncQueue[resource]
-    this.cancelQueuedCloudSync(resource)
-    return this.writeCloudResource(resource, value)
+    if (this.cloudSyncTimers && this.cloudSyncTimers[resource]) {
+      clearTimeout(this.cloudSyncTimers[resource])
+      delete this.cloudSyncTimers[resource]
+    }
+    return this.writeCloudResource(resource, value).then((result) => {
+      if (!result || result.failed) return result
+      if (this.cloudSyncQueue && this.cloudSyncQueue[resource] === value) {
+        delete this.cloudSyncQueue[resource]
+        this.persistCloudSyncQueue()
+      }
+      return result
+    })
+  },
+
+  async replayPendingCloudSyncs() {
+    const resources = Object.keys(this.cloudSyncQueue || {})
+    if (!resources.length) return
+    await Promise.all(resources.map((resource) => this.flushCloudResourceSync(resource)))
+    if (!this.hasQueuedCloudSync()) await this.pullCloudData({ force: true })
   },
 
   flushCloudSyncs() {
@@ -1784,7 +1497,7 @@ Page({
 
   startCloudPolling() {
     if (this.data.familyStatus !== 'active' || this.cloudPollTimer) return
-    this.cloudPollTimer = setInterval(() => this.pullCloudData(), 30000)
+    this.cloudPollTimer = setInterval(() => this.pollCloudData(), 30000)
   },
 
   stopCloudPolling() {
@@ -1828,6 +1541,7 @@ Page({
         family: result.household,
         familyNickname: ''
       })
+      this.preparePendingCloudSyncs(result.household.id)
       const data = await cloudService.call('migrateLocal', {
         data: { cart: this.data.cart, todos: this.data.todos, orders: this.data.orders, wishes: this.data.wishes, menus: this.data.customMenuItems, farm: this.data.farmState, flower: this.data.flowerState, places: [] }
       })
@@ -1859,6 +1573,7 @@ Page({
         familyInviteCode: '',
         familyNickname: ''
       })
+      this.preparePendingCloudSyncs(result.household.id)
       await this.pullCloudData()
       this.startCloudPolling()
       this.setData({ showFamilyPanel: false })
@@ -2385,7 +2100,6 @@ Page({
   scrollAiToBottom() {
     this.setData({ aiScrollTop: (this.data.aiScrollTop || 0) + 100000 })
   },
-
 
   openOrderDetail(event) {
     const id = String(event.currentTarget.dataset.id)

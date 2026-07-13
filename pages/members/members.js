@@ -31,7 +31,7 @@ function formatVisitFullTime(value) {
 function normalizeVisitRecords(records) {
   return (Array.isArray(records) ? records : []).map((item) => ({
     id: item.id,
-    openid: item.openid,
+    openidMasked: item.openidMasked || '',
     nickname: item.nickname || '小家成员',
     roleLabel: item.roleLabel || '成员',
     isAdmin: !!item.isAdmin,
@@ -173,7 +173,7 @@ Page({
       `时间：${record.fullTimeText}`,
       `入口场景：${record.scene || '未记录'}`,
       `页面路径：${record.path || '未记录'}`,
-      `OpenID：${record.openid || '未记录'}`
+      `用户标识：${record.openidMasked || '未记录'}`
     ].join('\n')
     wx.showModal({
       title: '详细操作记录',

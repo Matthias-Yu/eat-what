@@ -2,7 +2,7 @@
   "name": "little-home-miniprogram",
   "private": true,
   "scripts": {
-    "lint": "node --check app.js && node --check pages/index/index.js && node --check pages/members/members.js && node --check utils/cloud.js && node --check utils/date.js && node --check utils/storage.js && node --check utils/image-cache.js && node --check utils/conflict.js && node --check cloudfunctions/familyApi/index.js",
+    "lint": "node --check app.js && node --check pages/index/index.js && node --check pages/members/members.js && node --check utils/cloud.js && node --check utils/date.js && node --check utils/storage.js && node --check utils/image-cache.js && node --check utils/conflict.js && node --check utils/sync.js && node --check utils/home-model.js && node --check utils/garden-model.js && node --check cloudfunctions/familyApi/index.js",
     "test": "node --test tests/*.test.js",
     "check": "npm run lint && npm test"
   }

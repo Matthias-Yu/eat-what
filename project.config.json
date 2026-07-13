@@ -22,6 +22,18 @@
       {
         "type": "folder",
         "value": "assets"
+      },
+      {
+        "type": "folder",
+        "value": "docs"
+      },
+      {
+        "type": "folder",
+        "value": "tests"
+      },
+      {
+        "type": "file",
+        "value": "README.md"
       }
     ],
     "include": []
