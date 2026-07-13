@@ -741,6 +741,11 @@
             <view class="family-menu-copy"><text>点餐提醒</text><text>{{orderPushEnabled ? '已开启，轻触可关闭' : '未开启，轻触接收点餐通知'}}</text></view>
             <text class="family-menu-arrow">›</text>
           </view>
+          <view class="family-menu-item" bindtap="openDealGame" hover-class="family-menu-item--pressed">
+            <view class="family-menu-icon is-game">▣</view>
+            <view class="family-menu-copy"><text>一掷千金</text><text>20 个幸运箱 · 最高 1000</text></view>
+            <text class="family-menu-arrow">›</text>
+          </view>
         </view>
       </view>
       <view class="family-panel-footer">
@@ -785,6 +790,57 @@
       <button class="family-secondary-button" data-mode="join" bindtap="setFamilyMode">加入云空间</button>
       <text class="family-tip">也可以先关闭，继续使用本地模式。</text>
     </block>
+  </view>
+</view>
+
+<!-- 管理员隐藏游戏：家庭版一掷千金 -->
+<view wx:if="{{showDealGame}}" class="deal-overlay" catchtouchmove="noop">
+  <view class="deal-game">
+    <view class="deal-header">
+      <view><text class="deal-kicker">FAMILY LUCKY BOX</text><text class="deal-title">一掷千金</text></view>
+      <view class="deal-close" bindtap="closeDealGame">×</view>
+    </view>
+    <text class="deal-guide" wx:if="{{dealPhase === 'choose'}}">先选一个属于你的幸运箱</text>
+    <text class="deal-guide" wx:elif="{{dealPhase === 'opening'}}">第 {{dealRound + 1}} 轮 · 再开 {{dealBoxesToOpen}} 个箱子</text>
+    <text class="deal-guide" wx:elif="{{dealPhase === 'offer'}}">小家银行给出了报价</text>
+    <text class="deal-guide" wx:else>本轮游戏结束</text>
+
+    <view class="deal-prize-board">
+      <view class="deal-prize-column is-opened">
+        <view class="deal-prize-heading"><text>已开出</text><text>{{dealOpenedPrizes.length}}</text></view>
+        <view class="deal-prize-list">
+          <text wx:for="{{dealOpenedPrizes}}" wx:key="*this" class="deal-prize">{{item}}</text>
+          <text wx:if="{{!dealOpenedPrizes.length}}" class="deal-prize-empty">暂时没有</text>
+        </view>
+      </view>
+      <view class="deal-prize-column is-unopened">
+        <view class="deal-prize-heading"><text>未开出</text><text>{{dealUnopenedPrizes.length}}</text></view>
+        <view class="deal-prize-list">
+          <text wx:for="{{dealUnopenedPrizes}}" wx:key="*this" class="deal-prize">{{item}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="deal-box-grid">
+      <view wx:for="{{dealBoxes}}" wx:key="id" class="deal-box {{item.chosen ? 'is-chosen' : ''}} {{item.opened ? 'is-opened' : ''}}" data-id="{{item.id}}" bindtap="tapDealBox" hover-class="deal-box--pressed">
+        <text wx:if="{{item.opened}}" class="deal-box-value">{{item.prize}}</text>
+        <block wx:else><view class="deal-box-handle"></view><text>{{item.id}}</text></block>
+      </view>
+    </view>
+
+    <view wx:if="{{dealChosenBox && dealPhase !== 'done'}}" class="deal-own-box">你的幸运箱：<text>{{dealChosenBox}} 号</text></view>
+
+    <view wx:if="{{dealPhase === 'offer'}}" class="deal-offer-card">
+      <text>小家银行报价</text><view><text>¥</text>{{dealOffer}}</view>
+      <view class="deal-offer-actions"><button bindtap="continueDealGame">继续开箱</button><button bindtap="acceptDealOffer">接受报价</button></view>
+    </view>
+
+    <view wx:if="{{dealPhase === 'done'}}" class="deal-result-card">
+      <text>{{dealResult.type === 'offer' ? '成交啦' : '幸运箱揭晓'}}</text>
+      <view><text>¥</text>{{dealResult.amount}}</view>
+      <text wx:if="{{dealResult.type === 'offer'}}">你的箱子里原来是 ¥{{dealResult.boxPrize}}</text>
+      <button bindtap="startDealGame">再玩一局</button>
+    </view>
   </view>
 </view>
 

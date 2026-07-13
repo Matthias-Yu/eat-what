@@ -10,6 +10,8 @@ const CLOUD_SYNC_DEBOUNCE_MS = 800
 const AI_REQUEST_TIMEOUT_MS = 25000
 const ANNIVERSARY_FLIP_INTERVAL_MS = 90
 const ANNIVERSARY_FLIP_MAX_STEPS = 24
+const DEAL_PRIZES = [1, 2, 5, 10, 15, 20, 30, 40, 50, 60, 80, 100, 150, 200, 250, 300, 400, 500, 750, 1000]
+const DEAL_ROUND_TARGETS = [5, 4, 3, 2, 1, 1, 1]
 
 const DEFAULT_TODOS = [
   { id: 1, title: '记得给绿植浇水', note: '客厅和阳台', category: '家务', due: '今天', completed: false },
@@ -784,6 +786,23 @@ function isSameList(currentList, nextList) {
   return JSON.stringify(currentList || []) === JSON.stringify(nextList || [])
 }
 
+function shuffleDealPrizes() {
+  const values = DEAL_PRIZES.slice()
+  for (let index = values.length - 1; index > 0; index -= 1) {
+    const target = Math.floor(Math.random() * (index + 1))
+    ;[values[index], values[target]] = [values[target], values[index]]
+  }
+  return values
+}
+
+function getDealPrizeLists(boxes) {
+  const source = Array.isArray(boxes) ? boxes : []
+  return {
+    opened: source.filter((item) => item.opened).map((item) => item.prize).sort((a, b) => a - b),
+    unopened: source.filter((item) => !item.opened).map((item) => item.prize).sort((a, b) => a - b)
+  }
+}
+
 Page({
   data: {
     activeTab: 'home',
@@ -901,7 +920,19 @@ Page({
     letterSending: false,
     letterWithdrawing: false,
     myOpenid: '',
-    myNickname: ''
+    myNickname: '',
+    showDealGame: false,
+    dealPhase: 'choose',
+    dealBoxes: [],
+    dealChosenBox: 0,
+    dealRound: 0,
+    dealOpenedThisRound: 0,
+    dealBoxesToOpen: DEAL_ROUND_TARGETS[0],
+    dealOffer: 0,
+    dealResult: null,
+    dealRemainingPrizes: DEAL_PRIZES,
+    dealOpenedPrizes: [],
+    dealUnopenedPrizes: DEAL_PRIZES
   },
 
   onLoad() {
@@ -1851,6 +1882,105 @@ Page({
   openMemberManager() {
     this.setData({ showFamilyPanel: false })
     wx.navigateTo({ url: '/pages/members/members' })
+  },
+
+  openDealGame() {
+    if (!this.data.family || !this.data.family.isAdmin) {
+      wx.showToast({ title: '只有管理员可以开启', icon: 'none' })
+      return
+    }
+    this.closeFamilyPanel()
+    this.startDealGame()
+  },
+
+  startDealGame() {
+    const prizes = shuffleDealPrizes()
+    this.setData({
+      showDealGame: true,
+      dealPhase: 'choose',
+      dealBoxes: prizes.map((prize, index) => ({ id: index + 1, prize, opened: false, chosen: false })),
+      dealChosenBox: 0,
+      dealRound: 0,
+      dealOpenedThisRound: 0,
+      dealBoxesToOpen: DEAL_ROUND_TARGETS[0],
+      dealOffer: 0,
+      dealResult: null,
+      dealRemainingPrizes: DEAL_PRIZES.slice(),
+      dealOpenedPrizes: [],
+      dealUnopenedPrizes: DEAL_PRIZES.slice()
+    })
+  },
+
+  closeDealGame() {
+    this.setData({ showDealGame: false })
+  },
+
+  tapDealBox(event) {
+    if (this.data.dealPhase !== 'choose' && this.data.dealPhase !== 'opening') return
+    const id = Number(event.currentTarget.dataset.id)
+    const box = this.data.dealBoxes.find((item) => item.id === id)
+    if (!box || box.opened || box.chosen) return
+    if (this.data.dealPhase === 'choose') {
+      const boxes = this.data.dealBoxes.map((item) => Object.assign({}, item, { chosen: item.id === id }))
+      this.setData({ dealBoxes: boxes, dealChosenBox: id, dealPhase: 'opening' })
+      return
+    }
+    const boxes = this.data.dealBoxes.map((item) => item.id === id ? Object.assign({}, item, { opened: true }) : item)
+    const remainingPrizes = boxes.filter((item) => !item.opened).map((item) => item.prize).sort((a, b) => a - b)
+    const prizeLists = getDealPrizeLists(boxes)
+    const openedThisRound = this.data.dealOpenedThisRound + 1
+    const target = DEAL_ROUND_TARGETS[Math.min(this.data.dealRound, DEAL_ROUND_TARGETS.length - 1)]
+    this.setData({
+      dealBoxes: boxes,
+      dealOpenedThisRound: openedThisRound,
+      dealBoxesToOpen: Math.max(0, target - openedThisRound),
+      dealRemainingPrizes: remainingPrizes,
+      dealOpenedPrizes: prizeLists.opened,
+      dealUnopenedPrizes: prizeLists.unopened
+    })
+    if (remainingPrizes.length === 1) {
+      this.finishDealGame('box')
+    } else if (openedThisRound >= target) {
+      this.makeDealOffer(boxes, remainingPrizes)
+    }
+  },
+
+  makeDealOffer(boxes, remainingPrizes) {
+    const average = remainingPrizes.reduce((sum, value) => sum + value, 0) / remainingPrizes.length
+    const factor = Math.min(0.92, 0.52 + this.data.dealRound * 0.1)
+    const offer = Math.max(1, Math.round(average * factor))
+    this.setData({ dealBoxes: boxes, dealOffer: offer, dealPhase: 'offer' })
+  },
+
+  acceptDealOffer() {
+    if (this.data.dealPhase !== 'offer') return
+    this.finishDealGame('offer')
+  },
+
+  continueDealGame() {
+    if (this.data.dealPhase !== 'offer') return
+    this.setData({
+      dealPhase: 'opening',
+      dealRound: this.data.dealRound + 1,
+      dealOpenedThisRound: 0,
+      dealBoxesToOpen: DEAL_ROUND_TARGETS[Math.min(this.data.dealRound + 1, DEAL_ROUND_TARGETS.length - 1)],
+      dealOffer: 0
+    })
+  },
+
+  finishDealGame(type) {
+    const chosen = this.data.dealBoxes.find((item) => item.id === this.data.dealChosenBox)
+    const prize = chosen ? chosen.prize : 0
+    const boxes = this.data.dealBoxes.map((item) => item.chosen ? Object.assign({}, item, { opened: true }) : item)
+    const prizeLists = getDealPrizeLists(boxes)
+    this.setData({
+      dealBoxes: boxes,
+      dealPhase: 'done',
+      dealResult: { type, amount: type === 'offer' ? this.data.dealOffer : prize, boxPrize: prize },
+      dealRemainingPrizes: prizeLists.unopened,
+      dealOpenedPrizes: prizeLists.opened,
+      dealUnopenedPrizes: prizeLists.unopened
+    })
   },
 
   leaveFamily() {
